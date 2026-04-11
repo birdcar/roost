@@ -31,7 +31,7 @@ export class ${pascal} extends Model {
 }
 `;
 
-  await writeIfNotExists(join('app', 'models', `${kebab}.ts`), content);
+  await writeIfNotExists(join('src', 'models', `${kebab}.ts`), content);
 }
 
 export async function makeAgent(name: string): Promise<void> {
@@ -52,7 +52,7 @@ export class ${pascal} extends Agent {
 }
 `;
 
-  await writeIfNotExists(join('app', 'agents', `${kebab}.ts`), content);
+  await writeIfNotExists(join('src', 'agents', `${kebab}.ts`), content);
 }
 
 export async function makeTool(name: string): Promise<void> {
@@ -81,7 +81,7 @@ export class ${pascal} implements Tool {
 }
 `;
 
-  await writeIfNotExists(join('app', 'tools', `${kebab}.ts`), content);
+  await writeIfNotExists(join('src', 'tools', `${kebab}.ts`), content);
 }
 
 export async function makeJob(name: string): Promise<void> {
@@ -102,7 +102,7 @@ export class ${pascal} extends Job<${pascal}Payload> {
 }
 `;
 
-  await writeIfNotExists(join('app', 'jobs', `${kebab}.ts`), content);
+  await writeIfNotExists(join('src', 'jobs', `${kebab}.ts`), content);
 }
 
 export async function makeMiddleware(name: string): Promise<void> {
@@ -124,7 +124,7 @@ export class ${pascal}Middleware implements Middleware {
 }
 `;
 
-  await writeIfNotExists(join('app', 'middleware', `${kebab}.ts`), content);
+  await writeIfNotExists(join('src', 'middleware', `${kebab}.ts`), content);
 }
 
 export async function makeMcpServer(name: string): Promise<void> {
@@ -152,7 +152,7 @@ export class ${pascal}Server extends McpServer {
 }
 `;
 
-  await writeIfNotExists(join('app', 'mcp', `${kebab}.ts`), content);
+  await writeIfNotExists(join('src', 'mcp', `${kebab}.ts`), content);
 }
 
 export async function makeController(name: string): Promise<void> {
@@ -188,5 +188,5 @@ export async function destroy(id: string) {
 }
 `;
 
-  await writeIfNotExists(join('app', 'controllers', `${kebab}.ts`), content);
+  await writeIfNotExists(join('src', 'controllers', `${kebab}.ts`), content);
 }

@@ -19,7 +19,7 @@ describe('code generators', () => {
 
     try {
       await makeModel('Post');
-      const content = await readFile(join(tempDir, 'app', 'models', 'post.ts'), 'utf-8');
+      const content = await readFile(join(tempDir, 'src', 'models', 'post.ts'), 'utf-8');
 
       expect(content).toContain('class Post extends Model');
       expect(content).toContain("static tableName = 'posts'");
@@ -36,7 +36,7 @@ describe('code generators', () => {
 
     try {
       await makeAgent('Assistant');
-      const content = await readFile(join(tempDir, 'app', 'agents', 'assistant.ts'), 'utf-8');
+      const content = await readFile(join(tempDir, 'src', 'agents', 'assistant.ts'), 'utf-8');
 
       expect(content).toContain('class Assistant extends Agent');
       expect(content).toContain("import { Agent } from '@roost/ai'");
@@ -53,7 +53,7 @@ describe('code generators', () => {
 
     try {
       await makeTool('SearchWeb');
-      const content = await readFile(join(tempDir, 'app', 'tools', 'search-web.ts'), 'utf-8');
+      const content = await readFile(join(tempDir, 'src', 'tools', 'search-web.ts'), 'utf-8');
 
       expect(content).toContain('class SearchWeb implements Tool');
       expect(content).toContain('description()');
@@ -71,7 +71,7 @@ describe('code generators', () => {
 
     try {
       await makeJob('SendWelcomeEmail');
-      const content = await readFile(join(tempDir, 'app', 'jobs', 'send-welcome-email.ts'), 'utf-8');
+      const content = await readFile(join(tempDir, 'src', 'jobs', 'send-welcome-email.ts'), 'utf-8');
 
       expect(content).toContain('class SendWelcomeEmail extends Job');
       expect(content).toContain("import { Job } from '@roost/queue'");
@@ -88,7 +88,7 @@ describe('code generators', () => {
 
     try {
       await makeMiddleware('RateLimit');
-      const content = await readFile(join(tempDir, 'app', 'middleware', 'rate-limit.ts'), 'utf-8');
+      const content = await readFile(join(tempDir, 'src', 'middleware', 'rate-limit.ts'), 'utf-8');
 
       expect(content).toContain('class RateLimitMiddleware implements Middleware');
       expect(content).toContain("import type { Middleware } from '@roost/core'");

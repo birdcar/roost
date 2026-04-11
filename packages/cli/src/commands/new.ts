@@ -2,7 +2,6 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { exists } from 'node:fs/promises';
 import { toKebabCase } from '../utils.js';
-import { run } from '../process.js';
 
 export async function newProject(name: string, flags: Record<string, boolean> = {}): Promise<void> {
   const dir = join(process.cwd(), name);
@@ -17,9 +16,10 @@ export async function newProject(name: string, flags: Record<string, boolean> = 
 
   console.log(`\n  Creating Roost project: ${name}\n`);
 
-  await mkdir(join(dir, 'app', 'routes'), { recursive: true });
-  await mkdir(join(dir, 'app', 'models'), { recursive: true });
-  await mkdir(join(dir, 'app', 'agents'), { recursive: true });
+  // TanStack Start uses src/ as the root for routes and app code
+  await mkdir(join(dir, 'src', 'routes'), { recursive: true });
+  await mkdir(join(dir, 'src', 'models'), { recursive: true });
+  await mkdir(join(dir, 'src', 'agents'), { recursive: true });
   await mkdir(join(dir, 'config'), { recursive: true });
   await mkdir(join(dir, 'database', 'migrations'), { recursive: true });
   await mkdir(join(dir, 'database', 'seeders'), { recursive: true });
@@ -61,6 +61,7 @@ export async function newProject(name: string, flags: Record<string, boolean> = 
     },
     dependencies: deps,
     devDependencies: {
+      '@roost/testing': 'latest',
       '@types/react': '^19.0.0',
       '@types/react-dom': '^19.0.0',
       '@vitejs/plugin-react': '^4.5.0',
@@ -89,7 +90,7 @@ export async function newProject(name: string, flags: Record<string, boolean> = 
       lib: ['ES2022', 'DOM', 'DOM.Iterable'],
       types: ['vite/client'],
     },
-    include: ['app/**/*.ts', 'app/**/*.tsx', 'vite.config.ts'],
+    include: ['src/**/*.ts', 'src/**/*.tsx', 'vite.config.ts'],
   }, null, 2) + '\n');
 
   await writeFile(join(dir, 'vite.config.ts'), `import { defineConfig } from 'vite';
@@ -122,7 +123,54 @@ dist/
 WORKOS_CLIENT_ID=
 `);
 
-  await writeFile(join(dir, 'app', 'routes', 'index.tsx'), `import { createFileRoute } from '@tanstack/react-router';
+  // TanStack Start required: router entry
+  await writeFile(join(dir, 'src', 'router.tsx'), `import { createRouter } from '@tanstack/react-router';
+import { routeTree } from './routeTree.gen';
+
+export function getRouter() {
+  return createRouter({
+    routeTree,
+    scrollRestoration: true,
+  });
+}
+
+declare module '@tanstack/react-router' {
+  interface Register {
+    router: ReturnType<typeof getRouter>;
+  }
+}
+`);
+
+  // Root route with HTML shell
+  await writeFile(join(dir, 'src', 'routes', '__root.tsx'), `import type { ReactNode } from 'react';
+import { createRootRoute, Outlet, HeadContent, Scripts } from '@tanstack/react-router';
+
+export const Route = createRootRoute({
+  head: () => ({
+    meta: [
+      { charSet: 'utf-8' },
+      { name: 'viewport', content: 'width=device-width, initial-scale=1' },
+      { title: '${name}' },
+    ],
+  }),
+  component: RootDocument,
+});
+
+function RootDocument({ children }: { children?: ReactNode }) {
+  return (
+    <html lang="en">
+      <head><HeadContent /></head>
+      <body>
+        {children ?? <Outlet />}
+        <Scripts />
+      </body>
+    </html>
+  );
+}
+`);
+
+  // Index route
+  await writeFile(join(dir, 'src', 'routes', 'index.tsx'), `import { createFileRoute } from '@tanstack/react-router';
 
 export const Route = createFileRoute('/')({
   component: HomePage,
