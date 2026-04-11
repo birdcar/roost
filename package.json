@@ -1,0 +1,10 @@
+{
+  "name": "roost",
+  "private": true,
+  "workspaces": ["packages/*"],
+  "scripts": {
+    "build": "bun run --filter '@roost/*' build",
+    "test": "bun test",
+    "typecheck": "bun run --filter '@roost/*' typecheck"
+  }
+}
