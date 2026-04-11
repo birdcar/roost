@@ -4,22 +4,31 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev",
+    "prebuild": "bun run scripts/generate-llm-files.ts",
     "build": "vite build"
   },
   "dependencies": {
+    "@mdx-js/react": "^3.1.0",
+    "@mdx-js/rollup": "^3.1.0",
     "@roost/core": "workspace:*",
     "@roost/start": "workspace:*",
     "@tanstack/react-router": "catalog:",
     "@tanstack/react-start": "catalog:",
     "react": "catalog:",
-    "react-dom": "catalog:"
+    "react-dom": "catalog:",
+    "remark-frontmatter": "^5.0.0",
+    "remark-gfm": "^4.0.0",
+    "remark-mdx-frontmatter": "^5.0.0"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@vitejs/plugin-react": "catalog:",
+    "fast-glob": "^3.3.3",
+    "gray-matter": "^4.0.3",
     "typescript": "catalog:",
     "vite": "catalog:",
-    "vite-tsconfig-paths": "catalog:",
-    "@vitejs/plugin-react": "catalog:",
-    "@types/react": "catalog:",
-    "@types/react-dom": "catalog:"
+    "vite-tsconfig-paths": "catalog:"
   }
 }

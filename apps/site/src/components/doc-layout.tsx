@@ -1,5 +1,6 @@
 import { Link, useLocation } from '@tanstack/react-router';
 import { useState, useEffect, type ReactNode } from 'react';
+import { CopyMarkdownButton } from './copy-markdown-button';
 
 const sections = [
   {
@@ -88,9 +89,42 @@ function normalize(path: string): string {
   return path.replace(/\/+$/, '') || '/';
 }
 
+const collapsibleSections = new Set(['Guides', 'Reference', 'Concepts']);
+
 function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const location = useLocation();
   const currentPath = normalize(location.pathname);
+
+  // Determine which sections should be open: always-open sections + section containing active page
+  const activeSectionTitle = sections.find((s) =>
+    s.links.some((l) => currentPath === normalize(l.to))
+  )?.title;
+
+  const [openSections, setOpenSections] = useState<Set<string>>(() => {
+    const initial = new Set<string>();
+    sections.forEach((s) => {
+      if (!collapsibleSections.has(s.title)) initial.add(s.title);
+    });
+    if (activeSectionTitle) initial.add(activeSectionTitle);
+    return initial;
+  });
+
+  // Update open sections when the active page changes
+  useEffect(() => {
+    if (activeSectionTitle && !openSections.has(activeSectionTitle)) {
+      setOpenSections((prev) => new Set([...prev, activeSectionTitle]));
+    }
+  }, [activeSectionTitle]);
+
+  function toggleSection(title: string) {
+    if (!collapsibleSections.has(title)) return;
+    setOpenSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(title)) next.delete(title);
+      else next.add(title);
+      return next;
+    });
+  }
 
   return (
     <>
@@ -107,27 +141,49 @@ function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) 
       )}
       <aside className={`docs-sidebar${isOpen ? ' open' : ''}`}>
         <nav>
-          {sections.map((section) => (
-            <div key={section.title} className="sidebar-section">
-              <div className="sidebar-section-title">{section.title}</div>
-              {section.links.map((link) => {
-                const isActive = currentPath === normalize(link.to);
-                return (
-                  <Link
-                    key={link.to}
-                    to={link.to}
-                    className={`sidebar-link${isActive ? ' active' : ''}`}
-                    activeOptions={{ exact: true }}
-                    activeProps={{}}
-                    inactiveProps={{}}
-                    onClick={onClose}
+          {sections.map((section) => {
+            const isCollapsible = collapsibleSections.has(section.title);
+            const isOpen = openSections.has(section.title);
+
+            return (
+              <div key={section.title} className="sidebar-section">
+                {isCollapsible ? (
+                  <button
+                    className="sidebar-section-toggle"
+                    onClick={() => toggleSection(section.title)}
+                    aria-expanded={isOpen}
                   >
-                    {link.label}
-                  </Link>
-                );
-              })}
-            </div>
-          ))}
+                    <span className="sidebar-section-title">{section.title}</span>
+                    <svg className={`sidebar-chevron${isOpen ? ' open' : ''}`} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+                      <path d="M6 4l4 4-4 4" />
+                    </svg>
+                  </button>
+                ) : (
+                  <div className="sidebar-section-title">{section.title}</div>
+                )}
+                <div className={`sidebar-links${isOpen ? ' open' : ''}`}>
+                  <div className="sidebar-links-inner">
+                    {section.links.map((link) => {
+                      const isActive = currentPath === normalize(link.to);
+                      return (
+                        <Link
+                          key={link.to}
+                          to={link.to}
+                          className={`sidebar-link${isActive ? ' active' : ''}`}
+                          activeOptions={{ exact: true }}
+                          activeProps={{}}
+                          inactiveProps={{}}
+                          onClick={onClose}
+                        >
+                          {link.label}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </nav>
       </aside>
     </>
@@ -177,6 +233,8 @@ export function DocLayout({
   subtitle: string;
   children: ReactNode;
 }) {
+  const location = useLocation();
+  const isDocsPage = location.pathname.startsWith('/docs/');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [tocItems, setTocItems] = useState<TocItem[]>([]);
   const [activeId, setActiveId] = useState('');
@@ -244,16 +302,19 @@ export function DocLayout({
     <div className="docs-layout">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <main className="docs-content">
-        <button
-          className="nav-toggle mobile-menu-btn"
-          onClick={() => setSidebarOpen(true)}
-          aria-label="Open sidebar"
-        >
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
-            <path d="M3 5h14M3 10h14M3 15h14" />
-          </svg>
-          <span style={{ marginLeft: '0.5rem', fontSize: '0.875rem' }}>Menu</span>
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <button
+            className="nav-toggle mobile-menu-btn"
+            onClick={() => setSidebarOpen(true)}
+            aria-label="Open sidebar"
+          >
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <path d="M3 5h14M3 10h14M3 15h14" />
+            </svg>
+            <span style={{ marginLeft: '0.5rem', fontSize: '0.875rem' }}>Menu</span>
+          </button>
+          {isDocsPage && <CopyMarkdownButton path={location.pathname} />}
+        </div>
         <h1>{title}</h1>
         <p className="subtitle">{subtitle}</p>
         {children}
