@@ -116,6 +116,19 @@
         "typescript": "catalog:",
       },
     },
+    "packages/queue": {
+      "name": "@roost/queue",
+      "version": "0.1.0",
+      "dependencies": {
+        "@roost/cloudflare": "workspace:*",
+        "@roost/core": "workspace:*",
+      },
+      "devDependencies": {
+        "@cloudflare/workers-types": "catalog:",
+        "bun-types": "catalog:",
+        "typescript": "catalog:",
+      },
+    },
     "packages/schema": {
       "name": "@roost/schema",
       "version": "0.1.0",
@@ -396,6 +409,8 @@
     "@roost/mcp": ["@roost/mcp@workspace:packages/mcp"],
 
     "@roost/orm": ["@roost/orm@workspace:packages/orm"],
+
+    "@roost/queue": ["@roost/queue@workspace:packages/queue"],
 
     "@roost/schema": ["@roost/schema@workspace:packages/schema"],
 
