@@ -1,5 +1,7 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
+import { useEffect, useRef } from 'react';
 import { CodeBlock } from '../components/code-block';
+import { CodeParticles } from '../components/code-particles';
 
 export const Route = createFileRoute('/')({
   component: LandingPage,
@@ -20,6 +22,7 @@ function LandingPage() {
 function Hero() {
   return (
     <section className="hero">
+      <CodeParticles />
       <div className="hero-inner">
         <div>
           <div className="hero-eyebrow anim-fade-up anim-d1">TypeScript Framework</div>
@@ -87,17 +90,39 @@ function s(cls: string, text: string) {
 }
 
 function Features() {
+  const gridRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const grid = gridRef.current
+    if (!grid) return
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+
+    function handleMove(e: MouseEvent) {
+      const rect = grid!.getBoundingClientRect()
+      const x = (e.clientX - rect.left) / rect.width - 0.5
+      const y = (e.clientY - rect.top) / rect.height - 0.5
+      grid!.style.setProperty('--mouse-x', `${x * 6}px`)
+      grid!.style.setProperty('--mouse-y', `${y * 4}px`)
+    }
+
+    function handleLeave() {
+      grid!.style.setProperty('--mouse-x', '0px')
+      grid!.style.setProperty('--mouse-y', '0px')
+    }
+
+    grid.addEventListener('mousemove', handleMove)
+    grid.addEventListener('mouseleave', handleLeave)
+    return () => {
+      grid.removeEventListener('mousemove', handleMove)
+      grid.removeEventListener('mouseleave', handleLeave)
+    }
+  }, [])
+
   const items = [
     {
-      label: 'Auth',
-      title: 'WorkOS Authentication',
-      desc: 'SSO, RBAC, organizations, and session management. Enterprise-ready from the first line of code.',
-      featured: true,
-    },
-    {
-      label: 'Data',
-      title: 'Drizzle ORM on D1',
-      desc: 'Laravel-like model classes with query builders, relationships, hooks, and migrations.',
+      label: 'Platform',
+      title: 'All of Cloudflare',
+      desc: 'Typed wrappers for D1, KV, R2, Queues, Durable Objects, AI, Vectorize, and Hyperdrive.',
       featured: true,
     },
     {
@@ -110,11 +135,7 @@ function Features() {
       label: 'Interop',
       title: 'MCP Server',
       desc: 'Expose your app to AI clients with tools, resources, and prompts over the Model Context Protocol.',
-    },
-    {
-      label: 'Revenue',
-      title: 'Stripe Billing',
-      desc: 'Abstract billing interface with subscriptions, metering, webhooks, and customer portal.',
+      featured: true,
     },
     {
       label: 'Background',
@@ -122,19 +143,29 @@ function Features() {
       desc: 'Typed job classes on Cloudflare Queues with dispatch, retry, chaining, and batching.',
     },
     {
+      label: 'DX',
+      title: 'CLI Generators',
+      desc: 'Scaffold projects and generate models, agents, jobs, middleware — all from the terminal.',
+    },
+    {
+      label: 'Revenue',
+      title: 'Billing',
+      desc: 'Abstract billing interface with subscriptions, metering, webhooks, and customer portal. Ships with a Stripe adapter.',
+    },
+    {
       label: 'Frontend',
       title: 'TanStack Start',
       desc: 'Type-safe file routing, SSR, and server functions. React 19 on the edge.',
     },
     {
-      label: 'Platform',
-      title: 'All of Cloudflare',
-      desc: 'Typed wrappers for D1, KV, R2, Queues, Durable Objects, AI, Vectorize, and Hyperdrive.',
+      label: 'Auth',
+      title: 'WorkOS Authentication',
+      desc: 'SSO, RBAC, organizations, and session management. Enterprise-ready from the first line of code.',
     },
     {
-      label: 'DX',
-      title: 'CLI Generators',
-      desc: 'Scaffold projects and generate models, agents, jobs, middleware — all from the terminal.',
+      label: 'Data',
+      title: 'Drizzle ORM on D1',
+      desc: 'Laravel-like model classes with query builders, relationships, hooks, and migrations.',
     },
   ];
 
@@ -147,7 +178,7 @@ function Features() {
           Register a provider, and the framework handles the rest.
         </p>
       </div>
-      <div className="features-grid">
+      <div className="features-grid" ref={gridRef}>
         {items.map((item) => (
           <div key={item.title} className={`feature-item${'featured' in item && item.featured ? ' featured' : ''}`}>
             <div className="feature-label">{item.label}</div>
@@ -173,17 +204,21 @@ function Comparison() {
           <CodeBlock>
 {`export default {
   async fetch(request, env) {
-    const url = new URL(request.url);
-    if (url.pathname === '/api/todos') {
-      const cookie = request.headers
-        .get('cookie')?.split(';')
-        .find(c => c.includes('session='));
-      // parse session, verify, refresh...
-      const rows = await env.DB
-        .prepare('SELECT * FROM todos')
-        .bind(userId).all();
-      return Response.json(rows);
-    }
+    // Parse session from cookies
+    const cookie = request.headers
+      .get('cookie')?.split(';')
+      .find(c => c.includes('session='));
+    const userId = await verifySession(cookie);
+
+    // Query D1 with raw SQL
+    const rows = await env.DB
+      .prepare(
+        'SELECT * FROM todos WHERE user_id = ?1 ORDER BY created_at DESC'
+      )
+      .bind(userId)
+      .all();
+
+    return Response.json(rows.results);
   }
 }`}
           </CodeBlock>
@@ -191,20 +226,16 @@ function Comparison() {
         <div>
           <div className="comparison-label after">With Roost</div>
           <CodeBlock>
-{`import { Model } from '@roost/orm';
+{`// Auth handled by middleware
+const getTodos = createServerFn()
+  .handler(async () => {
+    const user = await requireUser();
 
-class Todo extends Model {
-  static tableName = 'todos';
-}
-
-// In your route loader
-const todos = await Todo
-  .where('user_id', user.id)
-  .orderBy('created_at', 'desc')
-  .all();
-
-// Auth, sessions, CSRF — handled
-// by middleware. Automatically.`}
+    return Todo
+      .where('user_id', user.id)
+      .orderBy('created_at', 'desc')
+      .all();
+  });`}
           </CodeBlock>
         </div>
       </div>
