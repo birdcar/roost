@@ -1,0 +1,57 @@
+---
+title: "@roost/cli"
+description: The code generation philosophy behind Roost's generators, how scaffolding reduces decision fatigue, and convention enforcement through generators.
+---
+
+## Generate Once, Own Forever
+
+Some frameworks generate code that you are not supposed to modify — it is owned by the
+framework and regenerated on every update. Roost takes the opposite position. When you
+run `roost make:model User`, the generated `User.ts` is yours.
+You can add methods, override defaults, change column types. The generator is a starting
+point, not a contract that you maintain by keeping the file in sync with a hidden template.
+
+This philosophy is inherited directly from Laravel's Artisan. `artisan make:model`
+generates a file and steps aside. The generated code follows conventions, but the developer
+owns it. For Roost, this means generators can be intentionally simple — they need to
+produce good starting-point code, not complete implementations that cover every possible
+option through flags and conditionals.
+
+## Decision Fatigue and Scaffolding
+
+Blank files invite endless bikeshedding: where should this file go? What should it be
+named? Should the class extend something? What imports are needed? For experienced
+developers, these questions have obvious answers, but they still take time to answer
+and create cognitive overhead. For developers new to Roost (or new to a team using Roost),
+they create confusion.
+
+Generators answer all of these questions by default. Running `roost make:job SendWelcomeEmail`
+creates the file at the right path, names the class correctly, extends the right base class,
+and includes the necessary imports. The developer can start writing the job's `handle()`
+method immediately, with zero setup overhead. This is the practical value of opinionated
+generators: they eliminate the non-problems so developers can focus on the actual problem.
+
+## Convention Enforcement Through Generators
+
+Generators also enforce conventions consistently across a team. If every developer on a
+team generates models the same way, models will follow the same structure, live in the
+same directory, and use the same naming conventions. This is more reliable than a style
+guide document that everyone is supposed to read and remember.
+
+The generator templates are EJS files inside the CLI package. For teams with specific
+conventions beyond Roost's defaults, the templates are the right place to make changes —
+modifying them once changes every future generated file, rather than requiring every
+developer to remember a custom pattern.
+
+## No Runtime Dependencies
+
+The CLI runs in Node.js, not in a Cloudflare Worker. It reads and writes files on the
+local filesystem — things that Workers cannot do. This is not a design inconsistency;
+it is the correct tool for the job. Code generation is a development-time operation that
+belongs on the developer's machine. The generated files are what run in Workers. The
+CLI is never part of the deployed bundle.
+
+## Further Reading
+
+- [Laravel Patterns — Artisan as the inspiration for Roost's CLI model](/docs/concepts/laravel-patterns)
+- [@roost/cli reference — available generators and their options](/docs/packages/cli)

@@ -1,0 +1,148 @@
+---
+title: "@roost/start Guides"
+description: Task-oriented instructions for routing, server functions, and SSR with TanStack Start.
+---
+
+## How to create a new route
+
+Routes in TanStack Start are file-based. Create a file under `src/routes/` and export a `Route` using `createFileRoute`.
+
+```tsx src/routes/posts/$id.tsx
+import { createFileRoute } from '@tanstack/react-router';
+
+export const Route = createFileRoute('/posts/$id')({
+  component: PostPage,
+});
+
+function PostPage() {
+  const { id } = Route.useParams();
+  return <div>Post: {id}</div>;
+}
+```
+
+For API endpoints, use a loader or server function rather than returning HTML from the component. Nested routes inherit the parent layout automatically.
+
+```tsx src/routes/posts/index.tsx
+import { createFileRoute, Link } from '@tanstack/react-router';
+
+export const Route = createFileRoute('/posts/')({
+  loader: async () => {
+    return await fetchPosts();
+  },
+  component: PostsPage,
+});
+
+function PostsPage() {
+  const posts = Route.useLoaderData();
+  return (
+    <ul>
+      {posts.map((post) => (
+        <li key={post.id}>
+          <Link to="/posts/$id" params={{ id: post.id }}>{post.title}</Link>
+        </li>
+      ))}
+    </ul>
+  );
+}
+```
+
+## How to use server functions
+
+Use `roostFn` for server functions that read data, and `roostFnWithInput` when the function accepts typed user input.
+
+```ts src/functions/posts.ts
+import { roostFn, roostFnWithInput } from '@roost/start';
+import { roostMiddleware } from '../middleware';
+
+// No input — read-only server function
+export const listPosts = roostFn(roostMiddleware, async (roost) => {
+  const postService = roost.container.resolve(PostService);
+  return postService.findAll();
+});
+
+// Typed input — mutation server function
+export const createPost = roostFnWithInput(
+  roostMiddleware,
+  (d: { title: string; body: string }) => d,
+  async (roost, input) => {
+    const postService = roost.container.resolve(PostService);
+    return postService.create(input);
+  }
+);
+```
+
+```tsx src/routes/posts/new.tsx
+import { createFileRoute } from '@tanstack/react-router';
+import { createPost } from '../../functions/posts';
+
+export const Route = createFileRoute('/posts/new')({ component: NewPostPage });
+
+function NewPostPage() {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const form = new FormData(e.currentTarget);
+    await createPost({ title: form.get('title') as string, body: form.get('body') as string });
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <input name="title" placeholder="Title" />
+      <textarea name="body" placeholder="Body" />
+      <button type="submit">Publish</button>
+    </form>
+  );
+}
+```
+
+## How to access the Roost container from routes
+
+Use `createRoostMiddleware` to bootstrap your application and expose the container via the `roost` context in server functions and loaders.
+
+```ts src/middleware.ts
+import { createRoostMiddleware } from '@roost/start';
+import { Application } from '@roost/core';
+import { CloudflareServiceProvider } from '@roost/cloudflare';
+import { AuthServiceProvider } from '@roost/auth';
+
+export const roostMiddleware = createRoostMiddleware(() => {
+  const app = new Application({});
+  app.register(CloudflareServiceProvider);
+  app.register(AuthServiceProvider);
+  return app;
+});
+```
+
+```ts src/functions/users.ts
+import { roostFn } from '@roost/start';
+import { roostMiddleware } from '../middleware';
+
+export const getCurrentUser = roostFn(roostMiddleware, async (roost) => {
+  // roost.container gives you the fully-booted DI container
+  const userService = roost.container.resolve(UserService);
+  return userService.getCurrentUser(roost.request);
+});
+```
+
+## How to configure SSR
+
+SSR is enabled by default in TanStack Start. Configure it in `app.config.ts`. For streaming SSR, set `renderMode` to `'stream'`.
+
+```ts app.config.ts
+import { defineConfig } from '@tanstack/start/config';
+
+export default defineConfig({
+  server: {
+    preset: 'cloudflare-pages',
+  },
+  routers: {
+    ssr: {
+      entry: './src/entry.server.tsx',
+    },
+    client: {
+      entry: './src/entry.client.tsx',
+    },
+  },
+});
+```
+
+To opt a route out of SSR and render it client-only, use the `clientOnly` loader modifier from TanStack Start. See [TanStack Start SSR docs](https://tanstack.com/start/latest/docs/framework/react/ssr) for streaming and hydration options.

@@ -1,0 +1,179 @@
+
+## Installation
+
+```bash title="terminal"
+bun add @roost/billing
+```
+
+## Configuration
+
+Required environment variables:
+
+```bash title=".dev.vars"
+STRIPE_SECRET_KEY=sk_test_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+```
+
+Register the service provider:
+
+```ts title="src/app.ts"
+import { BillingServiceProvider } from '@roost/billing';
+app.register(BillingServiceProvider);
+```
+
+Resolve the provider via the `BillingProviderToken` symbol:
+
+```ts
+import { BillingProviderToken } from '@roost/billing';
+const billing = container.resolve(BillingProviderToken);
+```
+
+## BillingProvider Interface
+
+The abstract interface implemented by `StripeAdapter` (and `BillingFake`).
+Resolve via `BillingProviderToken` to stay provider-agnostic.
+
+#### `createCustomer(params: CreateCustomerParams): Promise<CreateCustomerResult>`
+
+Create a billing customer record. Returns the provider-assigned customer ID.
+
+#### `subscribe(params: SubscribeParams): Promise<SubscribeResult>`
+
+Create a subscription for a customer on the given price.
+
+#### `cancelSubscription(subscriptionId: string): Promise<void>`
+
+Cancel a subscription. The subscription remains active until the end of the billing period.
+
+#### `resumeSubscription(subscriptionId: string): Promise<SubscribeResult>`
+
+Resume a cancelled subscription before the billing period ends.
+
+#### `swapSubscription(params: SwapSubscriptionParams): Promise<SubscribeResult>`
+
+Change an existing subscription to a different price. Prorates immediately.
+
+#### `getSubscriptionStatus(subscriptionId: string): Promise<SubscriptionStatus>`
+
+Returns the current status string. Possible values: `'active'`,
+`'trialing'`, `'past_due'`, `'canceled'`,
+`'incomplete'`, `'incomplete_expired'`, `'paused'`.
+
+#### `createCheckoutSession(params: CheckoutSessionParams): Promise<CheckoutSessionResult>`
+
+Create a hosted checkout session. The result contains a `url` to redirect the user to.
+
+#### `createPortalSession(params: PortalSessionParams): Promise<PortalSessionResult>`
+
+Create a customer portal session. The result contains a `url` for the portal.
+
+#### `reportUsage(params: UsageRecordParams): Promise<void>`
+
+Report metered usage for a subscription item.
+
+#### `parseWebhookEvent(request: Request, webhookSecret: string): Promise<WebhookEvent>`
+
+Verify the webhook signature using the Web Crypto API and parse the event payload.
+Throws if the signature is invalid.
+
+## StripeAdapter
+
+Concrete implementation of `BillingProvider` using Stripe's REST API
+via `fetch`. Registered by `BillingServiceProvider`.
+
+## BillingFake
+
+In-memory implementation of `BillingProvider` for use in tests. Records
+all calls and returns synthetic results without network requests.
+
+```ts
+import { BillingFake } from '@roost/billing';
+
+const fake = new BillingFake();
+const customer = await fake.createCustomer({ name: 'Test', email: 'test@example.com' });
+```
+
+## SubscriptionMiddleware
+
+Middleware that gates access by subscription status. Accepts one or more allowed
+status strings as arguments. Returns `402 Payment Required` if the user
+has no active subscription matching an allowed status.
+
+```ts
+import { SubscriptionMiddleware } from '@roost/billing';
+app.useMiddleware(SubscriptionMiddleware, 'active', 'trialing');
+```
+
+## Types
+
+```ts
+interface CreateCustomerParams {
+  name: string;
+  email: string;
+  metadata?: Record<string, string>;
+}
+
+interface CreateCustomerResult {
+  providerId: string;
+}
+
+interface SubscribeParams {
+  customerId: string;
+  priceId: string;
+  trialDays?: number;
+  metadata?: Record<string, string>;
+}
+
+interface SubscribeResult {
+  subscriptionId: string;
+  status: SubscriptionStatus;
+  currentPeriodEnd: string;
+}
+
+interface SwapSubscriptionParams {
+  subscriptionId: string;
+  priceId: string;
+}
+
+interface CheckoutSessionParams {
+  customerId: string;
+  priceId: string;
+  successUrl: string;
+  cancelUrl: string;
+  trialDays?: number;
+}
+
+interface CheckoutSessionResult {
+  sessionId: string;
+  url: string;
+}
+
+interface PortalSessionParams {
+  customerId: string;
+  returnUrl: string;
+}
+
+interface PortalSessionResult {
+  url: string;
+}
+
+interface UsageRecordParams {
+  subscriptionItemId: string;
+  quantity: number;
+  timestamp: number;
+}
+
+interface WebhookEvent {
+  type: string;
+  data: unknown;
+}
+
+type SubscriptionStatus =
+  | 'active'
+  | 'trialing'
+  | 'past_due'
+  | 'canceled'
+  | 'incomplete'
+  | 'incomplete_expired'
+  | 'paused';
+```

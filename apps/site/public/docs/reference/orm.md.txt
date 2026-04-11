@@ -1,0 +1,217 @@
+
+## Installation
+
+```bash title="terminal"
+bun add @roost/orm
+```
+
+## Model API
+
+Extend `Model` to define a database table mapping. All queries operate
+on the subclass statically. Results are instances of the subclass with attributes
+accessible via the `attributes` property.
+
+### Static Configuration Properties
+
+#### `static tableName: string`
+
+The database table name. Required.
+
+#### `static primaryKey: string`
+
+The primary key column name. Defaults to `'id'`.
+
+#### `static timestamps: boolean`
+
+When `true`, automatically writes `created_at` on insert and
+`updated_at` on update. Defaults to `true`.
+
+#### `static softDeletes: boolean`
+
+When `true`, `delete()` sets `deleted_at` instead of
+removing the row. All queries automatically exclude soft-deleted records.
+Defaults to `false`.
+
+### Static Query Methods
+
+#### `static async find(id: unknown): Promise<T | null>`
+
+Find a record by primary key. Returns `null` if not found.
+
+#### `static async findOrFail(id: unknown): Promise<T>`
+
+Find a record by primary key. Throws `ModelNotFoundError` if not found.
+
+#### `static async all(): Promise<T[]>`
+
+Retrieve all records from the table. Returns a `QueryBuilder` for chaining.
+
+#### `static async create(attributes: Record<string, unknown>): Promise<T>`
+
+Insert a new record and return the created model instance. Fires `creating` and `created` hooks.
+
+#### `static where(column: string, value: unknown): QueryBuilder<T>`
+#### `static where(column: string, op: Operator, value: unknown): QueryBuilder<T>`
+
+Begin a query with a WHERE constraint. Returns a `QueryBuilder`.
+
+#### `static on(event: LifecycleEvent, callback: (model: T) => boolean | void): void`
+
+Register a lifecycle hook callback. Return `false` from a pre-event hook to abort the operation.
+
+### Instance Methods
+
+#### `async save(): Promise<void>`
+
+Persist changes to `this.attributes`. Fires `updating` and `updated` hooks.
+
+#### `async delete(): Promise<void>`
+
+Delete the record (or soft-delete if `softDeletes = true`). Fires `deleting` and `deleted` hooks.
+
+#### `attributes: Record<string, unknown>`
+
+The raw column values for this record. Mutate these before calling `save()`.
+
+## QueryBuilder API
+
+All static model query methods return a `QueryBuilder` that is chainable.
+The query is not executed until a terminal method is called.
+
+#### `where(column: string, value: unknown): this`
+#### `where(column: string, op: Operator, value: unknown): this`
+
+Add an AND WHERE clause. Supported operators: `=`, `!=`, `>`, `<`, `>=`, `<=`, `like`.
+
+#### `orWhere(column: string, value: unknown): this`
+
+Add an OR WHERE clause.
+
+#### `whereIn(column: string, values: unknown[]): this`
+
+Add a WHERE IN clause.
+
+#### `whereNull(column: string): this`
+
+Add a WHERE IS NULL clause.
+
+#### `whereNotNull(column: string): this`
+
+Add a WHERE IS NOT NULL clause.
+
+#### `orderBy(column: string, direction: 'asc' | 'desc'): this`
+
+Add an ORDER BY clause. Chainable for multiple sort columns.
+
+#### `limit(n: number): this`
+
+Limit the number of results.
+
+#### `offset(n: number): this`
+
+Skip the first `n` results.
+
+#### `first(): Promise<T | null>`
+
+Execute the query and return the first result, or `null`.
+
+#### `firstOrFail(): Promise<T>`
+
+Execute the query and return the first result. Throws `ModelNotFoundError` if no result.
+
+#### `all(): Promise<T[]>`
+
+Execute the query and return all matching records.
+
+#### `count(): Promise<number>`
+
+Execute a COUNT query and return the number of matching records.
+
+#### `paginate(page: number, perPage: number): Promise<PaginationResult<T>>`
+
+Execute the query with pagination. Returns a `PaginationResult` with
+`data`, `total`, `perPage`, `currentPage`,
+and `lastPage`.
+
+## Relationships
+
+Define relationships as static calls during class definition. All relationships are lazy-loaded:
+call the method on an instance to fetch the related records.
+
+#### `static hasOne(RelatedModel: typeof Model, foreignKey: string, localKey: string): void`
+
+One-to-one ownership: this model has one related record. Adds an instance method named
+after the related model (camelCased) that returns `Promise<RelatedModel | null>`.
+
+#### `static hasMany(RelatedModel: typeof Model, foreignKey: string, localKey: string): void`
+
+One-to-many ownership. Adds an instance method that returns `Promise<RelatedModel[]>`.
+
+#### `static belongsTo(RelatedModel: typeof Model, foreignKey: string, ownerKey: string): void`
+
+Inverse of `hasOne` or `hasMany`. Adds an instance method that
+returns `Promise<RelatedModel | null>`.
+
+#### `static belongsToMany(RelatedModel: typeof Model, pivotTable: string, foreignKey: string, localKey: string, relatedKey: string, relatedModelKey: string): void`
+
+Many-to-many via a pivot table. Adds an instance method that returns
+`Promise<RelatedModel[]>`.
+
+## Lifecycle Hooks
+
+Hooks fire in the order they are registered. Pre-event hooks abort the operation if any returns `false`.
+
+```ts
+// Pre-event hooks (can abort by returning false)
+Model.on('creating', (instance) => { ... });
+Model.on('updating', (instance) => { ... });
+Model.on('deleting', (instance) => { ... });
+
+// Post-event hooks
+Model.on('created', (instance) => { ... });
+Model.on('updated', (instance) => { ... });
+Model.on('deleted', (instance) => { ... });
+```
+
+## Factory API
+
+`Factory` generates model instances with fake data for seeding and testing.
+
+#### `abstract define(): Record<string, unknown>`
+
+Return the default attribute map. Called once per instance.
+
+#### `async create(overrides?: Record<string, unknown>): Promise<T>`
+
+Create and persist a model instance. Merges `overrides` over the defined defaults.
+
+#### `make(overrides?: Record<string, unknown>): T`
+
+Build an unsaved model instance without persisting.
+
+## Seeder API
+
+#### `abstract async run(): Promise<void>`
+
+Implement to seed the database. Called by `roost db:seed`.
+
+## Types
+
+```ts
+type Operator = '=' | '!=' | '>' | '<' | '>=' | '<=' | 'like';
+type LifecycleEvent = 'creating' | 'created' | 'updating' | 'updated' | 'deleting' | 'deleted';
+
+interface PaginationResult<T> {
+  data: T[];
+  total: number;
+  perPage: number;
+  currentPage: number;
+  lastPage: number;
+}
+```
+
+## Errors
+
+#### `ModelNotFoundError`
+
+Thrown by `findOrFail()` and `firstOrFail()` when no record matches.

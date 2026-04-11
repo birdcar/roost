@@ -1,0 +1,31 @@
+
+<div className="pillar-grid">
+  <a href="/docs/tutorials" className="pillar-card">
+    <h3>Learning Roost?</h3>
+    <p>**Build real features** from scratch with step-by-step tutorials.</p>
+    <span className="pillar-link">Browse tutorials</span>
+  </a>
+
+  <a href="/docs/guides" className="pillar-card">
+    <h3>Building something?</h3>
+    <p>**Task-oriented guides** for migrations, deployment, auth, and more.</p>
+    <span className="pillar-link">Browse guides</span>
+  </a>
+
+  <a href="/docs/reference" className="pillar-card">
+    <h3>Looking something up?</h3>
+    <p>**Complete API reference** for every package, class, and method.</p>
+    <span className="pillar-link">Browse reference</span>
+  </a>
+
+  <a href="/docs/concepts" className="pillar-card">
+    <h3>Want to understand why?</h3>
+    <p>**Architecture and design decisions** behind each package.</p>
+    <span className="pillar-link">Browse concepts</span>
+  </a>
+</div>
+
+## New to Roost?
+
+Start with the [Quick Start](/docs/getting-started) — install the CLI,
+scaffold a project, and deploy your first app in minutes.

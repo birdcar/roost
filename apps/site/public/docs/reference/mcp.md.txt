@@ -1,0 +1,161 @@
+
+## Installation
+
+```bash title="terminal"
+bun add @roost/mcp @roost/schema
+```
+
+## McpServer API
+
+`McpServer` is an abstract base class. Extend it and declare the tool,
+resource, and prompt classes to expose.
+
+#### `abstract tools: Array<new () => McpTool>`
+
+Array of tool class constructors to register with the server.
+
+#### `abstract resources: Array<new () => McpResource>`
+
+Array of resource class constructors to register.
+
+#### `abstract prompts: Array<new () => McpPrompt>`
+
+Array of prompt class constructors to register.
+
+#### `abstract serverName(): string`
+
+The server name reported in the MCP handshake.
+
+#### `abstract serverVersion(): string`
+
+The server version reported in the MCP handshake.
+
+#### `serverInstructions(): string`
+
+Optional. Instructions string included in the MCP server info response.
+
+#### `listTools(): ToolDefinition[]`
+
+Returns all registered tool definitions in MCP protocol format.
+
+#### `listResources(): ResourceDefinition[]`
+
+Returns all registered resource definitions.
+
+#### `listPrompts(): PromptDefinition[]`
+
+Returns all registered prompt definitions.
+
+#### `async callTool(name: string, args: Record<string, unknown>): Promise<McpResponse>`
+
+Find the tool with the given name and invoke its `handle()` method.
+
+#### `async readResource(uri: string): Promise<McpResponse>`
+
+Find the resource matching the URI and invoke its `handle()` method.
+
+#### `async runPrompt(name: string, args: Record<string, unknown>): Promise<McpResponse | McpResponse[]>`
+
+Find the prompt with the given name and invoke its `handle()` method.
+
+#### `static async tool(ToolClass: new () => McpTool, args: Record<string, unknown>): Promise<McpResponse>`
+
+Directly invoke a tool class without going through the server routing. Used in tests.
+
+## McpTool API
+
+Abstract base class for MCP tools.
+
+#### `abstract description(): string`
+
+One-sentence description of the tool. Sent to the client in the tools list.
+
+#### `abstract schema(s: typeof schema): Record<string, SchemaBuilder>`
+
+Define input parameters using the schema builder from `@roost/schema`.
+
+#### `abstract async handle(request: McpRequest): Promise<McpResponse>`
+
+Execute the tool logic and return an `McpResponse`.
+
+#### `shouldRegister?(): boolean`
+
+Optional. Return `false` to conditionally exclude the tool from registration.
+
+## McpResource API
+
+Abstract base class for MCP resources.
+
+#### `abstract uri(): string`
+
+The resource URI. Must be unique within the server.
+
+#### `abstract description(): string`
+
+Human-readable description of the resource content.
+
+#### `abstract mimeType(): string`
+
+MIME type of the resource content (e.g., `'text/plain'`, `'text/markdown'`, `'application/json'`).
+
+#### `abstract async handle(request: McpRequest): Promise<McpResponse>`
+
+Return the resource content wrapped in an `McpResponse`.
+
+## McpPrompt API
+
+Abstract base class for MCP prompts.
+
+#### `abstract description(): string`
+
+Description of what the prompt does.
+
+#### `abstract schema(s: typeof schema): Record<string, SchemaBuilder>`
+
+Define the prompt's input parameters.
+
+#### `abstract async handle(request: McpRequest): Promise<McpResponse | McpResponse[]>`
+
+Return the constructed prompt text. May return multiple message objects.
+
+## McpRequest API
+
+#### `get<T>(key: string): T`
+
+Retrieve a typed parameter value from the invocation arguments.
+
+## McpResponse API
+
+#### `static text(content: string): McpResponse`
+
+Create a text content response.
+
+#### `static error(message: string): McpResponse`
+
+Create an error response.
+
+#### `toJSON(): { content: Array<{ type: string; text: string }> }`
+
+Serialize the response to MCP protocol JSON format.
+
+## Types
+
+```ts
+interface ToolDefinition {
+  name: string;
+  description: string;
+  inputSchema: JsonSchemaOutput;
+}
+
+interface ResourceDefinition {
+  uri: string;
+  description: string;
+  mimeType: string;
+}
+
+interface PromptDefinition {
+  name: string;
+  description: string;
+  arguments: JsonSchemaOutput;
+}
+```

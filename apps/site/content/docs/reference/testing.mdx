@@ -1,0 +1,153 @@
+---
+title: "@roost/testing"
+description: HTTP test client, response assertions, unified fakes, and test setup utilities for Roost applications on bun:test.
+---
+
+## Installation
+
+```bash title="terminal"
+bun add -D @roost/testing
+```
+
+## TestClient API
+
+Makes HTTP requests against a Roost application and returns a `TestResponse`
+with assertion methods.
+
+#### `constructor(app?: Application)`
+
+Construct with an optional application instance. If omitted, uses the default test
+application created by `createTestApp()`.
+
+#### `get(path: string): TestRequestBuilder`
+#### `post(path: string): TestRequestBuilder`
+#### `put(path: string): TestRequestBuilder`
+#### `patch(path: string): TestRequestBuilder`
+#### `delete(path: string): TestRequestBuilder`
+
+Start building a request for the given HTTP method and path. Returns a `TestRequestBuilder`.
+
+#### `actingAs(user: Partial<RoostUser>): TestClient`
+
+Set a fake authenticated user for all subsequent requests on this client instance.
+
+## TestRequestBuilder API
+
+Fluent builder returned by the HTTP method calls on `TestClient`. All methods return `this` for chaining. Awaiting the builder executes the request.
+
+#### `json(body: Record<string, unknown>): Promise<TestResponse>`
+
+Set the request body as JSON and execute the request.
+
+#### `form(body: Record<string, string>): Promise<TestResponse>`
+
+Set the request body as form-encoded data and execute the request.
+
+#### `send(): Promise<TestResponse>`
+
+Execute the request with no body.
+
+#### `withHeader(name: string, value: string): this`
+
+Add a request header.
+
+## TestResponse API
+
+#### `assertStatus(code: number): void`
+
+Assert the HTTP status code equals `code`.
+
+#### `assertOk(): void`
+
+Assert status is `200`.
+
+#### `assertCreated(): void`
+
+Assert status is `201`.
+
+#### `assertBadRequest(): void`
+
+Assert status is `400`.
+
+#### `assertUnauthorized(): void`
+
+Assert status is `401`.
+
+#### `assertForbidden(): void`
+
+Assert status is `403`.
+
+#### `assertNotFound(): void`
+
+Assert status is `404`.
+
+#### `assertHeader(name: string, value: string): void`
+
+Assert the response header `name` equals `value`.
+
+#### `assertHeaderMissing(name: string): void`
+
+Assert the response header `name` is not present.
+
+#### `assertRedirect(urlOrFn: string | ((url: string) => boolean)): void`
+
+Assert the response is a redirect. Accepts an exact URL string or a predicate.
+
+#### `async assertJson(expected: Record<string, unknown> | ((data: unknown) => void)): Promise<void>`
+
+Parse the response body as JSON and assert it. Accepts either an object to
+deep-equal match, or a callback that receives the parsed data for custom assertions.
+
+#### `async text(): Promise<string>`
+
+Return the response body as a string.
+
+#### `async json<T = unknown>(): Promise<T>`
+
+Parse and return the response body as JSON.
+
+## Unified Fakes
+
+#### `fakeAll(): void`
+
+Enable fake mode on all supported packages simultaneously: agents, jobs, and billing
+provider. Equivalent to calling `.fake()` on each individually.
+
+#### `restoreAll(): void`
+
+Disable fake mode on all packages. Call in `afterEach`.
+
+## Test Setup
+
+#### `createTestApp(options?: TestAppOptions): Promise<Application>`
+
+Create and boot a Roost application configured for testing. Accepts `env`
+and `config` overrides.
+
+```ts
+const app = await createTestApp({
+  env: { WORKOS_API_KEY: 'sk_test_...' },
+  config: { auth: { redirectUrl: 'http://localhost:8787' } },
+});
+```
+
+#### `setupTestSuite(): TestSuiteHelpers`
+
+Returns configured `describe`, `it`, `beforeEach`,
+and `afterEach` wrappers with shared test client setup.
+
+## Types
+
+```ts
+interface TestAppOptions {
+  env?: Record<string, string>;
+  config?: Record<string, unknown>;
+}
+
+interface TestSuiteHelpers {
+  describe: typeof import('bun:test').describe;
+  it: typeof import('bun:test').it;
+  beforeEach: typeof import('bun:test').beforeEach;
+  afterEach: typeof import('bun:test').afterEach;
+}
+```

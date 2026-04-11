@@ -1,0 +1,97 @@
+---
+title: Deployment
+description: Task-oriented instructions for deploying Roost applications to Cloudflare Workers.
+---
+
+## How to deploy with roost deploy
+
+`roost deploy` builds the application and publishes it to Cloudflare Workers in one step.
+
+```sh terminal
+roost deploy
+```
+
+Before deploying for the first time, ensure you are logged in to Cloudflare:
+
+```sh terminal
+wrangler login
+```
+
+The CLI reads `wrangler.jsonc` for the worker name, bindings, and compatibility settings. Confirm the `name` field matches your intended worker name before deploying.
+
+```json wrangler.jsonc
+{
+  "name": "my-app",
+  "main": "dist/worker.js",
+  "compatibility_date": "2024-01-01",
+  "compatibility_flags": ["nodejs_compat"]
+}
+```
+
+## How to set production environment variables in Cloudflare dashboard
+
+Production secrets are not deployed with `roost deploy`. Set them separately via `wrangler` or the dashboard.
+
+```sh terminal
+# Set a secret interactively (prompted for value)
+wrangler secret put STRIPE_SECRET_KEY
+wrangler secret put WORKOS_API_KEY
+wrangler secret put SESSION_SECRET
+```
+
+To set multiple secrets non-interactively (e.g., in CI), pipe the value:
+
+```sh terminal
+echo "$STRIPE_SECRET_KEY" | wrangler secret put STRIPE_SECRET_KEY
+```
+
+Via dashboard: Workers → your worker → Settings → Variables & Secrets. See [the environment guide](/docs/guides/environment) for local vs production secret management patterns.
+
+## How to configure custom domains
+
+Add a custom domain to your worker in the Cloudflare dashboard or via `wrangler.jsonc`.
+
+```json wrangler.jsonc
+{
+  "name": "my-app",
+  "routes": [
+    { "pattern": "myapp.com/*", "zone_name": "myapp.com" },
+    { "pattern": "www.myapp.com/*", "zone_name": "myapp.com" }
+  ]
+}
+```
+
+Your domain must be managed by Cloudflare DNS. After adding the route, deploy once for the mapping to take effect:
+
+```sh terminal
+roost deploy
+```
+
+## How to set up preview deployments
+
+Use Cloudflare Workers' branching support to deploy non-production versions under a different name.
+
+```sh terminal
+# Deploy a named preview (uses a separate worker name)
+wrangler deploy --name my-app-preview
+```
+
+For pull request previews in CI, derive the worker name from the branch or PR number:
+
+```yaml .github/workflows/preview.yml
+name: Preview Deploy
+on: [pull_request]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: bun install
+      - run: bun run build
+      - run: wrangler deploy --name "my-app-pr-${{ github.event.number }}"
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+```
+
+Related: [Environment guide](/docs/guides/environment) for managing per-environment configuration, [Migrations guide](/docs/guides/migrations) for running migrations post-deploy.

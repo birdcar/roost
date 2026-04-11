@@ -1,0 +1,31 @@
+
+Concept pages explain _why_ Roost is built the way it is. They cover architecture,
+design trade-offs, and the thinking behind each package — reading material for when you want
+to deepen your understanding rather than look up a specific API.
+
+## Architecture
+
+These pages explain how Roost's parts fit together and the broader decisions that shaped the framework.
+
+- [Application Architecture](/docs/concepts/architecture) — Request lifecycle, boot sequence, and the middleware pipeline
+- [Service Container](/docs/concepts/service-container) — Dependency injection, service providers, and the boot protocol
+- [Edge Computing](/docs/concepts/edge-computing) — Why Cloudflare Workers, the V8 isolate model, and what the binding system is
+- [Laravel-Inspired Patterns](/docs/concepts/laravel-patterns) — What Roost adopted, what it changed, and the DX philosophy
+- [Testing Philosophy](/docs/concepts/testing-philosophy) — Fakes over mocks, TestClient, and integration-first testing
+
+## Package Concepts
+
+Each package has its own design rationale. These pages explain why each package is built the way it is.
+
+- [@roost/core](/docs/concepts/core) — Why a DI container for Workers, pipeline middleware design
+- [@roost/cloudflare](/docs/concepts/cloudflare) — Typed binding wrappers, name resolution, AIClient design
+- [@roost/start](/docs/concepts/start) — TanStack Start integration, the context bridge, SSR on Workers
+- [@roost/auth](/docs/concepts/auth) — Why WorkOS, session storage on KV, organization model
+- [@roost/orm](/docs/concepts/orm) — Active Record on D1, why not Prisma, migration design
+- [@roost/ai](/docs/concepts/ai) — Class-based agents, the agentic loop, Workers AI and no API keys
+- [@roost/mcp](/docs/concepts/mcp) — What MCP is, server-side tool exposure, MCP vs AI tools
+- [@roost/billing](/docs/concepts/billing) — Abstract billing interface, adapter pattern, webhook verification
+- [@roost/queue](/docs/concepts/queue) — CF Queues model, job lifecycle, retry and backoff
+- [@roost/cli](/docs/concepts/cli) — Code generation philosophy, scaffolding, convention enforcement
+- [@roost/testing](/docs/concepts/testing) — TestClient, test application setup, connection to testing philosophy
+- [@roost/schema](/docs/concepts/schema) — Fluent schema builder, JSON Schema output, shared AI and MCP schemas

@@ -1,0 +1,189 @@
+
+import { Callout } from '../../src/components/callout'
+
+<Callout type="tip">
+  <p><strong>What you'll do:</strong> Install the Roost CLI, scaffold a project, add a route, create a database model, add authentication, and deploy — all in about 15 minutes.</p>
+  <p><strong>Prerequisites:</strong> <a href="https://bun.sh">Bun 1.0+</a>, a <a href="https://dash.cloudflare.com/sign-up">Cloudflare account</a> (free tier), and a <a href="https://workos.com">WorkOS account</a> (free tier).</p>
+</Callout>
+
+## Step 1: Install the Roost CLI
+
+Install the CLI globally with Bun:
+
+```terminal
+bun add -g @roost/cli
+```
+
+Verify the installation:
+
+```terminal
+roost --version
+```
+
+You should see a version number like `1.0.0`. If the command isn't found, make sure Bun's global bin directory is on your `PATH`.
+
+## Step 2: Create Your Project
+
+Scaffold a new Roost application:
+
+```terminal
+roost new my-app
+cd my-app
+bun install
+```
+
+You should see the CLI generate a project structure and install dependencies. This takes a few seconds.
+
+## Step 3: Start the Dev Server
+
+```terminal
+bun run dev
+```
+
+You should see output indicating the dev server is running. Open `http://localhost:3000` in your browser — you'll see the Roost welcome page.
+
+## Step 4: Create Your First Route
+
+Create a new file at `src/routes/hello.tsx`:
+
+```src/routes/hello.tsx
+import { createFileRoute } from '@tanstack/react-router';
+
+export const Route = createFileRoute('/hello')({
+  component: HelloPage,
+});
+
+function HelloPage() {
+  return (
+    <div>
+      <h1>Hello, Roost!</h1>
+      <p>Your first route is working.</p>
+    </div>
+  );
+}
+```
+
+Visit `http://localhost:3000/hello`. You should see "Hello, Roost!" displayed in the browser. The page appeared without restarting the server — TanStack Start picks up new route files automatically.
+
+## Step 5: Add a Database Model
+
+Generate a model and its migration:
+
+```terminal
+roost make:model Post
+```
+
+This creates two files: `src/models/Post.ts` and a timestamped migration in `database/migrations/`. Edit the migration to define your schema:
+
+```database/migrations/xxxx_create_posts_table.ts
+import { Migration } from '@roost/orm';
+
+export default class CreatePostsTable extends Migration {
+  async up() {
+    this.schema.create('posts', (table) => {
+      table.id();
+      table.string('title');
+      table.text('body');
+      table.timestamps();
+    });
+  }
+
+  async down() {
+    this.schema.drop('posts');
+  }
+}
+```
+
+Run the migration:
+
+```terminal
+roost migrate
+```
+
+You should see output confirming the `posts` table was created in your local D1 database.
+
+## Step 6: Query Your Model
+
+Update your hello route to read from the database:
+
+```src/routes/hello.tsx
+import { createFileRoute } from '@tanstack/react-router';
+import { createServerFn } from '@tanstack/start';
+import { Post } from '../models/Post';
+
+const getPosts = createServerFn({ method: 'GET' }).handler(async () => {
+  return Post.query().orderBy('created_at', 'desc').all();
+});
+
+export const Route = createFileRoute('/hello')({
+  component: HelloPage,
+  loader: () => getPosts(),
+});
+
+function HelloPage() {
+  const posts = Route.useLoaderData();
+  return (
+    <div>
+      <h1>Posts</h1>
+      {posts.length === 0 ? (
+        <p>No posts yet.</p>
+      ) : (
+        <ul>
+          {posts.map((post) => (
+            <li key={post.id}>{post.title}</li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+```
+
+Visit `http://localhost:3000/hello`. You should see "No posts yet." — the model is connected to D1 and the query ran successfully.
+
+## Step 7: Add Authentication
+
+Add your WorkOS credentials to `.dev.vars`:
+
+```.dev.vars
+WORKOS_API_KEY=sk_test_...
+WORKOS_CLIENT_ID=client_...
+```
+
+<Callout type="tip">
+  <p>
+    Never commit <code>.dev.vars</code> — it's in <code>.gitignore</code> by default.
+  </p>
+</Callout>
+
+Auth routes are available automatically once credentials are configured:
+
+```
+/auth/login      # Redirect to WorkOS
+/auth/callback   # Handle OAuth callback
+/auth/logout     # Clear session
+```
+
+Visit `http://localhost:3000/auth/login`. You should be redirected to the WorkOS login page. After authenticating, you'll be redirected back to your app. To protect a route, add `AuthMiddleware` — see the [auth guides](/docs/guides/auth) for details.
+
+## Step 8: Deploy
+
+```terminal
+roost deploy
+```
+
+You should see the build output followed by a live URL on `*.workers.dev`. Your app is now running on Cloudflare Workers at the edge. Set production secrets in your [Cloudflare dashboard](https://dash.cloudflare.com) under Workers > Settings > Variables.
+
+## What You Built
+
+You installed the Roost CLI, scaffolded a project, created a route, added a database model
+with a migration, queried it from a page, configured authentication, and deployed to
+Cloudflare Workers. That's a full-stack app running at the edge.
+
+## Next Steps
+
+- [Build a REST API](/docs/tutorials/build-a-task-api) — CRUD endpoints, validation, and testing
+- [Build an AI Chat App](/docs/tutorials/build-a-chat-app) — agents, tools, and streaming on Workers AI
+- [Build a SaaS App](/docs/tutorials/build-a-saas-app) — auth, billing, and background jobs
+- [@roost/core Reference](/docs/reference/core) — service container, config, and middleware
+- [Architecture Concepts](/docs/concepts/architecture) — understand how Roost works under the hood

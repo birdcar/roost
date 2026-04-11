@@ -1,0 +1,183 @@
+
+## Installation
+
+```bash title="terminal"
+bun add @roost/schema
+```
+
+## schema API
+
+The named export `schema` is a factory object. Call its methods to create
+typed `SchemaBuilder` instances. Call `.build()` on any builder
+to produce a plain JSON Schema object.
+
+### Type Constructors
+
+#### `schema.string(): StringSchemaBuilder`
+
+Create a JSON Schema string type.
+
+#### `schema.integer(): NumberSchemaBuilder`
+
+Create a JSON Schema integer type.
+
+#### `schema.number(): NumberSchemaBuilder`
+
+Create a JSON Schema number type (decimal).
+
+#### `schema.boolean(): BooleanSchemaBuilder`
+
+Create a JSON Schema boolean type.
+
+#### `schema.object(): ObjectSchemaBuilder`
+
+Create a JSON Schema object type.
+
+#### `schema.array(): ArraySchemaBuilder`
+
+Create a JSON Schema array type.
+
+#### `schema.enum<T extends string>(values: T[]): EnumSchemaBuilder<T>`
+
+Create a JSON Schema enum type constrained to the provided string values.
+
+#### `schema.null(): NullSchemaBuilder`
+
+Create a JSON Schema null type.
+
+#### `schema.any(): AnySchemaBuilder`
+
+Create a schema with no type constraint (validates any value).
+
+## Universal SchemaBuilder Methods
+
+Available on all `SchemaBuilder` instances.
+
+#### `.description(text: string): this`
+
+Set the `description` field in the JSON Schema output.
+
+#### `.default(value: unknown): this`
+
+Set the `default` field.
+
+#### `.example(value: unknown): this`
+
+Set the `examples` field.
+
+#### `.deprecated(): this`
+
+Set `deprecated: true` in the output.
+
+#### `.optional(): this`
+
+Mark the field as optional when used inside an object schema's property map.
+
+#### `.build(): JsonSchemaOutput`
+
+Compile the builder to a plain JSON Schema object.
+
+## StringSchemaBuilder Methods
+
+#### `.minLength(n: number): this`
+
+Set the `minLength` constraint.
+
+#### `.maxLength(n: number): this`
+
+Set the `maxLength` constraint.
+
+#### `.pattern(regex: string): this`
+
+Set the `pattern` constraint (ECMAScript regex string).
+
+#### `.format(format: string): this`
+
+Set the `format` hint. Common values: `'email'`, `'date'`, `'time'`, `'uri'`.
+
+## NumberSchemaBuilder Methods
+
+Applies to both `schema.integer()` and `schema.number()`.
+
+#### `.min(n: number): this`
+
+Set the `minimum` constraint (inclusive).
+
+#### `.max(n: number): this`
+
+Set the `maximum` constraint (inclusive).
+
+#### `.exclusiveMin(n: number): this`
+
+Set the `exclusiveMinimum` constraint (value must be strictly greater than n).
+
+#### `.exclusiveMax(n: number): this`
+
+Set the `exclusiveMaximum` constraint (value must be strictly less than n).
+
+#### `.multipleOf(n: number): this`
+
+Set the `multipleOf` constraint.
+
+## ObjectSchemaBuilder Methods
+
+#### `.property(name: string, builder: SchemaBuilder, required?: boolean): this`
+
+Add a named property. Pass `true` for `required` to include
+the key in the `required` array. Defaults to optional.
+
+#### `.properties(obj: Record<string, SchemaBuilder>): this`
+
+Add multiple properties at once. All are treated as optional.
+
+#### `.additionalProperties(value: boolean | SchemaBuilder): this`
+
+Set the `additionalProperties` constraint.
+
+#### `.minProperties(n: number): this`
+
+Set the minimum number of properties.
+
+#### `.maxProperties(n: number): this`
+
+Set the maximum number of properties.
+
+## ArraySchemaBuilder Methods
+
+#### `.items(builder: SchemaBuilder): this`
+
+Define the schema for array items.
+
+#### `.minItems(n: number): this`
+
+Set the minimum array length.
+
+#### `.maxItems(n: number): this`
+
+Set the maximum array length.
+
+#### `.uniqueItems(value: boolean): this`
+
+Set the `uniqueItems` constraint.
+
+## Types
+
+```ts
+type JsonSchemaOutput = Record<string, unknown>;
+
+interface SchemaBuilder {
+  description(text: string): this;
+  default(value: unknown): this;
+  example(value: unknown): this;
+  deprecated(): this;
+  optional(): this;
+  build(): JsonSchemaOutput;
+}
+
+type StringSchemaBuilder = SchemaBuilder & { ... };
+type NumberSchemaBuilder = SchemaBuilder & { ... };
+type BooleanSchemaBuilder = SchemaBuilder & { ... };
+type ObjectSchemaBuilder = SchemaBuilder & { ... };
+type ArraySchemaBuilder = SchemaBuilder & { ... };
+type EnumSchemaBuilder<T extends string> = SchemaBuilder & { ... };
+```

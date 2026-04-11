@@ -1,0 +1,188 @@
+
+## How to create an AI agent
+
+Extend `Agent` and implement `instructions()` to define the system prompt. The AI binding in `wrangler.jsonc` is the only credential needed.
+
+```json wrangler.jsonc
+{
+  "ai": { "binding": "AI" }
+}
+```
+
+```ts src/agents/SupportAgent.ts
+import { Agent } from '@roost/ai';
+
+export class SupportAgent extends Agent {
+  instructions(): string {
+    return 'You are a helpful customer support agent for Acme Inc. Be concise and professional.';
+  }
+}
+
+// Usage in a server function
+const agent = new SupportAgent();
+const response = await agent.prompt('How do I reset my password?');
+console.log(response.text);
+```
+
+Each agent instance maintains its own conversation history. Create a new instance for each independent user session.
+
+## How to define and register tools
+
+Implement the `Tool` interface and add the tool to your agent's `tools()` method.
+
+```ts src/tools/OrderStatusTool.ts
+import { type Tool, type ToolRequest } from '@roost/ai';
+import { schema } from '@roost/schema';
+
+export class OrderStatusTool implements Tool {
+  constructor(private db: Database) {}
+
+  description(): string {
+    return 'Look up the status of a customer order by order ID';
+  }
+
+  schema(s: typeof schema) {
+    return {
+      orderId: s.string().description('The order ID to look up'),
+    };
+  }
+
+  async handle(request: ToolRequest): Promise<string> {
+    const orderId = request.get<string>('orderId');
+    const order = await this.db.findOrder(orderId);
+    if (!order) return 'Order not found.';
+    return `Order ${orderId}: status=${order.status}, updated=${order.updatedAt}`;
+  }
+}
+```
+
+```ts src/agents/SupportAgent.ts
+import { Agent, type HasTools } from '@roost/ai';
+import { OrderStatusTool } from '../tools/OrderStatusTool';
+
+export class SupportAgent extends Agent implements HasTools {
+  constructor(private db: Database) {
+    super();
+  }
+
+  instructions(): string {
+    return 'You are a helpful customer support agent.';
+  }
+
+  tools() {
+    return [new OrderStatusTool(this.db)];
+  }
+}
+```
+
+## How to configure the model and parameters
+
+Use class decorators to set defaults. All decorators can be overridden per-prompt via the options argument.
+
+```ts src/agents/WritingAgent.ts
+import { Agent, Model, MaxSteps, Temperature, MaxTokens } from '@roost/ai';
+
+@Model('@cf/meta/llama-3.1-70b-instruct')
+@Temperature(0.9)     // More creative responses
+@MaxTokens(4096)      // Allow longer outputs
+@MaxSteps(3)          // Max tool calls before final answer
+export class WritingAgent extends Agent {
+  instructions(): string {
+    return 'You are a creative writing assistant.';
+  }
+}
+
+// Override per-prompt
+const response = await agent.prompt('Write a haiku', {
+  temperature: 0.3,  // Override to more deterministic
+  maxTokens: 100,
+});
+```
+
+Available Cloudflare models include `@cf/meta/llama-3.1-8b-instruct`, `@cf/meta/llama-3.1-70b-instruct`, and `@cf/mistral/mistral-7b-instruct-v0.2`.
+
+## How to stream agent responses
+
+Use `agent.stream()` to get an async iterable of text chunks. Useful for real-time UI updates.
+
+```ts
+const agent = new WritingAgent();
+const stream = await agent.stream('Write a short story about a robot');
+
+// Collect and forward as a streaming response
+const encoder = new TextEncoder();
+const body = new ReadableStream({
+  async start(controller) {
+    for await (const chunk of stream) {
+      controller.enqueue(encoder.encode(chunk));
+    }
+    controller.close();
+  },
+});
+
+return new Response(body, {
+  headers: { 'content-type': 'text/plain; charset=utf-8' },
+});
+```
+
+On the client, read the stream with the Fetch API's `response.body` reader or use a library like `ai` for React streaming hooks.
+
+## How to manage conversation memory
+
+Agent instances maintain in-memory conversation history. For persistent cross-request memory, serialize and restore the history manually.
+
+```ts
+const agent = new SupportAgent(db);
+
+// Conversation within a single request lifecycle
+const r1 = await agent.prompt('My order #1234 is late.');
+const r2 = await agent.prompt('Can you check the status?');
+// Agent remembers the order number from the first turn
+```
+
+```ts
+// For persistent sessions, pass prior history as context in instructions
+export class SupportAgent extends Agent {
+  constructor(private history: string[]) {
+    super();
+  }
+
+  instructions(): string {
+    const context = this.history.length
+      ? '\n\nPrevious context:\n' + this.history.join('\n')
+      : '';
+    return 'You are a helpful support agent.' + context;
+  }
+}
+```
+
+## How to test agents without calling the AI provider
+
+Use `Agent.fake()` to inject predetermined responses. Always call `Agent.restore()` after each test.
+
+```ts tests/agents/SupportAgent.test.ts
+import { describe, it, expect } from 'bun:test';
+import { SupportAgent } from '../../src/agents/SupportAgent';
+
+describe('SupportAgent', () => {
+  it('responds to password reset questions', async () => {
+    SupportAgent.fake(['To reset your password, visit /account/reset.']);
+
+    const agent = new SupportAgent(fakeDb);
+    const response = await agent.prompt('How do I reset my password?');
+
+    expect(response.text).toContain('reset');
+    SupportAgent.restore();
+  });
+
+  it('was prompted with the user input', async () => {
+    SupportAgent.fake(['Order found.']);
+
+    const agent = new SupportAgent(fakeDb);
+    await agent.prompt('Check order 5678');
+
+    SupportAgent.assertPrompted('5678');
+    SupportAgent.restore();
+  });
+});
+```

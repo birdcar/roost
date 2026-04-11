@@ -1,0 +1,228 @@
+---
+title: "@roost/ai"
+description: Class-based AI agents with typed tools, conversation memory, and streaming. Powered exclusively by Cloudflare Workers AI — no API keys required.
+---
+
+## Installation
+
+```bash title="terminal"
+bun add @roost/ai @roost/schema
+```
+
+## Configuration
+
+The AI package uses **Cloudflare Workers AI exclusively**. There are no
+API keys and no external AI providers. The `AI` binding must be declared
+in `wrangler.jsonc`:
+
+```jsonc title="wrangler.jsonc"
+{
+  "ai": { "binding": "AI" }
+}
+```
+
+Register the service provider to inject the provider into all agent classes:
+
+```ts title="src/app.ts"
+import { AiServiceProvider } from '@roost/ai';
+app.register(AiServiceProvider);
+```
+
+The default model is `@cf/meta/llama-3.1-8b-instruct`. Override per class
+using the `@Model` decorator.
+
+## Agent API
+
+`Agent` is an abstract base class. Extend it and implement
+`instructions()`. One agent instance represents one conversation.
+
+#### `abstract instructions(): string`
+
+Returns the system prompt sent as the first message in every conversation turn.
+
+#### `async prompt(input: string, options?: Partial<AgentConfig>): Promise<AgentResponse>`
+
+Send a user message. Appends the message to the conversation history, calls the
+Cloudflare AI model, executes any tool calls returned by the model (up to
+`maxSteps`), and returns the final response. Conversation history is
+retained on the instance for subsequent calls.
+
+```ts
+const response = await agent.prompt('Hello');
+console.log(response.text);       // Model text response
+console.log(response.toolCalls);  // Tool calls made (if any)
+console.log(response.messages);   // Full message history
+```
+
+#### `async stream(input: string): Promise<ReadableStream<Uint8Array>>`
+
+Send a user message and return a Server-Sent Events stream. Each chunk is a JSON
+object with a `type` field (`'text-delta'` or `'done'`).
+
+#### `static setProvider(provider: AIProvider): void`
+
+Set the AI provider for this agent class. Called automatically by
+`AiServiceProvider` during boot. Use in tests or custom setups.
+
+#### `static clearProvider(): void`
+
+Remove the provider set via `setProvider()`.
+
+#### `static fake(responses?: string[]): void`
+
+Enable fake mode. All `prompt()` calls return from the `responses`
+array in order (cycling the last response when exhausted) without calling the AI binding.
+
+#### `static restore(): void`
+
+Disable fake mode and restore normal provider behaviour.
+
+#### `static assertPrompted(textOrFn: string | ((prompt: string) => boolean)): void`
+
+Assert that at least one `prompt()` call matched. Accepts a substring
+or a predicate function. Throws if no match is found. Only valid after
+`fake()`.
+
+#### `static assertNeverPrompted(): void`
+
+Assert that no `prompt()` calls were made. Only valid after `fake()`.
+
+## HasTools Interface
+
+Implement `HasTools` on an agent subclass to enable tool use. The agent
+will pass all registered tools to the model and execute their handlers when the
+model requests a tool call.
+
+#### `tools(): Tool[]`
+
+Return the list of tool instances available to this agent.
+
+## HasStructuredOutput Interface
+
+#### `schema(s: typeof schema): Record<string, SchemaBuilder>`
+
+Define the expected JSON output shape using the schema builder.
+
+## Tool Interface
+
+Implement the `Tool` interface to create a callable tool. Tools are
+passed to the model as function definitions and invoked by the agent runtime
+when the model emits a tool call.
+
+#### `description(): string`
+
+One-sentence description of what the tool does. Sent to the model to aid tool selection.
+
+#### `schema(s: typeof schema): Record<string, SchemaBuilder>`
+
+Define the tool's input parameters. Each key in the returned object is a parameter name mapped to a schema builder.
+
+#### `async handle(request: ToolRequest): Promise<string>`
+
+Execute the tool. Must return a string. The string is fed back to the model as the tool result.
+
+## ToolRequest API
+
+#### `get<T>(key: string): T`
+
+Retrieve a typed parameter value from the tool call arguments.
+
+## CloudflareAIProvider
+
+The only built-in `AIProvider` implementation. Wraps `AIClient`
+from `@roost/cloudflare`, which in turn wraps the Cloudflare Workers
+`Ai` binding. Registered automatically by `AiServiceProvider`.
+
+#### `constructor(client: AIClient)`
+
+Construct with an `AIClient` wrapping the `AI` binding.
+
+#### `async chat(request: ProviderRequest): Promise<ProviderResponse>`
+
+Send a chat request to Cloudflare Workers AI and return the response.
+
+## agent() Factory
+
+#### `agent(options: { instructions: string; tools?: Tool[]; provider?: AIProvider }): { prompt: (input: string) => Promise<AgentResponse> }`
+
+Create an anonymous agent without defining a class. Returns an object with a single
+`prompt` method.
+
+## Decorators
+
+Class decorators applied to `Agent` subclasses. All are optional.
+
+#### `@Model(model: string)`
+
+Set the Cloudflare Workers AI model identifier. Default is
+`@cf/meta/llama-3.1-8b-instruct`. The value must be a valid model
+available in your Cloudflare account.
+
+#### `@MaxSteps(maxSteps: number)`
+
+Maximum number of tool-call iterations per `prompt()` call. Defaults to
+`5`. The model stops looping once it emits a response with no tool calls
+or when this limit is reached.
+
+#### `@Temperature(temperature: number)`
+
+Sampling temperature passed to the model. Range: `0` (deterministic) to `1`.
+
+#### `@MaxTokens(maxTokens: number)`
+
+Maximum number of tokens in the model response.
+
+#### `@Provider(provider: string)`
+
+Named provider identifier. Stored in the agent config for custom provider lookup logic.
+
+#### `@Timeout(timeout: number)`
+
+Timeout in milliseconds for a single model call.
+
+## Types
+
+```ts
+interface AgentConfig {
+  provider?: string;
+  model?: string;
+  maxSteps?: number;
+  maxTokens?: number;
+  temperature?: number;
+  timeout?: number;
+}
+
+interface AgentMessage {
+  role: 'system' | 'user' | 'assistant' | 'tool';
+  content: string;
+  toolCallId?: string;
+  toolName?: string;
+}
+
+interface AgentResponse {
+  text: string;
+  messages: AgentMessage[];
+  toolCalls: ToolCall[];
+  usage?: { promptTokens: number; completionTokens: number };
+}
+
+interface ToolCall {
+  id: string;
+  name: string;
+  arguments: Record<string, unknown>;
+}
+
+interface ProviderRequest {
+  model: string;
+  messages: AgentMessage[];
+  tools?: ProviderTool[];
+  maxTokens?: number;
+  temperature?: number;
+}
+
+interface ProviderResponse {
+  text: string;
+  toolCalls: ToolCall[];
+  usage?: { promptTokens: number; completionTokens: number };
+}
+```

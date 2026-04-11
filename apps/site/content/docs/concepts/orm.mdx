@@ -1,0 +1,64 @@
+---
+title: "@roost/orm"
+description: Why Roost uses Active Record on D1, why it is not Prisma, and the design of the query builder and migration system.
+---
+
+## Active Record on D1
+
+Active Record — where the model class is both a domain object and its own database interface
+— has a mixed reputation. Its critics note that it conflates two responsibilities. Its
+defenders note that for the overwhelming majority of CRUD-heavy web applications, having
+the query interface on the model is simply convenient without being architecturally harmful.
+Laravel's Eloquent cemented Active Record as the default for PHP web development precisely
+because it is highly productive for the workloads most applications actually have.
+
+Roost's ORM applies this philosophy to Cloudflare D1. D1 is a SQLite-compatible database
+that runs inside Cloudflare's network, close to the Workers executing your code. The
+Active Record model translates directly: `User.find(id)`, `User.where('active', true).all()`,
+and `user.save()` are the query interface. Drizzle ORM provides the underlying
+D1 adapter and SQL generation; Roost's ORM layer adds the Active Record abstraction on top
+of Drizzle's lower-level API.
+
+## Why Not Prisma
+
+Prisma is the dominant TypeScript ORM and has strong tooling, excellent type safety, and
+wide adoption. It is also a poor fit for Cloudflare Workers. Prisma's query engine is a
+compiled Rust binary that runs as a separate process. Workers cannot spawn processes.
+Prisma's edge adapter works by proxying queries through an HTTP endpoint, which introduces
+latency and additional infrastructure to manage. Drizzle, by contrast, runs entirely in
+the Worker process as pure JavaScript and communicates with D1 through the native binding —
+no separate process, no proxy, no added latency.
+
+This is the same reason Roost builds on Drizzle under the hood while providing an Eloquent-style
+interface on top: Drizzle handles the hard problem (D1 compatibility, SQL generation, type
+safety) while Roost handles the ergonomics problem (Active Record conventions, hooks, relationships).
+
+## Query Builder Design
+
+The `QueryBuilder` class provides a chainable API for building queries:
+`where`, `orWhere`, `whereIn`, `orderBy`,
+`limit`, `with`. Each method returns a new `QueryBuilder`
+instance, so chains are immutable — holding a reference to a partially-built query and
+adding to it later is safe. Terminal methods — `first()`, `all()`,
+`count()`, `paginate()` — execute the query and return results.
+
+Raw SQL is not exposed directly. This is a deliberate trade-off: raw SQL is always more
+expressive than any query builder, but it bypasses the type safety and injection protection
+the query builder provides. For the cases where the query builder genuinely cannot express
+a needed query, Drizzle's underlying API is accessible — the ORM does not seal it away.
+
+## Migrations and Rollback Safety
+
+Roost migrations are TypeScript files with explicit `up()` and `down()`
+methods. Every migration that adds something should have a down migration that removes it,
+and Roost enforces this. This is not the universal practice — some migration tools have moved
+away from down migrations, arguing they are rarely used and often wrong. Roost takes the opposite
+position: down migrations are documentation of the schema delta, and having them in place reduces
+the cost of a bad deployment significantly.
+
+## Further Reading
+
+- [Laravel Patterns — the Eloquent model and what Roost adapts](/docs/concepts/laravel-patterns)
+- [Edge Computing — D1 as the edge database and its consistency model](/docs/concepts/edge-computing)
+- [@roost/orm reference — Model, QueryBuilder, and migration API](/docs/packages/orm)
+- [Drizzle ORM Documentation](https://orm.drizzle.team)

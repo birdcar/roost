@@ -1,0 +1,212 @@
+---
+title: "@roost/cloudflare"
+description: "Typed wrappers around all Cloudflare Worker bindings: D1, KV, R2, Queues, AI, Vectorize, Durable Objects, and Hyperdrive."
+---
+
+## Installation
+
+```bash title="terminal"
+bun add @roost/cloudflare
+```
+
+## Configuration
+
+Register `CloudflareServiceProvider` to make all binding wrappers available
+via the container. Bindings are resolved from the Worker `env` object by name.
+
+```ts title="src/app.ts"
+import { Application } from '@roost/core';
+import { CloudflareServiceProvider } from '@roost/cloudflare';
+
+const app = Application.create(env);
+app.register(CloudflareServiceProvider);
+```
+
+## D1Database API
+
+Typed wrapper around a Cloudflare D1 (SQLite) binding.
+
+#### `constructor(db: D1Database)`
+
+Construct with a raw D1 binding from the Worker environment.
+
+#### `run(query: string): Promise<D1ExecResult>`
+
+Execute raw SQL. Returns execution metadata. Use for DDL statements.
+
+#### `prepare(query: string): D1PreparedStatement`
+
+Create a prepared statement. Call `.bind(...values)` on the result to
+supply positional parameters, then `.all()`, `.first()`, or
+`.run()` to execute.
+
+#### `batch(statements: D1PreparedStatement[]): Promise<D1Result[]>`
+
+Execute multiple prepared statements in a single round-trip.
+
+#### `dump(): Promise<ArrayBuffer>`
+
+Export the entire database as a binary SQLite file.
+
+## KVStore API
+
+Typed wrapper around a Cloudflare KV namespace binding.
+
+#### `constructor(kv: KVNamespace)`
+
+Construct with a raw KV namespace binding.
+
+#### `get<T>(key: string, type?: 'text' | 'json'): Promise<T | null>`
+
+Retrieve a value. Returns `null` if the key does not exist.
+
+#### `getWithMetadata<T, M>(key: string, type?: 'text' | 'json'): Promise<{ value: T | null; metadata: M | null }>`
+
+Retrieve a value along with its metadata object.
+
+#### `put(key: string, value: string | ArrayBuffer | ReadableStream, options?: KVPutOptions): Promise<void>`
+
+Store a value. `KVPutOptions` accepts `expiration` (Unix timestamp),
+`expirationTtl` (seconds from now), and `metadata` (arbitrary object).
+
+#### `putJson<T>(key: string, value: T, options?: KVPutOptions): Promise<void>`
+
+Store a value serialized as JSON.
+
+#### `delete(key: string): Promise<void>`
+
+Delete a key. No-op if the key does not exist.
+
+#### `list(options?: KVListOptions): Promise<KVNamespaceListResult>`
+
+List keys. `KVListOptions` accepts `prefix`, `limit`,
+and `cursor` for pagination.
+
+## R2Storage API
+
+Typed wrapper around a Cloudflare R2 bucket binding.
+
+#### `constructor(bucket: R2Bucket)`
+
+Construct with a raw R2 bucket binding.
+
+#### `put(key: string, value: ReadableStream | ArrayBuffer | string, options?: R2PutOptions): Promise<R2Object | null>`
+
+Upload an object. Returns the stored `R2Object` metadata, or `null` on failure.
+
+#### `get(key: string): Promise<R2ObjectBody | null>`
+
+Download an object. Returns `null` if the key does not exist.
+
+#### `delete(keys: string | string[]): Promise<void>`
+
+Delete one or more objects.
+
+#### `list(options?: R2ListOptions): Promise<R2Objects>`
+
+List objects. Supports `prefix`, `limit`, and `cursor`.
+
+#### `head(key: string): Promise<R2Object | null>`
+
+Retrieve object metadata without downloading the body. Returns `null` if the key does not exist.
+
+## QueueSender API
+
+Typed wrapper around a Cloudflare Queue producer binding.
+
+#### `constructor(queue: Queue)`
+
+Construct with a raw Queue binding.
+
+#### `send<T>(message: T, options?: QueueSendOptions): Promise<void>`
+
+Send a single message to the queue.
+
+#### `sendBatch<T>(messages: Iterable<MessageSendRequest<T>>): Promise<void>`
+
+Send multiple messages in a single operation.
+
+## AIClient API
+
+Typed wrapper around the Cloudflare Workers `Ai` binding. This is the
+low-level client used internally by `@roost/ai`.
+
+#### `constructor(ai: Ai)`
+
+Construct with a raw `Ai` binding from the Worker environment.
+
+#### `run<T = string>(model: string, inputs: Record<string, unknown>, options?: AiOptions): Promise<T>`
+
+Execute inference on the specified model. The `inputs` shape is model-specific.
+The generic `T` parameter types the return value.
+
+```ts
+const ai = new AIClient(env.AI);
+
+// Text generation
+const text = await ai.run<string>('@cf/meta/llama-3.1-8b-instruct', {
+  messages: [{ role: 'user', content: 'Hello' }],
+});
+
+// Image generation
+const image = await ai.run<ArrayBuffer>('@cf/stabilityai/stable-diffusion-xl-base-1.0', {
+  prompt: 'A sunset over mountains',
+});
+```
+
+## VectorStore API
+
+Typed wrapper around a Cloudflare Vectorize binding.
+
+#### `constructor(index: VectorizeIndex)`
+
+Construct with a raw Vectorize index binding.
+
+#### `insert(vectors: VectorizeVector[]): Promise<VectorizeAsyncMutation>`
+
+Insert new vectors. Each vector requires an `id` (string) and `values` (number[]).
+
+#### `upsert(vectors: VectorizeVector[]): Promise<VectorizeAsyncMutation>`
+
+Insert or update vectors by ID.
+
+#### `query(vector: number[], options?: VectorizeQueryOptions): Promise<VectorizeMatches>`
+
+Find the closest vectors to the query vector. Options include `topK`
+(number of results) and `returnMetadata`.
+
+#### `deleteByIds(ids: string[]): Promise<VectorizeAsyncMutation>`
+
+Delete vectors by their IDs.
+
+## DurableObjectClient API
+
+Typed wrapper around a Durable Object namespace binding.
+
+#### `constructor(namespace: DurableObjectNamespace)`
+
+Construct with a raw Durable Object namespace binding.
+
+#### `get(id: DurableObjectId): DurableObjectStub`
+
+Get a stub for a specific Durable Object instance by ID.
+
+## HyperdriveClient API
+
+Typed wrapper around a Cloudflare Hyperdrive binding for external database connections.
+
+#### `constructor(hyperdrive: Hyperdrive)`
+
+Construct with a raw Hyperdrive binding.
+
+#### `query(sql: string, params?: unknown[]): Promise<{ results: unknown[] }>`
+
+Execute a parameterized SQL query against the external database.
+
+## CloudflareServiceProvider
+
+Service provider that registers all binding wrappers in the container. Binding names
+are read from the Worker `env` passed to `Application.create()`.
+The following bindings are registered by convention: `DB` → `D1Database`,
+`KV` → `KVStore`, `FILES` → `R2Storage`,
+`AI` → `AIClient`.

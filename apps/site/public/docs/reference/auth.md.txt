@@ -1,0 +1,160 @@
+
+## Installation
+
+```bash title="terminal"
+bun add @roost/auth
+```
+
+## Configuration
+
+Required environment variables:
+
+```bash title=".dev.vars"
+WORKOS_API_KEY=sk_test_...
+WORKOS_CLIENT_ID=client_...
+```
+
+Required application config:
+
+```ts
+{
+  auth: {
+    redirectUrl: 'https://example.com/auth/callback',
+  }
+}
+```
+
+Register the service provider:
+
+```ts title="src/app.ts"
+import { AuthServiceProvider } from '@roost/auth';
+app.register(AuthServiceProvider);
+```
+
+## AuthServiceProvider
+
+Registers `SessionManager` and `WorkOSClient` in the container.
+Also registers the `/auth/login`, `/auth/callback`, and
+`/auth/logout` routes on the application.
+
+## SessionManager API
+
+Manages session creation, validation, and destruction using Cloudflare KV storage
+with a sliding TTL.
+
+#### `constructor(kv: KVNamespace, secret: string)`
+
+Construct with a KV namespace for session storage and a secret for signing session tokens.
+
+#### `async resolveUser(request: Request): Promise<RoostUser | null>`
+
+Parse and validate the session cookie from the request. Returns the associated
+`RoostUser`, or `null` if the session is missing, invalid, or expired.
+
+#### `async createSession(user: WorkOSUser, organizationId?: string): Promise<{ sessionId: string; response: Response }>`
+
+Create a new KV session entry for the user. Returns a `Response` with the
+`Set-Cookie` header set and the generated session ID.
+
+#### `async destroySession(sessionId: string): Promise<Response>`
+
+Delete the session from KV. Returns a `Response` with the session cookie
+cleared.
+
+## Built-in Auth Routes
+
+Registered automatically by `AuthServiceProvider`.
+
+#### `GET /auth/login`
+
+Redirects the user to the WorkOS-hosted login page. Accepts optional query parameters:
+`organization_id` (string) and `return_to` (URL).
+
+#### `GET /auth/callback`
+
+WorkOS OAuth callback endpoint. Exchanges the authorization code for a session,
+creates a KV session, and redirects to `return_to` or `/`.
+
+#### `GET /auth/logout`
+
+Destroys the current session and redirects to `/`.
+
+## Middleware
+
+#### `AuthMiddleware`
+
+Requires the request to have a valid session. Redirects to `/auth/login`
+if no valid session is present.
+
+#### `GuestMiddleware`
+
+Requires the request to have no valid session. Redirects to `/` if the
+user is already authenticated.
+
+#### `RoleMiddleware`
+
+Requires the authenticated user to have one of the specified roles in the current
+organization. Accepts one or more role strings as middleware arguments.
+Returns `403 Forbidden` if the user's role is not in the allowed list.
+
+```ts
+app.useMiddleware(RoleMiddleware, 'admin', 'owner');
+```
+
+#### `CsrfMiddleware`
+
+Double-submit cookie CSRF protection. Validates that the `_csrf` form field
+or `X-CSRF-Token` header matches the CSRF cookie value on state-mutating
+requests (`POST`, `PUT`, `PATCH`, `DELETE`).
+
+## OrgResolver API
+
+Extracts organization identity from an incoming request using one or more resolution
+strategies tried in order.
+
+#### `constructor(strategies: OrgResolutionStrategy[])`
+
+Construct with an ordered array of strategy names. Available strategies:
+`'subdomain'`, `'path-prefix'`, `'header'`.
+
+#### `resolve(request: Request): { slug: string } | null`
+
+Attempt each strategy in order. Returns `{ slug }` on first match,
+or `null` if no strategy matches.
+
+### Resolution Strategies
+
+#### `'subdomain'`
+
+Extracts the first subdomain from the request hostname. Ignores `www` and
+`api`. Example: `acme.example.com` → `acme`.
+
+#### `'path-prefix'`
+
+Extracts the organization slug from the second path segment.
+Example: `/org/acme/dashboard` → `acme`.
+
+#### `'header'`
+
+Reads the `X-Org-Slug` request header.
+
+## Types
+
+```ts
+interface RoostUser {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  organizationId?: string;
+  memberships: OrganizationMembership[];
+}
+
+interface OrganizationMembership {
+  organizationId: string;
+  organizationSlug: string;
+  role: string;
+}
+
+type OrgResolutionStrategy = 'subdomain' | 'path-prefix' | 'header';
+```

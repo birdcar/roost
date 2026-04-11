@@ -1,0 +1,123 @@
+
+## How to manage .dev.vars for local development
+
+Wrangler reads `.dev.vars` during local development and injects values into `env`. This file should never be committed.
+
+```sh .dev.vars
+# Auth
+WORKOS_API_KEY=sk_test_...
+WORKOS_CLIENT_ID=client_...
+SESSION_SECRET=local-dev-secret-change-me
+
+# Billing
+STRIPE_SECRET_KEY=sk_test_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+
+# Other services
+SENDGRID_KEY=SG....
+```
+
+```sh .gitignore
+.dev.vars
+```
+
+Commit a `.env.example` with all required keys but empty values so other developers know what to fill in:
+
+```sh .env.example
+WORKOS_API_KEY=
+WORKOS_CLIENT_ID=
+SESSION_SECRET=
+STRIPE_SECRET_KEY=
+STRIPE_WEBHOOK_SECRET=
+```
+
+## How to set secrets in Cloudflare dashboard for production
+
+Use `wrangler secret put` or the dashboard to set production values. These are encrypted at rest and injected into `env` at runtime.
+
+```sh terminal
+# Interactive (prompts for value, nothing echoed to terminal)
+wrangler secret put WORKOS_API_KEY
+wrangler secret put SESSION_SECRET
+wrangler secret put STRIPE_SECRET_KEY
+
+# List current secrets (names only, not values)
+wrangler secret list
+```
+
+Via dashboard: Cloudflare dashboard → Workers & Pages → your worker → Settings → Variables & Secrets.
+
+## How to access env vars via the config manager
+
+In a Worker, all env vars arrive as properties on the `env` object passed to the `fetch` handler. Access them directly or merge them into `ConfigManager`.
+
+```ts src/app.ts
+import { Application, ConfigManager } from '@roost/core';
+
+export default {
+  async fetch(request: Request, env: Env) {
+    const app = Application.create(env, {
+      auth: {
+        apiKey: env.WORKOS_API_KEY,
+        clientId: env.WORKOS_CLIENT_ID,
+        redirectUrl: env.AUTH_REDIRECT_URL ?? 'http://localhost:8787/auth/callback',
+      },
+      stripe: {
+        secretKey: env.STRIPE_SECRET_KEY,
+      },
+    });
+
+    // Or use mergeEnv to overlay env vars onto existing config
+    const config = new ConfigManager({ app: { debug: false } });
+    config.mergeEnv({
+      APP_DEBUG: env.APP_DEBUG,
+    });
+
+    return app.handle(request);
+  },
+};
+```
+
+## How to use different configs per environment
+
+Detect the environment from an env var and conditionally set config values. Avoid branching on `NODE_ENV` — Workers don't have a standard equivalent. Use an explicit `APP_ENV` variable.
+
+```sh .dev.vars
+APP_ENV=development
+```
+
+```ts src/config/app.ts
+export function buildAppConfig(env: Env) {
+  const isDev = env.APP_ENV === 'development';
+
+  return {
+    app: {
+      debug: isDev,
+      logLevel: isDev ? 'debug' : 'error',
+    },
+    auth: {
+      redirectUrl: isDev
+        ? 'http://localhost:8787/auth/callback'
+        : 'https://myapp.com/auth/callback',
+    },
+    cors: {
+      allowedOrigins: isDev
+        ? ['http://localhost:3000']
+        : ['https://myapp.com'],
+    },
+  };
+}
+```
+
+```ts src/app.ts
+import { buildAppConfig } from './config/app';
+
+export default {
+  async fetch(request: Request, env: Env) {
+    const app = Application.create(env, buildAppConfig(env));
+    return app.handle(request);
+  },
+};
+```
+
+Related: [Deployment guide](/docs/guides/deployment) for setting production secrets, [@roost/core reference](/docs/packages/core) for the ConfigManager API.

@@ -1,0 +1,168 @@
+
+import { Callout } from '../../../src/components/callout'
+
+<Callout type="note">
+  <p><strong>What you'll learn</strong></p>
+  <ul>
+    <li>How to deploy a Roost app to Cloudflare Workers</li>
+    <li>How to set production secrets in the Cloudflare dashboard</li>
+    <li>How to attach a custom domain to your deployed app</li>
+  </ul>
+  <p><strong>Time:</strong> ~20 minutes</p>
+  <p><strong>Prerequisites:</strong> A working local Roost app and a Cloudflare account.</p>
+  <p>
+    <strong>Packages used:</strong>{' '}
+    <a href="/docs/packages/cloudflare">@roost/cloudflare</a>,{' '}
+    <a href="/docs/packages/start">@roost/start</a>,{' '}
+    <a href="/docs/packages/cli">@roost/cli</a>
+  </p>
+</Callout>
+
+## Step 1: Verify your local app works
+
+Before deploying, confirm everything runs cleanly on your machine.
+
+```terminal title="terminal"
+bun run dev
+```
+
+You should see the dev server start and print a local URL. Open `http://localhost:3000` in your browser and confirm your app loads without errors.
+Fix any issues locally before continuing — deployments are much easier to debug when you
+start from a known-good state.
+
+## Step 2: Review wrangler.jsonc
+
+Open `wrangler.jsonc` at the root of your project. Roost scaffolds this file for
+you, but it's worth understanding what's there.
+
+```jsonc title="wrangler.jsonc"
+{
+  "name": "my-app",
+  "compatibility_date": "2024-01-01",
+
+  // D1 — serverless SQL database
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "my-app-db",
+      "database_id": "YOUR_D1_DATABASE_ID"
+    }
+  ],
+
+  // KV — key-value store used for sessions and caching
+  "kv_namespaces": [
+    {
+      "binding": "KV",
+      "id": "YOUR_KV_NAMESPACE_ID"
+    }
+  ],
+
+  // AI — Cloudflare Workers AI for built-in model inference
+  "ai": {
+    "binding": "AI"
+  }
+}
+```
+
+You should see bindings for `DB` (D1 database), `KV` (key-value store), and `AI` (Workers AI). The `database_id` and KV `id` fields are filled in automatically when you run `roost new`. If
+they're still placeholder values, run `roost provision` to create the resources and populate the file.
+
+## Step 3: Sign up for Cloudflare
+
+If you don't have a Cloudflare account yet, create one at [dash.cloudflare.com/sign-up](https://dash.cloudflare.com/sign-up). The free tier is enough to deploy and run your app.
+
+You should see the Cloudflare dashboard after signing in. Keep this tab open — you'll use it in the next step.
+
+## Step 4: Set production environment variables
+
+Your `.dev.vars` file holds local secrets but is never deployed. Production secrets live in the Cloudflare dashboard.
+
+In the Cloudflare dashboard, go to **Workers & Pages**, select your worker (it will appear after the first deploy if it doesn't exist yet — come back to this step then), and open **Settings > Variables**. Add each secret as an encrypted environment variable:
+
+```text title="Production secrets to add"
+WORKOS_API_KEY       = sk_live_...
+WORKOS_CLIENT_ID     = client_...
+
+# If you use billing
+STRIPE_SECRET_KEY    = sk_live_...
+STRIPE_WEBHOOK_SECRET = whsec_...
+```
+
+<Callout type="tip">
+  <p>
+    Use the <strong>Encrypt</strong> toggle for each value so it's never shown in plaintext
+    again after saving. Cloudflare will inject these automatically at runtime.
+  </p>
+</Callout>
+
+You should see each variable listed under **Environment Variables** with an encrypted badge.
+
+## Step 5: Deploy with roost deploy
+
+Run the deploy command from your project root:
+
+```terminal title="terminal"
+roost deploy
+```
+
+Roost builds your app, runs database migrations against your production D1 instance, and
+publishes the Worker. The output looks like this:
+
+```text title="terminal output"
+Building application...
+  ✓ TypeScript compiled
+  ✓ Vite bundle complete (142 kB)
+
+Running migrations...
+  ✓ 0001_create_users applied
+  ✓ 0002_create_posts applied
+
+Deploying to Cloudflare Workers...
+  ✓ Uploaded my-app (2.3 sec)
+  ✓ Published my-app
+
+https://my-app.your-subdomain.workers.dev
+```
+
+You should see a `workers.dev` URL printed at the end of the output. Copy it — you'll use it in the next step.
+
+## Step 6: Visit the live URL
+
+Open the `workers.dev` URL from the deploy output in your browser. Your app is
+now running on Cloudflare's global network.
+
+You should see the same app you tested locally in Step 1. Try logging in and exercising a
+few routes to confirm the production environment is wired up correctly. If anything looks
+wrong, check the Cloudflare dashboard under **Workers > Logs** for error details.
+
+## Step 7: Set up a custom domain
+
+To serve your app from your own domain instead of `workers.dev`, open the
+Cloudflare dashboard, go to **Workers & Pages**, select your worker, and
+click **Settings > Triggers > Add Custom Domain**. Enter your domain
+(e.g. `app.example.com`) and click **Add Custom Domain**.
+
+Cloudflare will create the DNS record automatically if your domain's nameservers point to
+Cloudflare. If they don't, you'll see instructions to add a CNAME record at your registrar.
+
+You should see your custom domain listed under Triggers with a green **Active** status after the DNS propagates (usually under a minute when using Cloudflare DNS).
+
+## Step 8: Make a change and redeploy
+
+Edit any file in your app — for example, change a heading in one of your routes. Then deploy again:
+
+```terminal title="terminal"
+roost deploy
+```
+
+You should see the same build and deploy output as before, completing in a few seconds.
+Reload your custom domain in the browser and you should see your change live immediately.
+No restarts, no servers to manage — Cloudflare's edge deploys the new version globally
+within seconds.
+
+## Next steps
+
+- [@roost/cloudflare](/docs/packages/cloudflare) — D1, KV, AI bindings in depth
+- [@roost/auth](/docs/packages/auth) — configure production WorkOS callbacks
+- [@roost/billing](/docs/packages/billing) — connect Stripe webhooks for production
+- [@roost/queue](/docs/packages/queue) — background jobs with Cloudflare Queues

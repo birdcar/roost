@@ -1,0 +1,111 @@
+---
+title: "@roost/cli Guides"
+description: Task-oriented instructions for scaffolding, code generation, migrations, and deployment.
+---
+
+## How to scaffold a new project
+
+Use `roost new` with flags to include the packages your application needs. Generated projects are deployment-ready on Cloudflare Workers.
+
+```sh terminal
+# Minimal project
+roost new my-app
+
+# With AI agents
+roost new my-app --with-ai
+
+# Full-featured app
+roost new my-app --with-ai --with-billing --with-queue
+
+# Overwrite existing directory
+roost new my-app --force
+```
+
+After scaffolding, copy `.env.example` to `.dev.vars` and fill in your credentials before running `roost dev`.
+
+```sh terminal
+cd my-app
+cp .env.example .dev.vars
+# Edit .dev.vars with your credentials
+roost dev
+```
+
+## How to generate models, controllers, and other code
+
+Use the `make:` generators to create boilerplate files. Each generator creates a file in the conventional location with TODO comments for customization.
+
+```sh terminal
+# Model + migration
+roost make:model Post
+
+# Controller
+roost make:controller PostController
+
+# Background job
+roost make:job SendWelcomeEmail
+
+# AI agent
+roost make:agent SupportAgent
+
+# AI tool
+roost make:tool OrderStatusTool
+
+# MCP server
+roost make:mcp-server AppServer
+
+# Middleware
+roost make:middleware RateLimit
+
+# Standalone migration (without model)
+roost make:migration add_published_at_to_posts
+```
+
+Generator names are used as class names directly. Use PascalCase for classes (`PostController`), snake_case for migrations (`add_status_to_posts`).
+
+## How to run and rollback migrations
+
+Run all pending migrations with `roost migrate`. Roll back the last batch with `roost migrate:rollback`.
+
+```sh terminal
+# Run pending migrations
+roost migrate
+
+# Roll back the most recent batch
+roost migrate:rollback
+
+# Roll back all migrations and re-run from scratch (destructive)
+roost migrate:reset
+
+# Generate migration files from Drizzle schema changes
+roost migrate:generate
+```
+
+Migrations run in filename order. The CLI tracks which migrations have run in a `migrations` table in your D1 database. See [the migrations guide](/docs/guides/migrations) for defining columns and indexes.
+
+## How to deploy your application
+
+Use `roost deploy` to build and push to Cloudflare Workers in one step.
+
+```sh terminal
+# Build and deploy
+roost deploy
+```
+
+Before deploying, make sure your production secrets are set in the Cloudflare dashboard — `roost deploy` does not push `.dev.vars` values.
+
+```sh terminal
+# Set a secret for production (interactive)
+wrangler secret put STRIPE_SECRET_KEY
+
+# Or use the dashboard:
+# Workers > my-app > Settings > Variables
+```
+
+After first deployment, run migrations against the production D1 database:
+
+```sh terminal
+# Run migrations against production D1
+wrangler d1 execute my-app-db --remote --file=database/migrations/0001_create_users.sql
+```
+
+See [the deployment guide](/docs/guides/deployment) for custom domains, preview deployments, and CI/CD setup.

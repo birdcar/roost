@@ -1,0 +1,174 @@
+
+## How to define a background job
+
+Extend `Job<TPayload>` with a typed payload interface and implement `handle()`.
+
+```ts src/jobs/SendWelcomeEmail.ts
+import { Job, MaxRetries, Backoff } from '@roost/queue';
+
+interface SendWelcomeEmailPayload {
+  userId: string;
+  email: string;
+  name: string;
+}
+
+@MaxRetries(3)
+@Backoff('exponential')
+export class SendWelcomeEmail extends Job<SendWelcomeEmailPayload> {
+  async handle(): Promise<void> {
+    const { email, name } = this.payload;
+
+    await fetch('https://api.sendgrid.com/v3/mail/send', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${env.SENDGRID_KEY}` },
+      body: JSON.stringify({
+        personalizations: [{ to: [{ email }] }],
+        from: { email: 'welcome@example.com' },
+        subject: 'Welcome!',
+        content: [{ type: 'text/html', value: `<p>Hi ${name}, welcome!</p>` }],
+      }),
+    });
+  }
+
+  async onFailure(error: Error): Promise<void> {
+    console.error(`Failed to send welcome email to ${this.payload.email}:`, error.message);
+  }
+}
+```
+
+Use `this.attempt` to access the current retry count inside `handle()`. Throw any error to trigger the retry flow.
+
+## How to dispatch jobs
+
+Call the static `dispatch` method. For delayed execution, use `dispatchAfter` with a delay in seconds.
+
+```ts
+import { SendWelcomeEmail } from '../jobs/SendWelcomeEmail';
+
+// Immediate
+await SendWelcomeEmail.dispatch({
+  userId: user.attributes.id,
+  email: user.attributes.email,
+  name: user.attributes.name,
+});
+
+// Delayed — dispatch 10 minutes after signup
+await SendWelcomeEmail.dispatchAfter(600, {
+  userId: user.attributes.id,
+  email: user.attributes.email,
+  name: user.attributes.name,
+});
+```
+
+## How to chain and batch jobs
+
+Use `Job.chain` for sequential jobs where each step depends on the previous one, and `Job.batch` for parallel independent work.
+
+```ts
+import { Job } from '@roost/queue';
+import { ProcessOrder } from '../jobs/ProcessOrder';
+import { SendReceipt } from '../jobs/SendReceipt';
+import { UpdateInventory } from '../jobs/UpdateInventory';
+
+// Chain: runs in order, stops if any job fails
+await Job.chain([
+  { jobClass: ProcessOrder, payload: { orderId: '123' } },
+  { jobClass: SendReceipt, payload: { orderId: '123' } },
+  { jobClass: UpdateInventory, payload: { orderId: '123' } },
+]);
+```
+
+```ts
+import { SendWelcomeEmail } from '../jobs/SendWelcomeEmail';
+
+// Batch: runs in parallel, returns a batch ID
+const batchId = await Job.batch([
+  { jobClass: SendWelcomeEmail, payload: { userId: 'u1', email: 'a@a.com', name: 'Alice' } },
+  { jobClass: SendWelcomeEmail, payload: { userId: 'u2', email: 'b@b.com', name: 'Bob' } },
+  { jobClass: SendWelcomeEmail, payload: { userId: 'u3', email: 'c@c.com', name: 'Carol' } },
+]);
+```
+
+## How to handle job failures and retries
+
+Configure retry behavior with decorators. Implement `onFailure()` for cleanup or alerting after all retries are exhausted.
+
+```ts
+import { Job, MaxRetries, Backoff, RetryAfter } from '@roost/queue';
+
+@MaxRetries(5)
+@Backoff('exponential')   // Delays: 10s, 20s, 40s, 80s, 160s
+@RetryAfter(10)           // Base delay in seconds
+export class ProcessPayment extends Job<{ orderId: string; amount: number }> {
+  async handle(): Promise<void> {
+    if (this.attempt > 1) {
+      console.log(`Retry attempt ${this.attempt} for order ${this.payload.orderId}`);
+    }
+
+    const result = await chargeCard(this.payload.amount);
+    if (!result.success) throw new Error(`Payment declined: ${result.reason}`);
+  }
+
+  async onSuccess(): Promise<void> {
+    await Order.where('id', this.payload.orderId)
+      .first()
+      .then((order) => {
+        if (order) {
+          order.attributes.status = 'paid';
+          return order.save();
+        }
+      });
+  }
+
+  async onFailure(error: Error): Promise<void> {
+    // All retries exhausted — notify the team
+    await alertSlack(`Payment failed for order ${this.payload.orderId}: ${error.message}`);
+  }
+}
+```
+
+Use `@Backoff('fixed')` with `@RetryAfter(30)` when retrying after a consistent delay is more appropriate than exponential growth.
+
+## How to test jobs without dispatching
+
+Call `Job.fake()` to intercept dispatches without sending to the queue. Assert what was dispatched, then restore.
+
+```ts tests/jobs/SendWelcomeEmail.test.ts
+import { describe, it, expect } from 'bun:test';
+import { SendWelcomeEmail } from '../../src/jobs/SendWelcomeEmail';
+
+describe('SendWelcomeEmail', () => {
+  it('is dispatched after signup', async () => {
+    SendWelcomeEmail.fake();
+
+    // Trigger the code that dispatches the job
+    await signupUser({ email: 'test@example.com', name: 'Test' });
+
+    SendWelcomeEmail.assertDispatched();
+
+    SendWelcomeEmail.restore();
+  });
+
+  it('is dispatched with correct payload', async () => {
+    SendWelcomeEmail.fake();
+
+    await signupUser({ email: 'alice@example.com', name: 'Alice' });
+
+    SendWelcomeEmail.assertDispatched((job) => {
+      return job.payload.email === 'alice@example.com';
+    });
+
+    SendWelcomeEmail.restore();
+  });
+
+  it('is not dispatched when signup fails', async () => {
+    SendWelcomeEmail.fake();
+
+    await signupUser({ email: 'invalid', name: '' }).catch(() => {});
+
+    SendWelcomeEmail.assertNotDispatched();
+
+    SendWelcomeEmail.restore();
+  });
+});
+```

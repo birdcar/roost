@@ -1,0 +1,167 @@
+
+## How to protect routes with authentication
+
+Add `AuthMiddleware` globally to require authentication on every route, or scope it to specific routes via a pipeline.
+
+```ts src/app.ts
+import { Application } from '@roost/core';
+import { AuthMiddleware } from '@roost/auth';
+import { AuthServiceProvider } from '@roost/auth';
+
+const app = Application.create(env, {
+  auth: { redirectUrl: 'https://myapp.com/auth/callback' },
+});
+
+app.register(AuthServiceProvider);
+app.useMiddleware(AuthMiddleware); // All routes now require authentication
+```
+
+Unauthenticated requests are redirected to `/auth/login` automatically. Pass `return_to` in the redirect to bring the user back after login:
+
+```ts
+// Link users to login with a return destination
+<a href={'/auth/login?return_to=' + encodeURIComponent('/dashboard')}>Sign In</a>
+```
+
+In TanStack Start, enforce authentication in route `beforeLoad` hooks for page routes:
+
+```tsx src/routes/dashboard.tsx
+import { createFileRoute, redirect } from '@tanstack/react-router';
+import { getCurrentUser } from '../functions/auth';
+
+export const Route = createFileRoute('/dashboard')({
+  beforeLoad: async () => {
+    const user = await getCurrentUser();
+    if (!user) throw redirect({ to: '/auth/login' });
+  },
+  component: DashboardPage,
+});
+```
+
+## How to check user roles and permissions
+
+Use `RoleMiddleware` to gate access by organization role. Pass one or more allowed roles as middleware arguments.
+
+```ts
+import { RoleMiddleware } from '@roost/auth';
+
+// Only 'admin' role can access
+app.useMiddleware(RoleMiddleware, 'admin');
+
+// Multiple roles allowed
+app.useMiddleware(RoleMiddleware, 'admin', 'moderator');
+```
+
+For in-component checks, resolve the user from the session and inspect `memberships`:
+
+```ts
+const user = await sessionManager.resolveUser(request);
+
+const isAdmin = user?.memberships.some(
+  (m) => m.organizationId === orgId && m.role === 'admin'
+);
+
+if (!isAdmin) {
+  return new Response('Forbidden', { status: 403 });
+}
+```
+
+## How to implement multi-tenancy with organizations
+
+Use `OrgResolver` to detect the tenant from the request. Pick a resolution strategy that fits your URL scheme.
+
+```ts
+import { OrgResolver } from '@roost/auth';
+
+// Resolve from subdomain: acme.myapp.com → 'acme'
+const resolver = new OrgResolver(['subdomain']);
+
+// Or from path prefix: /org/acme/dashboard → 'acme'
+const resolver = new OrgResolver(['path-prefix']);
+
+// Or cascade: try subdomain first, then header
+const resolver = new OrgResolver(['subdomain', 'header']);
+
+const org = resolver.resolve(request);
+if (!org) return new Response('Tenant not found', { status: 404 });
+
+// org.slug is the organization identifier
+const tenantData = await loadTenantData(org.slug);
+```
+
+To direct a user to a specific organization's login, pass `organization_id` to the login route:
+
+```ts
+<a href={'/auth/login?organization_id=' + org.id}>Sign in to {org.name}</a>
+```
+
+## How to manage sessions
+
+Sessions are stored in KV with a sliding TTL. Use `SessionManager` to create, resolve, and destroy sessions.
+
+```ts
+import { SessionManager } from '@roost/auth';
+
+const sessionManager = new SessionManager(env.SESSION_KV, env.SESSION_SECRET);
+
+// Create a session after successful auth
+const { sessionId, response } = await sessionManager.createSession(workosUser, orgId);
+// response has the Set-Cookie header — return it to the client
+
+// Resolve the current user from an incoming request
+const user = await sessionManager.resolveUser(request);
+// user is null if session is missing or expired
+
+// Destroy the session on logout
+const logoutResponse = await sessionManager.destroySession(sessionId);
+// logoutResponse clears the cookie
+```
+
+## How to handle the OAuth callback
+
+`AuthServiceProvider` registers `/auth/callback` automatically. You only need to ensure the route is listed in your WorkOS dashboard's allowed redirect URIs.
+
+```sh .dev.vars
+WORKOS_API_KEY=sk_test_...
+WORKOS_CLIENT_ID=client_...
+```
+
+```ts src/app.ts
+app.register(AuthServiceProvider);
+// /auth/login, /auth/callback, /auth/logout are now live
+```
+
+After the callback, the user is redirected to the URL in `return_to`, or to `/dashboard` if absent. To customize the post-login destination, set `auth.defaultRedirect` in your config.
+
+## How to add CSRF protection
+
+Add `CsrfMiddleware` globally. All POST/PUT/PATCH/DELETE requests must include the `_csrf` token.
+
+```ts
+import { CsrfMiddleware } from '@roost/auth';
+
+app.useMiddleware(CsrfMiddleware);
+```
+
+Include the token in every form. Resolve the current CSRF token from the request context or set it as a cookie the client reads:
+
+```tsx
+// In your form component, read the token from context
+function MyForm({ csrfToken }: { csrfToken: string }) {
+  return (
+    <form method="POST" action="/submit">
+      <input type="hidden" name="_csrf" value={csrfToken} />
+      <button type="submit">Submit</button>
+    </form>
+  );
+}
+
+// For fetch/XHR, include the token in a header
+await fetch('/api/resource', {
+  method: 'POST',
+  headers: { 'x-csrf-token': csrfToken },
+  body: JSON.stringify(data),
+});
+```
+
+CSRF middleware uses the double-submit cookie pattern. Requests missing a valid token receive a `403 Forbidden` response.

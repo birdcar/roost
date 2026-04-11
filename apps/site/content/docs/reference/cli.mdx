@@ -1,0 +1,136 @@
+---
+title: "@roost/cli"
+description: The roost command-line tool for project scaffolding, code generation, database operations, and deployment.
+---
+
+## Installation
+
+```bash title="terminal"
+bun add -g @roost/cli
+```
+
+## Project Commands
+
+#### `roost new <name> [flags]`
+
+Scaffold a new Roost project in a directory named `<name>`.
+
+### Flags for roost new
+
+#### `--with-ai`
+
+Include `@roost/ai` and generate example agent and tool stubs.
+
+#### `--with-billing`
+
+Include `@roost/billing` and generate a Stripe webhook handler stub.
+
+#### `--with-queue`
+
+Include `@roost/queue` and generate example job and consumer stubs.
+
+#### `--force`
+
+Overwrite the target directory if it already exists.
+
+### Generated Project Structure
+
+```
+<name>/
+├── src/
+│   ├── routes/          # TanStack Start routes
+│   ├── models/          # Database models
+│   ├── controllers/     # Request handlers
+│   ├── agents/          # AI agents (--with-ai)
+│   ├── tools/           # AI tools (--with-ai)
+│   ├── jobs/            # Background jobs (--with-queue)
+│   ├── mcp/             # MCP servers
+│   ├── middleware/      # Custom middleware
+│   └── app.ts           # Application entry point
+├── database/
+│   ├── migrations/      # Drizzle migration files
+│   ├── seeders/         # Database seeders
+│   └── schema.ts        # Drizzle schema definition
+├── config/
+│   ├── app.ts
+│   ├── auth.ts
+│   └── database.ts
+├── tests/
+├── .dev.vars
+├── wrangler.jsonc
+├── drizzle.config.ts
+├── tsconfig.json
+└── package.json
+```
+
+## Generator Commands
+
+#### `roost make:model <Name>`
+
+Generate a model class at `src/models/<Name>.ts` and a corresponding
+migration file in `database/migrations/`.
+
+#### `roost make:controller <Name>`
+
+Generate a controller class at `src/controllers/<Name>.ts`.
+
+#### `roost make:agent <Name>`
+
+Generate an agent class at `src/agents/<Name>.ts`.
+
+#### `roost make:tool <Name>`
+
+Generate a tool class at `src/tools/<Name>.ts`.
+
+#### `roost make:mcp-server <Name>`
+
+Generate an MCP server class at `src/mcp/<Name>.ts`.
+
+#### `roost make:job <Name>`
+
+Generate a job class at `src/jobs/<Name>.ts`.
+
+#### `roost make:middleware <Name>`
+
+Generate a middleware class at `src/middleware/<Name>.ts`.
+
+#### `roost make:migration <name>`
+
+Generate a blank migration file in `database/migrations/`.
+
+## Database Commands
+
+#### `roost migrate`
+
+Run all pending migration files against the configured D1 database.
+
+#### `roost migrate:rollback`
+
+Rollback the most recently applied migration batch.
+
+#### `roost migrate:reset`
+
+Rollback all migrations and re-run them from scratch.
+
+#### `roost migrate:generate`
+
+Generate new migration files based on changes to `database/schema.ts`
+using Drizzle Kit's diff tooling.
+
+#### `roost db:seed`
+
+Run all seeder classes in `database/seeders/`.
+
+## Development Commands
+
+#### `roost dev [--port <n>]`
+
+Start the development server with hot module reload. Default port is `8787`.
+
+#### `roost build`
+
+Compile the project for production deployment.
+
+#### `roost deploy`
+
+Build the project and deploy to Cloudflare Workers via Wrangler.

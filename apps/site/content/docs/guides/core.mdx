@@ -1,0 +1,159 @@
+---
+title: "@roost/core Guides"
+description: Task-oriented instructions for the container, config, middleware, and service providers.
+---
+
+## How to register a service provider
+
+Service providers are the correct place to register container bindings and run boot logic.
+
+```ts src/providers/CacheServiceProvider.ts
+import { ServiceProvider } from '@roost/core';
+
+export class CacheServiceProvider extends ServiceProvider {
+  async register(): Promise<void> {
+    this.container.singleton(CacheService, (c) => {
+      return new CacheService(c.resolve(ConfigManager));
+    });
+  }
+
+  async boot(): Promise<void> {
+    const cache = this.container.resolve(CacheService);
+    await cache.warmUp();
+  }
+}
+```
+
+```ts src/app.ts
+import { Application } from '@roost/core';
+import { CacheServiceProvider } from './providers/CacheServiceProvider';
+
+const app = Application.create(env, config);
+app.register(CacheServiceProvider);
+await app.boot();
+```
+
+The `register()` method runs before all `boot()` calls, so you can safely resolve services registered by other providers inside `boot()`. See [@roost/core reference](/docs/packages/core) for full ServiceProvider API.
+
+## How to configure dependency injection bindings
+
+Use `singleton` for services that should be shared across the request, and `bind` for services that need a fresh instance each time.
+
+```ts
+import { RoostContainer } from '@roost/core';
+
+const container = new RoostContainer();
+
+// One instance per container lifetime
+container.singleton(Database, (c) => {
+  return new Database(c.resolve(ConfigManager));
+});
+
+// New instance on every resolve
+container.bind(RequestLogger, (c) => {
+  return new RequestLogger(c.resolve(ConfigManager));
+});
+
+// Resolve anywhere
+const db = container.resolve(Database);
+```
+
+For request-level isolation, create a scoped child container. Scoped containers inherit parent bindings but maintain their own singleton instances.
+
+```ts
+const requestContainer = appContainer.scoped();
+// Singletons in requestContainer are scoped to this request
+```
+
+## How to create custom middleware
+
+Middleware is a function or class that wraps the request/response cycle. Return early to short-circuit.
+
+```ts src/middleware/RateLimitMiddleware.ts
+import type { Handler } from '@roost/core';
+
+export async function rateLimitMiddleware(request: Request, next: Handler): Promise<Response> {
+  const ip = request.headers.get('cf-connecting-ip') ?? 'unknown';
+  const allowed = await checkRateLimit(ip);
+
+  if (!allowed) {
+    return new Response('Too Many Requests', { status: 429 });
+  }
+
+  return next(request);
+}
+
+// With parameters (curried)
+export function rateLimit(max: number) {
+  return async function (request: Request, next: Handler): Promise<Response> {
+    const allowed = await checkRateLimit(request, max);
+    if (!allowed) return new Response('Too Many Requests', { status: 429 });
+    return next(request);
+  };
+}
+```
+
+```ts src/app.ts
+app.useMiddleware(rateLimitMiddleware);
+// Or with parameters:
+app.useMiddleware(rateLimit(100));
+```
+
+For class-based middleware, extend the framework's middleware class and use `withContainer` to get DI access. See [Pipeline reference](/docs/packages/core) for the class middleware interface.
+
+## How to access configuration values
+
+Use `ConfigManager` with dot-notation keys. Pass a default to avoid throwing on missing keys.
+
+```ts
+import { ConfigManager } from '@roost/core';
+
+const config = new ConfigManager({
+  app: { name: 'My App', debug: false },
+  database: { default: 'd1' },
+});
+
+// Throws ConfigKeyNotFoundError if missing and no default
+const name = config.get('app.name');
+
+// Safe: returns 'UTC' if key is absent
+const timezone = config.get('app.timezone', 'UTC');
+
+// Set values at runtime
+config.set('features.darkMode', true);
+
+// Check existence
+if (config.has('stripe.secretKey')) {
+  // ...
+}
+```
+
+In a service provider, resolve `ConfigManager` from the container rather than constructing it directly — the application registers it automatically.
+
+## How to build a middleware pipeline
+
+Use `Pipeline` to compose multiple middleware functions in order. Each middleware calls `next` to pass control forward.
+
+```ts
+import { Pipeline } from '@roost/core';
+
+const pipeline = new Pipeline()
+  .use(loggerMiddleware)
+  .use(rateLimitMiddleware)
+  .use(authMiddleware);
+
+const response = await pipeline.handle(request, async (req) => {
+  // Final handler — req has passed all middleware
+  return new Response(JSON.stringify({ ok: true }), {
+    headers: { 'content-type': 'application/json' },
+  });
+});
+```
+
+To inject container dependencies into class-based middleware, chain `.withContainer(container)` before calling `handle`.
+
+```ts
+const pipeline = new Pipeline()
+  .withContainer(container)
+  .use(AuthMiddlewareClass);
+```

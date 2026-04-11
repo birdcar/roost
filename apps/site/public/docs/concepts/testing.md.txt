@@ -1,0 +1,54 @@
+
+## The Testing Package's Scope
+
+`@roost/testing` provides the shared testing infrastructure that other packages
+build on. Its two primary exports are `TestClient` — for making HTTP requests
+against a Roost application without a running server — and the test setup utilities that
+configure the application environment for tests.
+
+The package intentionally does not try to be a testing framework. Roost applications use
+Bun's built-in test runner, and `@roost/testing` extends it rather than
+replacing it. Tests use `describe`, `it`, and `expect`
+from Bun — the testing package adds Roost-specific assertions on top of those primitives.
+
+## TestClient: The Primary Testing Interface
+
+The `TestClient` is a request builder that calls `app.handle()`
+directly. It supports the common HTTP methods, accepts JSON bodies, allows setting
+arbitrary headers, and provides an `actingAs(user)` method for authenticating
+test requests without needing a real session. The response is a `TestResponse`
+with fluent assertion methods: `assertStatus(200)`, `assertOk()`,
+`assertJson({ key: value })`, `assertHeader(name, value)`.
+
+The TestClient's design reflects the testing philosophy: tests should read like descriptions
+of user behavior, not descriptions of implementation details. `await client.post('/orders', payload)`
+reads like what the user is doing. The assertions that follow describe what the application
+should have done in response.
+
+## Test Application Setup
+
+Tests need an application instance to give to the TestClient. The recommended pattern is
+to create a test-specific application factory that registers real service providers but
+replaces infrastructure bindings with fakes — the D1 database is a test D1 (via Wrangler),
+AI providers are faked, billing is faked, queues are faked. This produces an application
+that exercises all the real code paths but does not make external calls or require production
+credentials.
+
+The testing package provides `setup` utilities that assist with this configuration,
+but the application factory is application code — not something the testing package generates
+or owns. This keeps the test setup transparent: a new team member can read the test
+bootstrap file and understand exactly what is being faked and why.
+
+## Connection to the Broader Testing Philosophy
+
+The testing package is the practical expression of the fake-over-mock and integration-first
+philosophy described in the cross-cutting testing concepts. If you want to understand
+_why_ the package is designed this way — why fakes, why no mock library, why
+integration tests are preferred — the testing philosophy page covers that reasoning.
+This package page focuses on the specific tools the package provides.
+
+## Further Reading
+
+- [Testing Philosophy — the reasoning behind Roost's testing approach](/docs/concepts/testing-philosophy)
+- [@roost/testing reference — TestClient, TestResponse, and setup API](/docs/packages/testing)
+- [Bun Test Documentation](https://bun.sh/docs/test/writing)

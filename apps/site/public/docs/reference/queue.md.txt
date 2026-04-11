@@ -1,0 +1,130 @@
+
+## Installation
+
+```bash title="terminal"
+bun add @roost/queue
+```
+
+## Configuration
+
+Declare a Cloudflare Queue binding in `wrangler.jsonc`:
+
+```jsonc title="wrangler.jsonc"
+{
+  "queues": {
+    "producers": [{ "queue": "my-queue", "binding": "QUEUE" }],
+    "consumers": [{ "queue": "my-queue" }]
+  }
+}
+```
+
+## Job API
+
+`Job<TPayload>` is an abstract base class. Extend it and implement
+`handle()`. The generic parameter types the `payload` property.
+
+### Instance Properties
+
+#### `payload: TPayload`
+
+The deserialized job payload. Typed by the generic parameter.
+
+#### `attempt: number`
+
+The current attempt number. Starts at `1` and increments on each retry.
+
+### Instance Methods
+
+#### `abstract async handle(): Promise<void>`
+
+The job's main logic. Throwing any error triggers the retry strategy.
+
+#### `async onSuccess(): Promise<void>`
+
+Optional. Called after a successful `handle()` invocation.
+
+#### `async onFailure(error: Error): Promise<void>`
+
+Optional. Called after `handle()` throws and all retries are exhausted.
+
+### Static Methods
+
+#### `static async dispatch(payload: TPayload): Promise<void>`
+
+Enqueue the job immediately.
+
+#### `static async dispatchAfter(seconds: number, payload: TPayload): Promise<void>`
+
+Enqueue the job with a delay of `seconds` before first execution.
+
+#### `static async chain(jobs: JobDescriptor[]): Promise<void>`
+
+Enqueue a sequence of jobs that run one after another. The next job starts only
+after the previous one succeeds.
+
+#### `static async batch(jobs: JobDescriptor[]): Promise<string>`
+
+Enqueue multiple independent jobs. Jobs run in parallel (no ordering guarantee).
+Returns the batch ID string.
+
+#### `static fake(): void`
+
+Enable fake mode. All `dispatch()` calls are recorded but not enqueued.
+
+#### `static restore(): void`
+
+Disable fake mode.
+
+#### `static assertDispatched(jobClassOrName?: typeof Job | string): void`
+
+Assert that the job was dispatched (in fake mode). Optionally filter by job class or name.
+
+#### `static assertNotDispatched(): void`
+
+Assert that the job was not dispatched.
+
+## JobConsumer API
+
+Processes messages from a Cloudflare Queue consumer handler.
+
+#### `constructor(registry: JobRegistry)`
+
+Construct with a `JobRegistry` containing all registered job classes.
+
+#### `async processMessage(message: Message): Promise<void>`
+
+Deserialize the message, instantiate the matching job class, and call `handle()`.
+Calls `onSuccess()` on success, `onFailure()` on final failure.
+
+## JobRegistry API
+
+#### `register(JobClass: typeof Job): void`
+
+Register a job class so the consumer can deserialize and route messages to it.
+
+## Decorators
+
+Class decorators applied to `Job` subclasses.
+
+#### `@MaxRetries(count: number)`
+
+Maximum number of retry attempts before calling `onFailure()`. Defaults to `3`.
+
+#### `@Backoff(strategy: 'exponential' | 'fixed')`
+
+Retry backoff strategy. `'exponential'` doubles the delay on each attempt.
+`'fixed'` uses the same delay every time. Defaults to `'exponential'`.
+
+#### `@RetryAfter(seconds: number)`
+
+Base delay in seconds before the first retry. For exponential backoff, subsequent
+delays are multiplied by 2 on each attempt.
+
+## Types
+
+```ts
+interface JobDescriptor {
+  jobClass: typeof Job;
+  payload: unknown;
+}
+```

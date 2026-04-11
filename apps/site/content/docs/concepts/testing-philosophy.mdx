@@ -1,0 +1,73 @@
+---
+title: Testing Philosophy
+description: Why Roost uses fakes over mocks, how TestClient eliminates server setup, and what testing on Workers requires differently.
+---
+
+## Fakes Over Mocks
+
+The standard advice in JavaScript testing is to mock dependencies with libraries like
+Jest's `jest.fn()` or Vitest's `vi.spyOn()`. Mocks intercept calls
+at the module level, replace method implementations, and let tests assert on how many
+times a function was called. This works, but it introduces a hidden coupling: the test
+knows the implementation details of the code under test — which methods it calls, in
+what order, with what arguments. When the implementation changes without changing the
+observable behavior, the test breaks.
+
+Roost instead ships _fakes_ — purpose-built alternative implementations of the
+real classes. `Agent.fake(responses)` replaces the AI provider with an
+in-memory version that returns pre-configured strings. `Job.fake()` captures
+dispatched jobs without touching any queue infrastructure. `FakeBillingProvider`
+records billing operations without calling Stripe. These fakes implement the same
+interface as the real things, which means tests exercise the same code paths — the
+only thing that changes is whether real infrastructure is involved.
+
+The practical difference: a mock-based test that checks whether `provider.chat()`
+was called with specific arguments will fail if you refactor `agent.prompt()`
+to batch requests. A fake-based test that checks whether the agent returned the correct
+response will not — it only cares about the outcome.
+
+## TestClient: Testing HTTP Without a Server
+
+The `TestClient` from `@roost/testing` takes a Roost
+`Application` instance and calls `app.handle(request)` directly.
+No port binding, no network, no spawned process. The test constructs a real
+`Request` object, passes it to the application, and receives a real
+`Response` object. The entire middleware pipeline runs; authentication,
+validation, and route handlers all execute normally.
+
+This approach makes integration tests faster and more reliable than spinning up a test
+server, and it keeps the test environment consistent with production. Because Roost
+applications take a `Request` and return a `Response` as their
+public interface, the TestClient requires zero special-casing in application code. The
+application has no idea it is being tested.
+
+## Integration Over Unit for Framework Code
+
+Unit tests isolate a single function or class with all dependencies mocked. For
+pure utility functions, this is appropriate. For framework code — middleware, route
+handlers, service providers — the interaction between components is often where bugs
+live. A route handler that works in isolation might fail because a middleware did not
+set the expected header, or because the service provider registered the wrong binding.
+
+Roost's testing story pushes toward integration tests that boot a real application
+(with fake infrastructure bindings) and make HTTP requests through it. The goal is
+tests that would catch the bugs that actually happen in production, not tests that
+achieve high line coverage by replacing every interesting dependency with a spy.
+
+## Testing on Workers: What Is Different
+
+The Cloudflare Workers runtime differs from Node.js. D1, KV, and Queues bindings are
+Cloudflare-specific objects that do not exist in a standard bun or Node.js test runner.
+For unit and integration tests that do not touch the real infrastructure, Roost's fakes
+sidestep this entirely — the fake agent never calls `env.AI`, the fake job
+never calls `env.QUEUE`. For tests that need real D1 or KV, Wrangler's
+`--test` mode provides a local emulation layer. Roost does not try to abstract
+over Wrangler; it accepts that some tests need Wrangler to run and documents this clearly
+rather than hiding it behind another fake.
+
+## Further Reading
+
+- [@roost/testing concepts — the package-specific testing model](/docs/concepts/testing)
+- [@roost/testing reference — TestClient, fakes, and setup](/docs/packages/testing)
+- [@roost/ai reference — Agent.fake() and assertion methods](/docs/packages/ai)
+- [@roost/queue reference — Job.fake() and assertion methods](/docs/packages/queue)

@@ -1,0 +1,83 @@
+---
+title: "@roost/start"
+description: Bridges the Roost framework with TanStack Start. Provides the context bridge, middleware factory, and server function wrappers.
+---
+
+## Installation
+
+```bash title="terminal"
+bun add @roost/start
+```
+
+## Configuration
+
+No environment variables are required. `@roost/start` depends on the
+`Application` instance you construct and pass into its factories.
+
+## createRoostMiddleware API
+
+#### `createRoostMiddleware(factory: () => Application): TanStackMiddleware`
+
+Create a TanStack Start middleware that bootstraps a Roost `Application`
+and attaches it to the server context. The `factory` function is called
+once per request. Returns a middleware compatible with TanStack Start's
+`createMiddleware()` system.
+
+```ts title="src/middleware.ts"
+import { createRoostMiddleware } from '@roost/start';
+import { Application } from '@roost/core';
+import { CloudflareServiceProvider } from '@roost/cloudflare';
+
+export const roostMiddleware = createRoostMiddleware(() => {
+  const app = new Application({});
+  app.register(CloudflareServiceProvider);
+  return app;
+});
+```
+
+## roostFn API
+
+#### `roostFn(middleware: TanStackMiddleware, handler: (roost: RoostContext) => Promise<T>): ServerFunction<T>`
+
+Wrap a TanStack Start server function with Roost context injection. The handler receives
+a `RoostContext` object with access to the container and resolved application.
+Use when the server function takes no user input.
+
+```ts title="src/functions/users.ts"
+import { roostFn } from '@roost/start';
+import { roostMiddleware } from '../middleware';
+
+const listUsers = roostFn(roostMiddleware, async (roost) => {
+  return roost.container.resolve(UserService).findAll();
+});
+```
+
+## roostFnWithInput API
+
+#### `roostFnWithInput(middleware: TanStackMiddleware, validator: (raw: unknown) => TInput, handler: (roost: RoostContext, input: TInput) => Promise<T>): ServerFunction<TInput, T>`
+
+Wrap a TanStack Start server function with Roost context injection and typed input.
+The `validator` function receives the raw deserialized input and returns
+the typed value. Throw from the validator to reject invalid input.
+
+```ts title="src/functions/users.ts"
+import { roostFnWithInput } from '@roost/start';
+import { roostMiddleware } from '../middleware';
+
+const getUser = roostFnWithInput(
+  roostMiddleware,
+  (d: { id: string }) => d,
+  async (roost, input) => {
+    return roost.container.resolve(UserService).find(input.id);
+  }
+);
+```
+
+## Types
+
+```ts
+interface RoostContext {
+  container: RoostContainer;
+  app: Application;
+}
+```

@@ -1,0 +1,55 @@
+
+## Why WorkOS Instead of Rolling Auth
+
+Authentication is deceptively hard to implement correctly. Beyond username and password,
+production applications need email verification, password reset flows, magic links, OAuth
+providers, and — for enterprise customers — SSO, SCIM provisioning, and directory sync.
+Each of these has subtle security requirements, and getting any of them wrong has serious
+consequences. Rolling a complete auth system from scratch means owning all of that surface
+area indefinitely.
+
+WorkOS is purpose-built for the enterprise authentication problems that other providers
+underserve. It ships SSO, SCIM, Directory Sync, and AuthKit — a hosted, customizable
+authentication UI — as a unified API. For applications that need to sell to enterprise
+customers, WorkOS provides the authentication infrastructure that those customers require
+without building it in-house. Roost chose WorkOS to make enterprise auth a configuration
+choice rather than a months-long implementation project.
+
+## Session Storage on KV
+
+Cloudflare Workers do not have filesystem access or process memory that persists across
+requests reliably. Traditional server-side session storage — writing session data to disk
+or to a process-level in-memory store — does not apply. Roost stores sessions in Cloudflare
+KV, the platform's globally replicated key-value store.
+
+KV is eventually consistent: writes propagate globally within seconds, but reads may
+briefly see stale data at distant edge locations. For session data, this trade-off is
+generally acceptable: a user who logs in from one data center and immediately makes a
+request handled by a different data center might briefly see a stale session, but this
+window is measured in seconds. For applications where this is unacceptable, the session
+store implementation is replaceable — `AuthServiceProvider` resolves the
+`KVSessionStore` through the container, and any implementation that satisfies
+the session store interface can be swapped in.
+
+## The Organization Model and Multi-Tenancy
+
+Roost's auth layer treats multi-tenancy as a first-class concern rather than an
+application-level concern. The `OrgResolver` determines which organization
+context a request belongs to using configurable strategies: subdomain extraction
+(`app.company.com` maps to `company`), URL path prefix
+(`/org/company/dashboard`), or an explicit HTTP header. This resolution
+happens in middleware, before the route handler runs, so the organization is always
+available in the request context without route-level boilerplate.
+
+The organization model maps directly to WorkOS's organization concept. When a user
+authenticates via SSO configured for their organization, WorkOS returns the organization
+ID. Roost stores this in the session and resolves the current organization on every
+subsequent request. RBAC is built on top of this: permissions are checked in the context
+of the resolved organization, so a user with admin permissions in one organization is
+not automatically an admin in another.
+
+## Further Reading
+
+- [@roost/auth reference — middleware, session management, and RBAC API](/docs/packages/auth)
+- [Edge Computing — why KV is the right session store for Workers](/docs/concepts/edge-computing)
+- [WorkOS Documentation](https://workos.com/docs)

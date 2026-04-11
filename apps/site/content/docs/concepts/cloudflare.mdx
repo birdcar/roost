@@ -1,0 +1,56 @@
+---
+title: "@roost/cloudflare"
+description: Why Roost wraps Cloudflare's native bindings, how typed clients improve the developer experience, and how binding names are resolved.
+---
+
+## The Raw Binding Problem
+
+Cloudflare injects bindings into the Worker's `env` object. Accessing KV looks
+like `env.SESSION_KV.get(key)`, D1 like `env.DB.prepare(sql)`.
+This works, but it has friction. The binding names are strings that must match
+`wrangler.toml` exactly. The types are broad Cloudflare platform types that do
+not carry information about which database or namespace they represent. And when application
+code reaches directly into `env`, it becomes harder to test — tests need to
+fabricate an `env` object with the right shape.
+
+`@roost/cloudflare` solves this by providing thin typed wrappers — `KVStore`,
+`D1Database`, `R2Bucket`, `Queue`, `AIClient` —
+and registering them in the service container under the binding's configured name. Application
+code resolves the binding by name from the container rather than reading `env`
+directly. The container is responsible for wrapping the raw binding object. Tests can register
+fake implementations under the same name.
+
+## Binding Name Resolution
+
+The `CloudflareServiceProvider` reads binding configuration from the application's
+config and registers each binding in the container. When auth session storage wants a KV store,
+it resolves it from the container by the configured name — not by reaching into `env`.
+This indirection lets binding names be configured in one place (the config or environment
+variables), and lets the container act as the source of truth for what bindings the
+application uses.
+
+The naming convention follows Cloudflare's own conventions: KV namespaces in SCREAMING_SNAKE_CASE,
+because that is how Cloudflare workers.toml defines them. Roost does not rename them — it reads
+the name from config and registers the wrapper under that exact name. This keeps the container
+names in sync with the Cloudflare configuration without transformation.
+
+## Why a Single `AIClient.run()`
+
+Cloudflare Workers AI exposes a single method: `ai.run(model, inputs)`. Every
+Workers AI task — text generation, image classification, embeddings, speech-to-text — uses
+this one method with different model strings and input shapes. Roost's `AIClient`
+wraps this directly: `client.run(model, inputs)`. There are no per-task methods,
+no `client.generateText()` or `client.embed()`. This is intentional.
+
+The alternative — a method per task — would require updating the client every time Workers AI
+adds a new task type. The pass-through design stays current without changes, and the
+`@roost/ai` package builds the higher-level agent abstraction on top of
+`AIClient.run()`. The cloudflare package stays thin; the AI package adds
+structure.
+
+## Further Reading
+
+- [Edge Computing — bindings, the Workers runtime, and what they mean for design](/docs/concepts/edge-computing)
+- [@roost/ai concepts — how the agent abstraction uses AIClient](/docs/concepts/ai)
+- [@roost/cloudflare reference — all binding wrapper APIs](/docs/packages/cloudflare)
+- [Cloudflare Workers AI Documentation](https://developers.cloudflare.com/workers-ai/)

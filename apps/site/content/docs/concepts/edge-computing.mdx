@@ -1,0 +1,67 @@
+---
+title: Edge Computing
+description: What Cloudflare Workers are, why Roost runs on them, and how the edge runtime shapes every design decision in the framework.
+---
+
+## What "Edge" Actually Means
+
+Cloudflare Workers run in over 300 data centers around the world. When a user in Tokyo makes a
+request, it is handled by a Worker in a Tokyo data center — not routed to a server in Virginia.
+This geographic distribution is the core promise of edge computing: latency proportional to
+the physical distance between the user and the code, rather than between the user and wherever
+you happened to rent a server.
+
+But the edge is not just about geography. It is about a fundamentally different runtime model.
+Workers run inside V8 isolates — the same JavaScript engine as Chrome — rather than in Node.js
+or a traditional OS process. This has consequences that ripple through everything Roost is designed
+to do.
+
+## The Constraints V8 Isolates Impose
+
+A V8 isolate is not a server process. There is no filesystem access, no arbitrary socket binding,
+and no guarantee of in-process state persisting between requests. Isolates start fast —
+microseconds, not seconds — and Cloudflare reuses warm isolates for subsequent requests, but you
+cannot rely on module-level state surviving across all requests. This is why Roost's service
+container distinguishes between singleton bindings (safe for the lifetime of a warm isolate)
+and per-request scoped containers (safe only for the duration of one request).
+
+The standard Node.js APIs — `fs`, `net`, `child_process`, `path`
+— do not exist. Workers run the Web Platform APIs: `fetch`, `Request`,
+`Response`, `ReadableStream`, `crypto`. This is why Roost's
+`Application.handle()` takes and returns plain `Request` and `Response`
+objects — the same types that exist in every browser and modern JavaScript runtime. Code written
+to this interface is portable and testable without mocking anything.
+
+## The Cloudflare Binding Model
+
+Traditional applications configure connections by reading environment variables: a database URL,
+an S3 endpoint, an API key. Workers configure infrastructure through _bindings_. A binding
+is a declared capability — "this Worker has access to a D1 database named MAIN_DB" — that
+Cloudflare injects into the Worker's `env` object at runtime. The binding resolves
+inside Cloudflare's network, not over the public internet.
+
+D1 is Cloudflare's SQLite-compatible database that runs at the edge. KV is a globally replicated
+key-value store, eventually consistent, suitable for sessions and caches. R2 is object storage
+compatible with the S3 API but without egress fees. Queues is a message queue for deferring
+work. Workers AI provides inference on GPU clusters in Cloudflare's network. Each of these
+is a binding — not an HTTP endpoint you call from the outside, but a capability you access
+through the `env` object.
+
+Roost's `@roost/cloudflare` package wraps these raw binding objects with typed,
+ergonomic clients. The wrapping is thin by design. The goal is to add TypeScript type safety
+and align the API with Roost's patterns — not to abstract away the underlying platform.
+
+## Cold Starts and Why They Are Negligible
+
+Cold start concerns dominate discussions of serverless functions. Cloudflare Workers have a
+fundamentally different cold start story. Because Workers run in V8 isolates rather than
+Node.js or JVM runtimes, they start in well under a millisecond — often measured in
+microseconds. There is no JIT warmup phase, no large runtime to initialize. For most
+applications, Workers' cold start overhead is imperceptible to users.
+
+## Further Reading
+
+- [Application Architecture — how the Worker handles requests](/docs/concepts/architecture)
+- [@roost/cloudflare concepts — the binding wrapper design](/docs/concepts/cloudflare)
+- [Cloudflare Workers Documentation](https://developers.cloudflare.com/workers/)
+- [Cloudflare D1 Documentation](https://developers.cloudflare.com/d1/)

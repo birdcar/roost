@@ -1,0 +1,59 @@
+---
+title: "@roost/schema"
+description: Why Roost has a schema builder, what it produces, and why the same schema definitions power both AI tools and MCP tools.
+---
+
+## Why a Fluent Builder Instead of Raw JSON Schema
+
+JSON Schema is the standard for describing the shape of data exchanged between AI models
+and tools. Both OpenAI's function calling and Anthropic's tool use accept JSON Schema
+objects to describe tool parameters. Writing JSON Schema by hand is verbose and error-prone:
+nested property definitions, required arrays that must be kept in sync with the property
+keys, and no IDE assistance for schema-specific properties like `minimum` or
+`enum`.
+
+The `schema` builder provides a TypeScript-native API for constructing these
+JSON Schema objects. `schema.string().minLength(2).description('User name')`
+reads naturally and produces the equivalent JSON Schema. The builder is immutable — each
+method returns a new builder instance — so partial schemas can be safely shared and extended.
+And because the builder has TypeScript types, IDEs can autocomplete schema-specific methods
+and type-check the values passed to them.
+
+## What the Builder Produces
+
+The builder is transparent: it produces plain JSON Schema objects. Calling `.build()`
+on any builder returns the `JsonSchemaOutput` it describes. There is no special
+Roost schema format to learn — what comes out of the builder is the same JSON Schema that
+AI providers and MCP clients already understand. The builder is a construction aid, not an
+abstraction layer that hides the underlying format.
+
+This transparency matters for debugging. When an AI model misinterprets a tool parameter,
+the first step is inspecting the schema that was sent. Because the schema is plain JSON,
+it can be logged, diffed, and compared with the AI provider's documentation directly.
+
+## Shared Schema Between AI and MCP
+
+Both `@roost/ai` and `@roost/mcp` use the same schema builder for
+defining tool parameters. An AI agent tool and an MCP tool that do similar things use
+identical schema definitions. This is not a coincidence — it reflects the fact that AI
+tool calling and MCP tool calling are describing the same concept: a typed function that
+an AI model can invoke.
+
+In practice, this means a tool can often be implemented once and registered in both places.
+The schema definition is shared; only the registration differs. Teams that want to expose
+their AI tools externally via MCP can reuse the schema they already wrote.
+
+## Type Inference Limits
+
+The builder cannot infer TypeScript types from schemas the way Zod can. Calling
+`schema.string()` does not produce a TypeScript type `string` that
+flows through into the rest of your code. This is a deliberate scope choice: the schema
+package is specifically for producing JSON Schema objects for AI and MCP integrations,
+not for general runtime validation or type inference. For validation, Zod or Valibot are
+better fits. For AI tool parameters, the schema builder does exactly what is needed.
+
+## Further Reading
+
+- [@roost/ai concepts — how tool schemas are used by agents](/docs/concepts/ai)
+- [@roost/mcp concepts — how MCP tools use schema definitions](/docs/concepts/mcp)
+- [@roost/schema reference — all builder methods and types](/docs/packages/schema)

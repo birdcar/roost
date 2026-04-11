@@ -1,0 +1,394 @@
+---
+title: Build a SaaS App
+description: Add authentication, subscription billing, and background jobs to a Roost application.
+---
+
+import { Callout } from '../../../src/components/callout'
+
+<Callout type="note">
+  <p><strong>What you'll learn</strong></p>
+  <ul>
+    <li>Protecting routes with WorkOS authentication via <code>AuthMiddleware</code></li>
+    <li>Gating premium features with <code>SubscribedMiddleware</code> from <code>@roost/billing</code></li>
+    <li>Creating Stripe Checkout sessions and verifying webhooks</li>
+    <li>Dispatching background jobs with <code>@roost/queue</code></li>
+  </ul>
+  <p><strong>Time:</strong> ~45 minutes</p>
+  <p><strong>Prerequisites:</strong></p>
+  <ul>
+    <li>Completed the <a href="/docs/getting-started">Quick Start</a></li>
+    <li>A <a href="https://workos.com">WorkOS account</a> (free tier works)</li>
+    <li>A <a href="https://stripe.com">Stripe account</a> (test mode works)</li>
+  </ul>
+  <p><strong>Packages used:</strong> <code>@roost/auth</code>, <code>@roost/billing</code>, <code>@roost/orm</code>, <code>@roost/start</code>, <code>@roost/queue</code></p>
+</Callout>
+
+## Step 1: Create the Project
+
+Use the `--with-billing` flag to scaffold a project that includes
+Stripe billing wiring, the `@roost/queue` package, and the necessary
+Cloudflare Queue bindings in `wrangler.jsonc`.
+
+```terminal title="terminal"
+roost new saas-app --with-billing
+cd saas-app
+bun install
+```
+
+**You should see:** A new `saas-app/` directory. Running `ls src/` shows `routes/`, `models/`, and a
+pre-wired `config/billing.ts` alongside the standard scaffolding.
+
+## Step 2: Configure WorkOS Credentials
+
+Open `.dev.vars` and add your WorkOS credentials. You can find these
+in the WorkOS dashboard under **API Keys** and your application's **Client ID**.
+
+```text title=".dev.vars"
+WORKOS_API_KEY=sk_test_...
+WORKOS_CLIENT_ID=client_...
+```
+
+<Callout type="tip">
+  <p>
+    The <code>.dev.vars</code> file is in <code>.gitignore</code> by default.
+    Never commit it. For production, set these secrets in the Cloudflare dashboard
+    or with <code>wrangler secret put WORKOS_API_KEY</code>.
+  </p>
+</Callout>
+
+**You should see:** No visible change yet — credentials are loaded at runtime when the dev server starts.
+
+## Step 3: Start the Dev Server and Verify Auth Routes
+
+```terminal title="terminal"
+bun run dev
+```
+
+Visit the following URLs in your browser. WorkOS handles the full OAuth flow;
+these routes are registered automatically by `AuthServiceProvider`
+once your credentials are in `.dev.vars`.
+
+```text
+/auth/login      # Redirects to WorkOS hosted login
+/auth/callback   # Receives the OAuth code, creates a session
+/auth/logout     # Clears the session cookie
+```
+
+**You should see:** Visiting `/auth/login` redirects you to WorkOS. After signing in, you land back at `/dashboard` (which doesn't exist yet — a 404 is expected at this point).
+
+## Step 4: Create the Workspace Model
+
+SaaS apps typically tie billing and data ownership to an organization (workspace).
+Generate a `Workspace` model with its migration:
+
+```terminal title="terminal"
+roost make:model Workspace
+```
+
+Open the generated migration in `database/migrations/` and define the
+schema. Each workspace belongs to a WorkOS organization:
+
+```ts title="database/migrations/YYYYMMDDHHMMSS_create_workspaces_table.ts"
+import { Migration } from '@roost/orm';
+
+export default class CreateWorkspacesTable extends Migration {
+  async up(): Promise<void> {
+    await this.schema.createTable('workspaces', (table) => {
+      table.id();
+      table.string('name');
+      table.string('organization_id').unique();
+      table.string('stripe_customer_id').nullable();
+      table.string('subscription_id').nullable();
+      table.string('subscription_status').default('inactive');
+      table.timestamps();
+    });
+  }
+
+  async down(): Promise<void> {
+    await this.schema.dropTable('workspaces');
+  }
+}
+```
+
+Run the migration:
+
+```terminal title="terminal"
+roost migrate
+```
+
+**You should see:** Migration output confirming the `workspaces` table was created. The model file at `src/models/Workspace.ts` is ready to extend.
+
+## Step 5: Create a Protected Dashboard Route
+
+Create the dashboard route. Applying `AuthMiddleware` redirects
+unauthenticated requests to `/auth/login` before the component renders.
+
+```tsx title="src/routes/dashboard.tsx"
+import { createFileRoute } from '@tanstack/react-router';
+import { AuthMiddleware } from '@roost/auth';
+
+export const Route = createFileRoute('/dashboard')({
+  middleware: [new AuthMiddleware()],
+  component: DashboardPage,
+});
+
+function DashboardPage() {
+  return (
+    <div>
+      <h1>Dashboard</h1>
+      <p>You're signed in. Subscribe to unlock premium features.</p>
+      <a href="/billing/checkout">Subscribe now</a>
+    </div>
+  );
+}
+```
+
+**You should see:** Visiting `/dashboard` while signed out redirects you to `/auth/login`. After signing in, the dashboard renders.
+
+## Step 6: Add BillingMiddleware to Gate Premium Features
+
+Create a route for premium content. `SubscribedMiddleware` checks the
+current user's workspace subscription status and redirects to `/billing/checkout`
+when they don't have an active subscription.
+
+```tsx title="src/routes/features/premium.tsx"
+import { createFileRoute } from '@tanstack/react-router';
+import { AuthMiddleware } from '@roost/auth';
+import { SubscribedMiddleware } from '@roost/billing';
+
+export const Route = createFileRoute('/features/premium')({
+  middleware: [new AuthMiddleware(), new SubscribedMiddleware()],
+  component: PremiumPage,
+});
+
+function PremiumPage() {
+  return (
+    <div>
+      <h1>Premium Features</h1>
+      <p>You have an active subscription. Welcome to the good stuff.</p>
+    </div>
+  );
+}
+```
+
+**You should see:** Visiting `/features/premium` while signed in but without an active subscription redirects you to `/billing/checkout`. You'll create that route in the next step.
+
+## Step 7: Configure Stripe and Create the Checkout Route
+
+Add your Stripe credentials to `.dev.vars`:
+
+```text title=".dev.vars"
+WORKOS_API_KEY=sk_test_...
+WORKOS_CLIENT_ID=client_...
+
+STRIPE_SECRET_KEY=sk_test_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+STRIPE_PRICE_ID=price_...
+```
+
+Now create the checkout route. It uses `StripeProvider.createCheckoutSession`
+to generate a hosted Stripe Checkout URL and redirects the user there.
+
+```tsx title="src/routes/billing/checkout.tsx"
+import { createFileRoute, redirect } from '@tanstack/react-router';
+import { createServerFn } from '@tanstack/react-start';
+import { AuthMiddleware } from '@roost/auth';
+import { StripeProvider } from '@roost/billing';
+
+const startCheckout = createServerFn({ method: 'GET' }).handler(async ({ context }) => {
+  const env = context.env as { STRIPE_SECRET_KEY: string; STRIPE_WEBHOOK_SECRET: string; STRIPE_PRICE_ID: string };
+  const billing = new StripeProvider(env.STRIPE_SECRET_KEY, env.STRIPE_WEBHOOK_SECRET);
+
+  // In a real app, load the workspace's stripe_customer_id from the database.
+  // For this tutorial we create a new customer each time.
+  const customer = await billing.createCustomer({
+    name: 'Tutorial User',
+    email: 'user@example.com',
+  });
+
+  const session = await billing.createCheckoutSession({
+    customerId: customer.providerId,
+    priceId: env.STRIPE_PRICE_ID,
+    successUrl: 'http://localhost:3000/billing/success',
+    cancelUrl: 'http://localhost:3000/dashboard',
+  });
+
+  throw redirect({ href: session.url });
+});
+
+export const Route = createFileRoute('/billing/checkout')({
+  middleware: [new AuthMiddleware()],
+  loader: () => startCheckout(),
+  component: () => null,
+});
+```
+
+**You should see:** Visiting `/billing/checkout` while signed in immediately redirects you to Stripe's hosted checkout page. Use Stripe's test card `4242 4242 4242 4242` with any future expiry and CVC.
+
+## Step 8: Handle the subscription.created Webhook
+
+After a successful checkout, Stripe sends a `customer.subscription.created`
+event to your webhook endpoint. `verifyStripeWebhook` validates the
+signature before you process the event.
+
+```ts title="src/routes/billing/webhook.ts"
+import { createServerFileRoute } from '@tanstack/react-start/server';
+import { verifyStripeWebhook, WebhookVerificationError } from '@roost/billing';
+import { Workspace } from '../../models/Workspace';
+import { SendWelcomeEmail } from '../../jobs/SendWelcomeEmail';
+
+export const ServerRoute = createServerFileRoute('/billing/webhook').methods({
+  POST: async ({ request, context }) => {
+    const env = context.env as { STRIPE_WEBHOOK_SECRET: string };
+
+    let event;
+    try {
+      event = await verifyStripeWebhook(request, env.STRIPE_WEBHOOK_SECRET);
+    } catch (err) {
+      if (err instanceof WebhookVerificationError) {
+        return new Response('Invalid signature', { status: 400 });
+      }
+      throw err;
+    }
+
+    if (event.type === 'customer.subscription.created') {
+      const subscription = event.data.object as {
+        id: string;
+        status: string;
+        customer: string;
+        metadata: Record<string, string>;
+      };
+
+      await Workspace.query()
+        .where('stripe_customer_id', subscription.customer)
+        .update({
+          subscription_id: subscription.id,
+          subscription_status: subscription.status,
+        });
+
+      const organizationId = subscription.metadata['organization_id'] ?? '';
+      await SendWelcomeEmail.dispatch({ organizationId });
+    }
+
+    return new Response(JSON.stringify({ received: true }), {
+      headers: { 'Content-Type': 'application/json' },
+    });
+  },
+});
+```
+
+<Callout type="warning">
+  <p>
+    Always return a <code>200</code> response to Stripe quickly. If processing takes
+    more than a few seconds, dispatch a job immediately and do the work in the
+    background — exactly what the next step covers.
+  </p>
+</Callout>
+
+**You should see:** When forwarding a test webhook with the Stripe CLI (`stripe listen --forward-to localhost:3000/billing/webhook`), the terminal shows a `200` response and your database row is updated.
+
+## Step 9: Create the SendWelcomeEmail Job
+
+Generate a job class for sending the welcome email. The `@Queue`
+decorator tells the dispatcher which Cloudflare Queue binding to use.
+
+```terminal title="terminal"
+roost make:job SendWelcomeEmail
+```
+
+Fill in the generated file:
+
+```ts title="src/jobs/SendWelcomeEmail.ts"
+import { Job, Queue } from '@roost/queue';
+
+interface Payload {
+  organizationId: string;
+}
+
+@Queue('default')
+export class SendWelcomeEmail extends Job<Payload> {
+  async handle(): Promise<void> {
+    const { organizationId } = this.payload;
+
+    // Replace with your actual email-sending logic.
+    // @roost/ai, an HTTP client to Resend, or any transactional
+    // email service can go here.
+    console.log(`Sending welcome email for organization: ${organizationId}`);
+  }
+
+  onFailure(error: Error): void {
+    console.error(`SendWelcomeEmail failed for ${this.payload.organizationId}:`, error);
+  }
+}
+```
+
+**You should see:** The file at `src/jobs/SendWelcomeEmail.ts` is in place. TypeScript will error if `handle()` is missing — the abstract method contract is enforced at compile time.
+
+## Step 10: Dispatch the Job from the Webhook Handler
+
+The webhook handler in Step 8 already calls `SendWelcomeEmail.dispatch`.
+The static `dispatch` method serializes the payload and sends it to the
+Cloudflare Queue bound to the `'default'` queue name. No additional
+wiring is needed.
+
+If you want to delay the email by 30 seconds (for example, to let the database
+write settle across replicas), use `dispatchAfter`:
+
+```ts title="src/routes/billing/webhook.ts (excerpt)"
+// Dispatch immediately
+await SendWelcomeEmail.dispatch({ organizationId });
+
+// Or delay by 30 seconds
+await SendWelcomeEmail.dispatchAfter(30, { organizationId });
+```
+
+**You should see:** In `wrangler dev` output, a log line confirming the message was enqueued. The consumer worker picks it up and runs `handle()`, printing the console log from your job class.
+
+## Step 11: Test the Full Flow
+
+Run the dev server and the Stripe CLI webhook forwarder in two terminals:
+
+```terminal title="terminal (tab 1)"
+bun run dev
+```
+
+```terminal title="terminal (tab 2)"
+stripe listen --forward-to localhost:3000/billing/webhook
+```
+
+Then walk through the complete signup-to-subscription flow:
+
+1. Visit `http://localhost:3000/auth/login` and sign in with WorkOS. You should land on `/dashboard`.
+2. Click **Subscribe now**. You should be redirected to Stripe Checkout.
+3. Complete checkout with test card `4242 4242 4242 4242`. You should be redirected to `/billing/success`.
+4. In terminal 2, you should see Stripe deliver a `customer.subscription.created` event and receive a `200` response.
+5. In terminal 1 (wrangler output), you should see the `SendWelcomeEmail` job log line appear as the queue consumer processes the message.
+6. Visit `http://localhost:3000/features/premium`. You should now see the premium page instead of being redirected to checkout.
+
+<Callout type="tip">
+  <p>
+    Use <code>stripe trigger customer.subscription.created</code> in a third
+    terminal to re-fire the event without going through checkout again during
+    development.
+  </p>
+</Callout>
+
+## What You Built
+
+In this tutorial you:
+
+- Scaffolded a project with billing support using `roost new --with-billing`
+- Configured WorkOS credentials and verified the three auth routes (`/auth/login`, `/auth/callback`, `/auth/logout`)
+- Created a `Workspace` model that tracks Stripe customer and subscription IDs
+- Protected a dashboard route with `AuthMiddleware`
+- Gated a premium route with `SubscribedMiddleware`
+- Created a Stripe Checkout session with `StripeProvider.createCheckoutSession`
+- Verified and handled the `customer.subscription.created` webhook using `verifyStripeWebhook`
+- Defined a `SendWelcomeEmail` job by extending `Job` and decorating it with `@Queue('default')`
+- Dispatched the job from a webhook handler with the static `dispatch` method
+
+## Next Steps
+
+- [@roost/auth reference](/docs/reference/auth) — full API for `SessionManager`, `OrgResolver`, and role-based middleware
+- [@roost/billing guide](/docs/guides/billing) — subscription swaps, usage-based billing, the customer portal, and webhook event catalogue
+- [Auth concepts](/docs/concepts/auth) — how WorkOS AuthKit, the session layer, and organization membership fit together in Roost

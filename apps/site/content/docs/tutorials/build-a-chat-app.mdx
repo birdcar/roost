@@ -1,0 +1,456 @@
+---
+title: Build an AI Chat App
+description: Create a chat interface powered by Cloudflare Workers AI with conversation history.
+---
+
+import { Callout } from '../../../src/components/callout'
+
+<Callout type="note">
+  <p><strong>What you'll learn</strong></p>
+  <ul>
+    <li>Create AI agents using <code>@roost/ai</code></li>
+    <li>Define tools that agents can call during a conversation</li>
+    <li>Store and retrieve data using the ORM (<code>@roost/orm</code>)</li>
+  </ul>
+  <p><strong>Time:</strong> ~30 minutes</p>
+  <p>
+    <strong>Prerequisites:</strong> Complete the{' '}
+    <a href="/docs/getting-started">Quick Start guide</a> before following this tutorial.
+  </p>
+  <p>
+    <strong>Packages used:</strong>{' '}
+    <code>@roost/ai</code>, <code>@roost/orm</code>, <code>@roost/start</code>, <code>@roost/schema</code>
+  </p>
+</Callout>
+
+## Step 1: Create the Project — Scaffold with AI Support
+
+The `--with-ai` flag tells the Roost CLI to scaffold your project with the
+`@roost/ai` package pre-installed and the Cloudflare Workers AI binding already
+configured in `wrangler.jsonc`.
+
+```terminal title="terminal"
+roost new chat-app --with-ai
+cd chat-app
+bun install
+```
+
+**You should see** a new `chat-app/` directory. Inside `wrangler.jsonc` there will be an `ai`
+binding that looks like:
+
+```json title="wrangler.jsonc (excerpt)"
+{
+  "ai": {
+    "binding": "AI"
+  }
+}
+```
+
+No API keys are needed. Cloudflare Workers AI is available to any Workers account — the
+`AI` binding is all the configuration required.
+
+## Step 2: Create a ChatMessage Model — Persist Conversation History
+
+Run the model generator to create a `ChatMessage` model and its migration file:
+
+```terminal title="terminal"
+roost make:model ChatMessage
+```
+
+This creates two files: `src/models/ChatMessage.ts` and a timestamped migration
+in `database/migrations/`. Open the migration and add the columns your chat app
+needs:
+
+```ts title="database/migrations/XXXX_create_chat_messages_table.ts"
+import { Migration } from '@roost/orm';
+
+export default class CreateChatMessagesTable extends Migration {
+  async up() {
+    await this.schema.createTable('chat_messages', (table) => {
+      table.id();
+      table.string('role');       // 'user' or 'assistant'
+      table.text('content');      // the message body
+      table.timestamps();         // created_at, updated_at
+    });
+  }
+
+  async down() {
+    await this.schema.dropTable('chat_messages');
+  }
+}
+```
+
+Now run the migration to create the table in your local D1 database:
+
+```terminal title="terminal"
+roost migrate
+```
+
+**You should see** output confirming the migration ran successfully, e.g.
+`Migrated: XXXX_create_chat_messages_table`. The
+`chat_messages` table now exists in your D1 database.
+
+## Step 3: Create a ChatAssistant Agent — Define the AI's Behaviour
+
+Run the agent generator, then open the generated file and give the agent its instructions:
+
+```terminal title="terminal"
+roost make:agent ChatAssistant
+```
+
+```ts title="src/agents/ChatAssistant.ts"
+import { Agent, Model } from '@roost/ai';
+import type { HasTools } from '@roost/ai';
+import type { Tool } from '@roost/ai';
+import { SummarizeTool } from './tools/SummarizeTool';
+
+@Model('@cf/meta/llama-3.1-70b-instruct')
+export class ChatAssistant extends Agent implements HasTools {
+  instructions(): string {
+    return [
+      'You are a helpful assistant in a chat application.',
+      'You have access to the conversation history via the SummarizeTool.',
+      'Keep your responses concise and friendly.',
+    ].join(' ');
+  }
+
+  tools(): Tool[] {
+    return [new SummarizeTool()];
+  }
+}
+```
+
+<Callout type="tip">
+  <p>
+    The <code>@Model</code> decorator overrides the default model for this agent. The default
+    is <code>@cf/meta/llama-3.1-8b-instruct</code>; here we use the larger 70B variant for
+    better conversational quality. Both run on Cloudflare Workers AI at no extra configuration
+    cost.
+  </p>
+</Callout>
+
+**You should see** no TypeScript errors when you run `bun run typecheck`.
+The agent is not wired to a route yet, so there is nothing to observe in the browser at
+this point.
+
+## Step 4: Create a SummarizeTool — Let the Agent Query History
+
+Tools give an agent structured ways to retrieve data. This tool fetches the last ten
+messages from the database and returns them as a formatted string for the model to reason
+about.
+
+```terminal title="terminal"
+roost make:tool SummarizeTool
+```
+
+```ts title="src/agents/tools/SummarizeTool.ts"
+import { type Tool, type ToolRequest } from '@roost/ai';
+import { schema } from '@roost/schema';
+import { ChatMessage } from '../../models/ChatMessage';
+
+export class SummarizeTool implements Tool {
+  description(): string {
+    return 'Fetch the last N messages from conversation history.';
+  }
+
+  schema(s: typeof schema) {
+    return {
+      limit: s.number().describe('How many recent messages to fetch (max 20)'),
+    };
+  }
+
+  async handle(request: ToolRequest): Promise<string> {
+    const limit = Math.min(request.get<number>('limit'), 20);
+
+    const messages = await ChatMessage.query()
+      .orderBy('created_at', 'desc')
+      .limit(limit)
+      .get();
+
+    if (messages.length === 0) {
+      return 'No conversation history yet.';
+    }
+
+    return messages
+      .reverse()
+      .map((m) => `${m.role}: ${m.content}`)
+      .join('\n');
+  }
+}
+```
+
+**You should see** no TypeScript errors. The tool implements the `Tool`
+interface, which requires `description()`, `schema()`, and `handle()`.
+
+## Step 5: Create the Chat Route — Build the UI
+
+Create the page that displays the chat history and a text input for sending new messages:
+
+```tsx title="src/routes/chat.tsx"
+import { createFileRoute } from '@tanstack/react-router';
+import { useState } from 'react';
+import { sendMessage } from '../server/chat';
+
+export const Route = createFileRoute('/chat')({
+  component: ChatPage,
+});
+
+interface Message {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+function ChatPage() {
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!input.trim() || loading) return;
+
+    const userMessage: Message = { role: 'user', content: input };
+    setMessages((prev) => [...prev, userMessage]);
+    setInput('');
+    setLoading(true);
+
+    const reply = await sendMessage({ data: { content: input } });
+    setMessages((prev) => [...prev, { role: 'assistant', content: reply }]);
+    setLoading(false);
+  }
+
+  return (
+    <div style={{ maxWidth: '640px', margin: '0 auto', padding: '2rem' }}>
+      <h1>Chat</h1>
+
+      <div style={{ border: '1px solid #e5e7eb', borderRadius: '8px', minHeight: '400px', padding: '1rem', marginBottom: '1rem' }}>
+        {messages.length === 0 && (
+          <p style={{ color: '#9ca3af' }}>No messages yet. Say hello!</p>
+        )}
+        {messages.map((m, i) => (
+          <div key={i} style={{ marginBottom: '0.75rem', textAlign: m.role === 'user' ? 'right' : 'left' }}>
+            <span
+              style={{
+                display: 'inline-block',
+                background: m.role === 'user' ? '#6366f1' : '#f3f4f6',
+                color: m.role === 'user' ? '#fff' : '#111827',
+                borderRadius: '8px',
+                padding: '0.5rem 0.875rem',
+                maxWidth: '80%',
+              }}
+            >
+              {m.content}
+            </span>
+          </div>
+        ))}
+        {loading && <p style={{ color: '#9ca3af' }}>Thinking…</p>}
+      </div>
+
+      <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '0.5rem' }}>
+        <input
+          type="text"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="Type a message…"
+          style={{ flex: 1, padding: '0.5rem 0.75rem', border: '1px solid #e5e7eb', borderRadius: '6px' }}
+        />
+        <button
+          type="submit"
+          disabled={loading}
+          style={{ padding: '0.5rem 1rem', background: '#6366f1', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
+        >
+          Send
+        </button>
+      </form>
+    </div>
+  );
+}
+```
+
+**You should see** a blank chat page at `http://localhost:3000/chat` with an input box and a Send button. Submitting a
+message will fail until the next step wires in the server function.
+
+## Step 6: Wire the Agent to the Form — Save Messages and Get a Reply
+
+Server functions in Roost run on the Cloudflare Worker, giving them access to D1, the AI
+binding, and all other bindings. Create a server function that saves the user's message,
+calls the agent, and saves the assistant's reply:
+
+```ts title="src/server/chat.ts"
+import { createServerFn } from '@roost/start';
+import { ChatAssistant } from '../agents/ChatAssistant';
+import { ChatMessage } from '../models/ChatMessage';
+
+export const sendMessage = createServerFn({
+  method: 'POST',
+}).handler(async ({ data }: { data: { content: string } }) => {
+  // Persist the user's message to the database
+  await ChatMessage.create({
+    role: 'user',
+    content: data.content,
+  });
+
+  // Ask the agent for a reply
+  const assistant = new ChatAssistant();
+  const response = await assistant.prompt(data.content);
+
+  // Persist the assistant's reply to the database
+  await ChatMessage.create({
+    role: 'assistant',
+    content: response.text,
+  });
+
+  return response.text;
+});
+```
+
+**You should see** messages appearing in the chat UI after you submit them.
+The assistant reply will arrive after a brief pause while the Worker calls Cloudflare
+Workers AI.
+
+## Step 7: Test It — Send Messages and Verify History
+
+Start the development server if it is not already running, then open the chat page and
+send a few messages:
+
+```terminal title="terminal"
+bun run dev
+```
+
+1. Open `http://localhost:3000/chat`.
+2. Type "Hello, who are you?" and press Send.
+3. Wait for the assistant to reply.
+4. Type "What did I just ask you?" and press Send.
+
+**You should see** the assistant answer both questions. On the second message
+it may invoke `SummarizeTool` to retrieve the previous exchange from the
+database. You can confirm rows are being saved by querying D1 directly:
+
+```terminal title="terminal"
+bunx wrangler d1 execute chat-app --local --command "SELECT * FROM chat_messages"
+```
+
+**You should see** the messages you sent listed in the output, each with a
+`role` of either `user` or `assistant`.
+
+## Step 8: Add Streaming — Display Tokens in Real Time
+
+Instead of waiting for the entire reply before displaying it, you can stream tokens as
+they arrive using `agent.stream()`. Update the server function to return a
+streaming response, then update the page to consume the event stream:
+
+```ts title="src/server/chatStream.ts"
+import { createServerFn } from '@roost/start';
+import { ChatAssistant } from '../agents/ChatAssistant';
+import { ChatMessage } from '../models/ChatMessage';
+
+export const streamMessage = createServerFn({
+  method: 'POST',
+}).handler(async ({ data }: { data: { content: string } }): Promise<ReadableStream<Uint8Array>> => {
+  await ChatMessage.create({ role: 'user', content: data.content });
+
+  const assistant = new ChatAssistant();
+  const stream = await assistant.stream(data.content);
+
+  // Fire-and-forget: save the assistant reply after streaming completes
+  const [streamForClient, streamForSave] = stream.tee();
+
+  (async () => {
+    const reader = streamForSave.getReader();
+    const decoder = new TextDecoder();
+    let fullText = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      const chunk = decoder.decode(value, { stream: true });
+      for (const line of chunk.split('\n')) {
+        if (!line.startsWith('data: ')) continue;
+        try {
+          const event = JSON.parse(line.slice(6));
+          if (event.type === 'text-delta') fullText += event.text ?? '';
+        } catch { /* ignore parse errors on partial lines */ }
+      }
+    }
+
+    await ChatMessage.create({ role: 'assistant', content: fullText });
+  })();
+
+  return streamForClient;
+});
+```
+
+Update the chat page to consume the SSE stream and append tokens as they arrive:
+
+```tsx title="src/routes/chat.tsx (updated handleSubmit)"
+async function handleSubmit(e: React.FormEvent) {
+  e.preventDefault();
+  if (!input.trim() || loading) return;
+
+  const userMessage: Message = { role: 'user', content: input };
+  setMessages((prev) => [...prev, userMessage]);
+  setInput('');
+  setLoading(true);
+
+  // Add an empty assistant message that we'll fill in as tokens arrive
+  setMessages((prev) => [...prev, { role: 'assistant', content: '' }]);
+
+  const stream = await streamMessage({ data: { content: input } });
+  const reader = stream.getReader();
+  const decoder = new TextDecoder();
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    const chunk = decoder.decode(value, { stream: true });
+    for (const line of chunk.split('\n')) {
+      if (!line.startsWith('data: ')) continue;
+      try {
+        const event = JSON.parse(line.slice(6));
+        if (event.type === 'text-delta') {
+          setMessages((prev) => {
+            const updated = [...prev];
+            updated[updated.length - 1] = {
+              role: 'assistant',
+              content: updated[updated.length - 1].content + (event.text ?? ''),
+            };
+            return updated;
+          });
+        }
+      } catch { /* ignore parse errors on partial lines */ }
+    }
+  }
+
+  setLoading(false);
+}
+```
+
+<Callout type="tip">
+  <p>
+    <code>agent.stream()</code> currently buffers the full response and emits it as a single{' '}
+    <code>text-delta</code> event. True token-by-token streaming depends on provider support
+    and will be transparent to your code when it becomes available — the event format stays
+    the same.
+  </p>
+</Callout>
+
+**You should see** the assistant's reply appear incrementally rather than all
+at once. The typing indicator disappears only after the stream closes.
+
+## What You Built
+
+You now have a fully working AI chat application on Cloudflare Workers that:
+
+- Accepts user messages via a React form
+- Persists every message to a D1 database using `@roost/orm`
+- Runs an AI agent backed by `@cf/meta/llama-3.1-70b-instruct` on Cloudflare Workers AI — no API keys required
+- Exposes conversation history to the agent through a typed `SummarizeTool`
+- Streams tokens to the browser in real time
+
+## Next Steps
+
+- [@roost/ai reference](/docs/reference/ai) — full API documentation for `Agent`, `Tool`, decorators, and the provider interface
+- [AI guides](/docs/guides/ai) — practical patterns: structured output, multi-agent pipelines, testing agents with fakes
+- [AI concepts](/docs/concepts/ai) — how the agent loop, tool resolution, and Cloudflare Workers AI provider work under the hood
