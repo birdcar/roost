@@ -1,0 +1,38 @@
+{
+  "name": "@roost/testing",
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@roost/core": "workspace:*"
+  },
+  "peerDependencies": {
+    "@roost/ai": "workspace:*",
+    "@roost/billing": "workspace:*",
+    "@roost/queue": "workspace:*",
+    "@roost/orm": "workspace:*"
+  },
+  "peerDependenciesMeta": {
+    "@roost/ai": { "optional": true },
+    "@roost/billing": { "optional": true },
+    "@roost/queue": { "optional": true },
+    "@roost/orm": { "optional": true }
+  },
+  "devDependencies": {
+    "@roost/ai": "workspace:*",
+    "@roost/billing": "workspace:*",
+    "@roost/queue": "workspace:*",
+    "@roost/orm": "workspace:*",
+    "bun-types": "catalog:",
+    "typescript": "catalog:"
+  }
+}
