@@ -1,10 +1,8 @@
-
 ## How to register a service provider
 
 Service providers are the correct place to register container bindings and run boot logic.
 
 ```ts src/providers/CacheServiceProvider.ts
-import { ServiceProvider } from '@roost/core';
 
 export class CacheServiceProvider extends ServiceProvider {
   async register(): Promise<void> {
@@ -21,22 +19,19 @@ export class CacheServiceProvider extends ServiceProvider {
 ```
 
 ```ts src/app.ts
-import { Application } from '@roost/core';
-import { CacheServiceProvider } from './providers/CacheServiceProvider';
 
 const app = Application.create(env, config);
 app.register(CacheServiceProvider);
 await app.boot();
 ```
 
-The `register()` method runs before all `boot()` calls, so you can safely resolve services registered by other providers inside `boot()`. See [@roost/core reference](/docs/packages/core) for full ServiceProvider API.
+The `register()` method runs before all `boot()` calls, so you can safely resolve services registered by other providers inside `boot()`. See [@roost/core reference](/docs/packages/core.md) for full ServiceProvider API.
 
 ## How to configure dependency injection bindings
 
 Use `singleton` for services that should be shared across the request, and `bind` for services that need a fresh instance each time.
 
 ```ts
-import { RoostContainer } from '@roost/core';
 
 const container = new RoostContainer();
 
@@ -66,7 +61,6 @@ const requestContainer = appContainer.scoped();
 Middleware is a function or class that wraps the request/response cycle. Return early to short-circuit.
 
 ```ts src/middleware/RateLimitMiddleware.ts
-import type { Handler } from '@roost/core';
 
 export async function rateLimitMiddleware(request: Request, next: Handler): Promise<Response> {
   const ip = request.headers.get('cf-connecting-ip') ?? 'unknown';
@@ -95,14 +89,13 @@ app.useMiddleware(rateLimitMiddleware);
 app.useMiddleware(rateLimit(100));
 ```
 
-For class-based middleware, extend the framework's middleware class and use `withContainer` to get DI access. See [Pipeline reference](/docs/packages/core) for the class middleware interface.
+For class-based middleware, extend the framework's middleware class and use `withContainer` to get DI access. See [Pipeline reference](/docs/packages/core.md) for the class middleware interface.
 
 ## How to access configuration values
 
 Use `ConfigManager` with dot-notation keys. Pass a default to avoid throwing on missing keys.
 
 ```ts
-import { ConfigManager } from '@roost/core';
 
 const config = new ConfigManager({
   app: { name: 'My App', debug: false },
@@ -131,7 +124,6 @@ In a service provider, resolve `ConfigManager` from the container rather than co
 Use `Pipeline` to compose multiple middleware functions in order. Each middleware calls `next` to pass control forward.
 
 ```ts
-import { Pipeline } from '@roost/core';
 
 const pipeline = new Pipeline()
   .use(loggerMiddleware)

@@ -1,13 +1,8 @@
-
 ## How to create an MCP server
 
 Extend `McpServer`, declare the classes to expose, and set server metadata. The server handles JSON-RPC over HTTP automatically.
 
 ```ts src/mcp/AppServer.ts
-import { McpServer } from '@roost/mcp';
-import { SearchTool } from './tools/SearchTool';
-import { DocsResource } from './resources/DocsResource';
-import { SummarizePrompt } from './prompts/SummarizePrompt';
 
 export class AppServer extends McpServer {
   tools = [SearchTool];
@@ -28,17 +23,13 @@ export class AppServer extends McpServer {
 }
 ```
 
-Mount the server on a route to accept MCP connections from clients like Claude or Cursor. See [@roost/mcp reference](/docs/packages/mcp) for mounting details.
+Mount the server on a route to accept MCP connections from clients like Claude or Cursor. See [@roost/mcp reference](/docs/packages/mcp.md) for mounting details.
 
 ## How to define MCP tools
 
 Extend `McpTool` and implement `description()`, `schema()`, and `handle()`. Return an `McpResponse`.
 
 ```ts src/mcp/tools/CreatePostTool.ts
-import { McpTool, McpResponse } from '@roost/mcp';
-import { schema } from '@roost/schema';
-import type { McpRequest } from '@roost/mcp';
-import { Post } from '../../models/Post';
 
 export class CreatePostTool extends McpTool {
   description(): string {
@@ -78,8 +69,6 @@ shouldRegister(): boolean {
 Extend `McpResource` to provide documents or data the AI can read. URIs are unique identifiers for each resource.
 
 ```ts src/mcp/resources/SchemaResource.ts
-import { McpResource, McpResponse } from '@roost/mcp';
-import type { McpRequest } from '@roost/mcp';
 
 export class SchemaResource extends McpResource {
   uri(): string {
@@ -115,9 +104,6 @@ Use protocol-style URIs (`docs://`, `db://`, `config://`) to namespace related r
 Extend `McpPrompt` to create reusable prompt templates the AI client can invoke by name.
 
 ```ts src/mcp/prompts/ReviewCodePrompt.ts
-import { McpPrompt, McpResponse } from '@roost/mcp';
-import { schema } from '@roost/schema';
-import type { McpRequest } from '@roost/mcp';
 
 export class ReviewCodePrompt extends McpPrompt {
   description(): string {

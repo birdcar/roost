@@ -1,4 +1,3 @@
-
 ## How to handle errors in routes
 
 Wrap route handlers in a try/catch and return a structured error response. For consistent error shapes, use a shared error formatter.
@@ -10,8 +9,6 @@ export function errorResponse(message: string, status: number, details?: unknown
 ```
 
 ```ts src/routes/api/users/$id.ts
-import { ModelNotFoundError } from '@roost/orm';
-import { errorResponse } from '../../lib/errors';
 
 export async function GET(request: Request, { params }) {
   try {
@@ -30,7 +27,6 @@ export async function GET(request: Request, { params }) {
 In TanStack Start route loaders, throw a `redirect()` or use the error boundary pattern. Thrown non-redirect errors propagate to the nearest `errorComponent`.
 
 ```tsx src/routes/dashboard.tsx
-import { createFileRoute, redirect } from '@tanstack/react-router';
 
 export const Route = createFileRoute('/dashboard')({
   loader: async ({ context }) => {
@@ -50,7 +46,6 @@ export const Route = createFileRoute('/dashboard')({
 Throw from `handle()` to trigger the retry flow. Implement `onFailure()` for cleanup after all retries are exhausted.
 
 ```ts src/jobs/ProcessPayment.ts
-import { Job, MaxRetries, Backoff } from '@roost/queue';
 
 @MaxRetries(3)
 @Backoff('exponential')
@@ -156,8 +151,6 @@ export class ForbiddenError extends HttpError {
 ```
 
 ```ts src/middleware/error-handler.ts
-import { HttpError, ValidationError } from '../lib/errors';
-import type { Handler } from '@roost/core';
 
 export async function errorHandlerMiddleware(
   request: Request,
@@ -187,9 +180,8 @@ export async function errorHandlerMiddleware(
 ```
 
 ```ts src/app.ts
-import { errorHandlerMiddleware } from './middleware/error-handler';
 
 app.useMiddleware(errorHandlerMiddleware); // Register first — runs outermost
 ```
 
-Related: [@roost/core reference](/docs/packages/core) for middleware pipeline details, [@roost/queue reference](/docs/packages/queue) for job retry configuration.
+Related: [@roost/core reference](/docs/packages/core.md) for middleware pipeline details, [@roost/queue reference](/docs/packages/queue.md) for job retry configuration.

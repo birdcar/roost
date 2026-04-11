@@ -1,6 +1,6 @@
 # Roost
 
-> Roost is a Laravel-inspired full-stack framework for Cloudflare Workers. Convention-over-configuration for the edge.
+> Roost is a Laravel-inspired full-stack framework for building applications on Cloudflare Workers. Convention-over-configuration for the edge — models, routing, auth, queues, AI agents, and more, all wired together out of the box.
 
 @doc-version: 0.1.0
 
@@ -50,7 +50,7 @@
 - [@roost/schema](https://roost.dev/docs/reference/schema.md): Fluent JSON Schema builder with zero runtime dependencies. Used by @roost/ai and @roost/mcp to define tool and prompt parameters.
 - [@roost/mcp](https://roost.dev/docs/reference/mcp.md): Model Context Protocol server implementation. Expose application capabilities as tools, resources, and prompts to MCP-compatible AI clients.
 
-## Concepts
+## Optional
 
 - [@roost/queue](https://roost.dev/docs/concepts/queue.md): How Cloudflare Queues work, the job lifecycle from dispatch to completion, retry strategies, and why queues beat cron for deferred work.
 - [Service Container](https://roost.dev/docs/concepts/service-container.md): How Roost manages dependencies, why dependency injection matters at the edge, and how service providers wire everything together.

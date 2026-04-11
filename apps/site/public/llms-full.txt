@@ -2,23 +2,22 @@
 
 > Learning-oriented lessons that guide you through building real features with Roost.
 
-
 Tutorials take you step-by-step through building something real. Every step is designed to
 succeed — follow along and learn by doing.
 
 ## Start Here
 
-- [**Quick Start**](/docs/getting-started) — Install the CLI, scaffold a project, add a route, create a model, and deploy. _~15 minutes._
+- [**Quick Start**](/docs/getting-started.md) — Install the CLI, scaffold a project, add a route, create a model, and deploy. _~15 minutes._
 
 ## Build Something Real
 
-- [**Build an AI Chat App**](/docs/tutorials/build-a-chat-app) — Create a chat interface powered by Cloudflare Workers AI with conversation history stored in D1. _~30 minutes. Uses @roost/ai, @roost/orm, @roost/start, @roost/schema._
-- [**Build a REST API**](/docs/tutorials/build-a-task-api) — Create a CRUD API with database models, validation, and tests. _~35 minutes. Uses @roost/orm, @roost/core, @roost/testing, @roost/start._
-- [**Build a SaaS App**](/docs/tutorials/build-a-saas-app) — Add authentication, subscription billing, and background jobs. _~45 minutes. Uses @roost/auth, @roost/billing, @roost/orm, @roost/start, @roost/queue._
+- [**Build an AI Chat App**](/docs/tutorials/build-a-chat-app.md) — Create a chat interface powered by Cloudflare Workers AI with conversation history stored in D1. _~30 minutes. Uses @roost/ai, @roost/orm, @roost/start, @roost/schema._
+- [**Build a REST API**](/docs/tutorials/build-a-task-api.md) — Create a CRUD API with database models, validation, and tests. _~35 minutes. Uses @roost/orm, @roost/core, @roost/testing, @roost/start._
+- [**Build a SaaS App**](/docs/tutorials/build-a-saas-app.md) — Add authentication, subscription billing, and background jobs. _~45 minutes. Uses @roost/auth, @roost/billing, @roost/orm, @roost/start, @roost/queue._
 
 ## Deploy
 
-- [**Deploy to Cloudflare**](/docs/tutorials/deploy-to-cloudflare) — Take your app from local development to production on Cloudflare Workers. _~20 minutes. Uses @roost/cloudflare, @roost/start, @roost/cli._
+- [**Deploy to Cloudflare**](/docs/tutorials/deploy-to-cloudflare.md) — Take your app from local development to production on Cloudflare Workers. _~20 minutes. Uses @roost/cloudflare, @roost/start, @roost/cli._
 
 
 ---
@@ -26,9 +25,6 @@ succeed — follow along and learn by doing.
 # Deploy to Cloudflare
 
 > Take your Roost application from local development to production on Cloudflare Workers.
-
-
-import { Callout } from '../../../src/components/callout'
 
 <Callout type="note">
   <p><strong>What you'll learn</strong></p>
@@ -192,10 +188,10 @@ within seconds.
 
 ## Next steps
 
-- [@roost/cloudflare](/docs/packages/cloudflare) — D1, KV, AI bindings in depth
-- [@roost/auth](/docs/packages/auth) — configure production WorkOS callbacks
-- [@roost/billing](/docs/packages/billing) — connect Stripe webhooks for production
-- [@roost/queue](/docs/packages/queue) — background jobs with Cloudflare Queues
+- [@roost/cloudflare](/docs/packages/cloudflare.md) — D1, KV, AI bindings in depth
+- [@roost/auth](/docs/packages/auth.md) — configure production WorkOS callbacks
+- [@roost/billing](/docs/packages/billing.md) — connect Stripe webhooks for production
+- [@roost/queue](/docs/packages/queue.md) — background jobs with Cloudflare Queues
 
 
 ---
@@ -203,9 +199,6 @@ within seconds.
 # Build a REST API
 
 > Create a CRUD API with database models, validation, and tests.
-
-
-import { Callout } from '../../../src/components/callout'
 
 <Callout type="note">
   <p><strong>What you'll learn</strong></p>
@@ -259,8 +252,6 @@ This creates `src/models/task.ts` with a stub. Open it and replace the placehold
 columns with the schema for our task:
 
 ```ts title="src/models/task.ts"
-import { Model } from '@roost/orm';
-import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
 
 export const tasks = sqliteTable('tasks', {
   id:          integer('id').primaryKey({ autoIncrement: true }),
@@ -300,8 +291,6 @@ roost migrate
 Create the index route. It fetches all tasks from the database and returns them as JSON.
 
 ```ts title="src/routes/api/tasks/index.ts"
-import { createAPIFileRoute } from '@tanstack/start/api';
-import { Task } from '../../../models/task';
 
 export const APIRoute = createAPIFileRoute('/api/tasks')({
   GET: async () => {
@@ -325,9 +314,6 @@ Add the `POST` handler to the same route file. We parse the request
 body, validate the required fields, and persist the new task.
 
 ```ts title="src/routes/api/tasks/index.ts"
-import { createAPIFileRoute } from '@tanstack/start/api';
-import { z } from 'zod';
-import { Task } from '../../../models/task';
 
 const createTaskSchema = z.object({
   title:       z.string().min(1),
@@ -375,9 +361,6 @@ Create a separate file for the parameterised route. TanStack Start uses
 filename brackets for path parameters.
 
 ```ts title="src/routes/api/tasks/$id.ts"
-import { createAPIFileRoute } from '@tanstack/start/api';
-import { z } from 'zod';
-import { Task } from '../../../models/task';
 
 const updateTaskSchema = z.object({
   title:       z.string().min(1).optional(),
@@ -425,9 +408,6 @@ export const APIRoute = createAPIFileRoute('/api/tasks/$id')({
 Add a `DELETE` handler to the same `$id.ts` file.
 
 ```ts title="src/routes/api/tasks/$id.ts (updated)"
-import { createAPIFileRoute } from '@tanstack/start/api';
-import { z } from 'zod';
-import { Task } from '../../../models/task';
 
 const updateTaskSchema = z.object({
   title:       z.string().min(1).optional(),
@@ -514,8 +494,6 @@ Create a test file that covers every endpoint. `setupTestSuite`
 boots the application once per suite and gives you a pre-configured `TestClient`.
 
 ```ts title="tests/tasks.test.ts"
-import { describe, it, beforeAll, afterAll } from 'bun:test';
-import { setupTestSuite } from '@roost/testing';
 
 const suite = setupTestSuite();
 
@@ -636,8 +614,6 @@ roost migrate
 Now declare the relationship on the `Task` model using `BelongsToRelation`, and add the inverse `HasManyRelation` to the `User` model:
 
 ```ts title="src/models/task.ts (updated)"
-import { Model, BelongsToRelation } from '@roost/orm';
-import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
 
 export const tasks = sqliteTable('tasks', {
   id:          integer('id').primaryKey({ autoIncrement: true }),
@@ -665,9 +641,6 @@ export class Task extends Model {
 ```
 
 ```ts title="src/models/user.ts (updated)"
-import { Model, HasManyRelation } from '@roost/orm';
-import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
-import { Task } from './task';
 
 export const users = sqliteTable('users', {
   id:         integer('id').primaryKey({ autoIncrement: true }),
@@ -707,9 +680,6 @@ requests require authentication — unauthenticated requests receive a
 `302` redirect to `/auth/login`.
 
 ```ts title="src/app.ts"
-import { Application } from '@roost/core';
-import { AuthServiceProvider, AuthMiddleware } from '@roost/auth';
-import { OrmServiceProvider } from '@roost/orm';
 
 export function createApp(env: Record<string, unknown>) {
   return Application.create(env)
@@ -722,9 +692,6 @@ export function createApp(env: Record<string, unknown>) {
 The route file itself needs no middleware import:
 
 ```ts title="src/routes/api/tasks/index.ts (with auth applied globally)"
-import { createAPIFileRoute } from '@tanstack/start/api';
-import { z } from 'zod';
-import { Task } from '../../../models/task';
 
 const createTaskSchema = z.object({
   title:       z.string().min(1),
@@ -801,9 +768,9 @@ You now have a fully functional, tested REST API with:
 
 ## Next steps
 
-- [@roost/orm reference](/docs/reference/orm) — full API documentation for `Model`, `QueryBuilder`, and all relation types
-- [ORM guide](/docs/guides/orm) — pagination, soft deletes, model hooks, and eager loading
-- [ORM concepts](/docs/concepts/orm) — how the ORM maps to Drizzle and D1 under the hood
+- [@roost/orm reference](/docs/reference/orm.md) — full API documentation for `Model`, `QueryBuilder`, and all relation types
+- [ORM guide](/docs/guides/orm.md) — pagination, soft deletes, model hooks, and eager loading
+- [ORM concepts](/docs/concepts/orm.md) — how the ORM maps to Drizzle and D1 under the hood
 
 
 ---
@@ -811,9 +778,6 @@ You now have a fully functional, tested REST API with:
 # Build a SaaS App
 
 > Add authentication, subscription billing, and background jobs to a Roost application.
-
-
-import { Callout } from '../../../src/components/callout'
 
 <Callout type="note">
   <p><strong>What you'll learn</strong></p>
@@ -900,8 +864,6 @@ placeholder columns with the schema your SaaS app needs. Each workspace belongs
 to a WorkOS organization:
 
 ```ts title="src/models/workspace.ts"
-import { Model } from '@roost/orm';
-import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
 
 export const workspaces = sqliteTable('workspaces', {
   id:                  integer('id').primaryKey({ autoIncrement: true }),
@@ -935,9 +897,6 @@ Register it globally in your app entry point so it runs on every request before
 route handlers execute:
 
 ```ts title="src/app.ts"
-import { Application } from '@roost/core';
-import { AuthServiceProvider, AuthMiddleware } from '@roost/auth';
-import { OrmServiceProvider } from '@roost/orm';
 
 export function createApp(env: Record<string, unknown>) {
   return Application.create(env)
@@ -951,7 +910,6 @@ Then create the dashboard route — it renders only for authenticated users beca
 `AuthMiddleware` redirects to `/auth/login` before the handler runs:
 
 ```tsx title="src/routes/dashboard.tsx"
-import { createFileRoute } from '@tanstack/react-router';
 
 export const Route = createFileRoute('/dashboard')({
   component: DashboardPage,
@@ -977,10 +935,6 @@ when the current user's workspace does not have an active subscription. Add it
 after `AuthMiddleware` in the pipeline so auth is checked first:
 
 ```ts title="src/app.ts (updated)"
-import { Application } from '@roost/core';
-import { AuthServiceProvider, AuthMiddleware } from '@roost/auth';
-import { BillingServiceProvider, SubscribedMiddleware } from '@roost/billing';
-import { OrmServiceProvider } from '@roost/orm';
 
 export function createApp(env: Record<string, unknown>) {
   return Application.create(env)
@@ -995,7 +949,6 @@ export function createApp(env: Record<string, unknown>) {
 Create the premium route — it renders only for subscribed users:
 
 ```tsx title="src/routes/features/premium.tsx"
-import { createFileRoute } from '@tanstack/react-router';
 
 export const Route = createFileRoute('/features/premium')({
   component: PremiumPage,
@@ -1030,10 +983,6 @@ Now create the checkout route. It uses `StripeProvider.createCheckoutSession`
 to generate a hosted Stripe Checkout URL and redirects the user there.
 
 ```tsx title="src/routes/billing/checkout.tsx"
-import { createFileRoute, redirect } from '@tanstack/react-router';
-import { createServerFn } from '@tanstack/react-start';
-import { AuthMiddleware } from '@roost/auth';
-import { StripeProvider } from '@roost/billing';
 
 const startCheckout = createServerFn({ method: 'GET' }).handler(async ({ context }) => {
   const env = context.env as { STRIPE_SECRET_KEY: string; STRIPE_WEBHOOK_SECRET: string; STRIPE_PRICE_ID: string };
@@ -1072,10 +1021,6 @@ event to your webhook endpoint. `verifyStripeWebhook` validates the
 signature before you process the event.
 
 ```ts title="src/routes/billing/webhook.ts"
-import { createServerFileRoute } from '@tanstack/react-start/server';
-import { verifyStripeWebhook, WebhookVerificationError } from '@roost/billing';
-import { Workspace } from '../../models/workspace';
-import { SendWelcomeEmail } from '../../jobs/send-welcome-email';
 
 export const ServerRoute = createServerFileRoute('/billing/webhook').methods({
   POST: async ({ request, context }) => {
@@ -1139,7 +1084,6 @@ roost make:job SendWelcomeEmail
 Fill in the generated file:
 
 ```ts title="src/jobs/send-welcome-email.ts"
-import { Job, Queue } from '@roost/queue';
 
 interface Payload {
   organizationId: string;
@@ -1229,9 +1173,9 @@ In this tutorial you:
 
 ## Next Steps
 
-- [@roost/auth reference](/docs/reference/auth) — full API for `SessionManager`, `OrgResolver`, and role-based middleware
-- [@roost/billing guide](/docs/guides/billing) — subscription swaps, usage-based billing, the customer portal, and webhook event catalogue
-- [Auth concepts](/docs/concepts/auth) — how WorkOS AuthKit, the session layer, and organization membership fit together in Roost
+- [@roost/auth reference](/docs/reference/auth.md) — full API for `SessionManager`, `OrgResolver`, and role-based middleware
+- [@roost/billing guide](/docs/guides/billing.md) — subscription swaps, usage-based billing, the customer portal, and webhook event catalogue
+- [Auth concepts](/docs/concepts/auth.md) — how WorkOS AuthKit, the session layer, and organization membership fit together in Roost
 
 
 ---
@@ -1239,9 +1183,6 @@ In this tutorial you:
 # Build an AI Chat App
 
 > Create a chat interface powered by Cloudflare Workers AI with conversation history.
-
-
-import { Callout } from '../../../src/components/callout'
 
 <Callout type="note">
   <p><strong>What you'll learn</strong></p>
@@ -1299,8 +1240,6 @@ This creates `src/models/chat-message.ts` with a stub. Open it and replace the
 placeholder columns with the schema your chat app needs:
 
 ```ts title="src/models/chat-message.ts"
-import { Model } from '@roost/orm';
-import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
 
 export const chatMessages = sqliteTable('chat_messages', {
   id:         integer('id').primaryKey({ autoIncrement: true }),
@@ -1334,10 +1273,6 @@ roost make:agent ChatAssistant
 ```
 
 ```ts title="src/agents/chat-assistant.ts"
-import { Agent, Model } from '@roost/ai';
-import type { HasTools } from '@roost/ai';
-import type { Tool } from '@roost/ai';
-import { SummarizeTool } from './tools/summarize-tool';
 
 @Model('@cf/meta/llama-3.1-70b-instruct')
 export class ChatAssistant extends Agent implements HasTools {
@@ -1379,9 +1314,6 @@ roost make:tool SummarizeTool
 ```
 
 ```ts title="src/agents/tools/summarize-tool.ts"
-import { type Tool, type ToolRequest } from '@roost/ai';
-import { schema } from '@roost/schema';
-import { ChatMessage } from '../../models/chat-message';
 
 export class SummarizeTool implements Tool {
   description(): string {
@@ -1422,9 +1354,6 @@ interface, which requires `description()`, `schema()`, and `handle()`.
 Create the page that displays the chat history and a text input for sending new messages:
 
 ```tsx title="src/routes/chat.tsx"
-import { createFileRoute } from '@tanstack/react-router';
-import { useState } from 'react';
-import { sendMessage } from '../server/chat';
 
 export const Route = createFileRoute('/chat')({
   component: ChatPage,
@@ -1512,9 +1441,6 @@ binding, and all other bindings. Create a server function that saves the user's 
 calls the agent, and saves the assistant's reply:
 
 ```ts title="src/server/chat.ts"
-import { createServerFn } from '@tanstack/react-start';
-import { ChatAssistant } from '../agents/chat-assistant';
-import { ChatMessage } from '../models/chat-message';
 
 export const sendMessage = createServerFn({
   method: 'POST',
@@ -1575,9 +1501,6 @@ they arrive using `agent.stream()`. Update the server function to return a
 streaming response, then update the page to consume the event stream:
 
 ```ts title="src/server/chatStream.ts"
-import { createServerFn } from '@tanstack/react-start';
-import { ChatAssistant } from '../agents/chat-assistant';
-import { ChatMessage } from '../models/chat-message';
 
 export const streamMessage = createServerFn({
   method: 'POST',
@@ -1686,9 +1609,9 @@ You now have a fully working AI chat application on Cloudflare Workers that:
 
 ## Next Steps
 
-- [@roost/ai reference](/docs/reference/ai) — full API documentation for `Agent`, `Tool`, decorators, and the provider interface
-- [AI guides](/docs/guides/ai) — practical patterns: structured output, multi-agent pipelines, testing agents with fakes
-- [AI concepts](/docs/concepts/ai) — how the agent loop, tool resolution, and Cloudflare Workers AI provider work under the hood
+- [@roost/ai reference](/docs/reference/ai.md) — full API documentation for `Agent`, `Tool`, decorators, and the provider interface
+- [AI guides](/docs/guides/ai.md) — practical patterns: structured output, multi-agent pipelines, testing agents with fakes
+- [AI concepts](/docs/concepts/ai.md) — how the agent loop, tool resolution, and Cloudflare Workers AI provider work under the hood
 
 
 ---
@@ -1696,7 +1619,6 @@ You now have a fully working AI chat application on Cloudflare Workers that:
 # Roost Documentation
 
 > Auth, ORM, AI agents, job queues, billing, and more — on Cloudflare Workers with zero cold-start overhead.
-
 
 <div className="pillar-grid">
   <a href="/docs/tutorials" className="pillar-card">
@@ -1726,7 +1648,7 @@ You now have a fully working AI chat application on Cloudflare Workers that:
 
 ## New to Roost?
 
-Start with the [Quick Start](/docs/getting-started) — install the CLI,
+Start with the [Quick Start](/docs/getting-started.md) — install the CLI,
 scaffold a project, and deploy your first app in minutes.
 
 
@@ -1735,9 +1657,6 @@ scaffold a project, and deploy your first app in minutes.
 # Quick Start
 
 > Install the CLI, create a project, and deploy your first Roost application.
-
-
-import { Callout } from '../../src/components/callout'
 
 <Callout type="tip">
   <p><strong>What you'll do:</strong> Install the Roost CLI, scaffold a project, add a route, create a database model, add authentication, and deploy — all in about 15 minutes.</p>
@@ -1785,7 +1704,6 @@ You should see output indicating the dev server is running. Open `http://localho
 Create a new file at `src/routes/hello.tsx`:
 
 ```src/routes/hello.tsx
-import { createFileRoute } from '@tanstack/react-router';
 
 export const Route = createFileRoute('/hello')({
   component: HelloPage,
@@ -1814,8 +1732,6 @@ roost make:model Post
 This creates `src/models/post.ts`. Edit it to define your schema columns using Drizzle's SQLite core helpers:
 
 ```src/models/post.ts
-import { Model } from '@roost/orm';
-import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
 
 export const posts = sqliteTable('posts', {
   id:         integer('id').primaryKey({ autoIncrement: true }),
@@ -1844,9 +1760,6 @@ You should see output confirming the `posts` table was created in your local D1 
 Update your hello route to read from the database:
 
 ```src/routes/hello.tsx
-import { createFileRoute } from '@tanstack/react-router';
-import { createServerFn } from '@tanstack/react-start';
-import { Post } from '../models/post';
 
 const getPosts = createServerFn({ method: 'GET' }).handler(async () => {
   return Post.where('id', '>', 0).orderBy('created_at', 'desc').all();
@@ -1901,7 +1814,7 @@ Auth routes are available automatically once credentials are configured:
 /auth/logout     # Clear session
 ```
 
-Visit `http://localhost:3000/auth/login`. You should be redirected to the WorkOS login page. After authenticating, you'll be redirected back to your app. To protect a route, add `AuthMiddleware` — see the [auth guides](/docs/guides/auth) for details.
+Visit `http://localhost:3000/auth/login`. You should be redirected to the WorkOS login page. After authenticating, you'll be redirected back to your app. To protect a route, add `AuthMiddleware` — see the [auth guides](/docs/guides/auth.md) for details.
 
 ## Step 8: Deploy
 
@@ -1919,11 +1832,11 @@ Cloudflare Workers. That's a full-stack app running at the edge.
 
 ## Next Steps
 
-- [Build a REST API](/docs/tutorials/build-a-task-api) — CRUD endpoints, validation, and testing
-- [Build an AI Chat App](/docs/tutorials/build-a-chat-app) — agents, tools, and streaming on Workers AI
-- [Build a SaaS App](/docs/tutorials/build-a-saas-app) — auth, billing, and background jobs
-- [@roost/core Reference](/docs/reference/core) — service container, config, and middleware
-- [Architecture Concepts](/docs/concepts/architecture) — understand how Roost works under the hood
+- [Build a REST API](/docs/tutorials/build-a-task-api.md) — CRUD endpoints, validation, and testing
+- [Build an AI Chat App](/docs/tutorials/build-a-chat-app.md) — agents, tools, and streaming on Workers AI
+- [Build a SaaS App](/docs/tutorials/build-a-saas-app.md) — auth, billing, and background jobs
+- [@roost/core Reference](/docs/reference/core.md) — service container, config, and middleware
+- [Architecture Concepts](/docs/concepts/architecture.md) — understand how Roost works under the hood
 
 
 ---
@@ -1932,13 +1845,11 @@ Cloudflare Workers. That's a full-stack app running at the edge.
 
 > Task-oriented instructions for defining jobs, dispatching, chaining, batching, and testing.
 
-
 ## How to define a background job
 
 Extend `Job<TPayload>` with a typed payload interface and implement `handle()`.
 
 ```ts src/jobs/SendWelcomeEmail.ts
-import { Job, MaxRetries, Backoff } from '@roost/queue';
 
 interface SendWelcomeEmailPayload {
   userId: string;
@@ -1977,7 +1888,6 @@ Use `this.attempt` to access the current retry count inside `handle()`. Throw an
 Call the static `dispatch` method. For delayed execution, use `dispatchAfter` with a delay in seconds.
 
 ```ts
-import { SendWelcomeEmail } from '../jobs/SendWelcomeEmail';
 
 // Immediate
 await SendWelcomeEmail.dispatch({
@@ -1999,10 +1909,6 @@ await SendWelcomeEmail.dispatchAfter(600, {
 Use `Job.chain` for sequential jobs where each step depends on the previous one, and `Job.batch` for parallel independent work.
 
 ```ts
-import { Job } from '@roost/queue';
-import { ProcessOrder } from '../jobs/ProcessOrder';
-import { SendReceipt } from '../jobs/SendReceipt';
-import { UpdateInventory } from '../jobs/UpdateInventory';
 
 // Chain: runs in order, stops if any job fails
 await Job.chain([
@@ -2013,7 +1919,6 @@ await Job.chain([
 ```
 
 ```ts
-import { SendWelcomeEmail } from '../jobs/SendWelcomeEmail';
 
 // Batch: runs in parallel, returns a batch ID
 const batchId = await Job.batch([
@@ -2028,7 +1933,6 @@ const batchId = await Job.batch([
 Configure retry behavior with decorators. Implement `onFailure()` for cleanup or alerting after all retries are exhausted.
 
 ```ts
-import { Job, MaxRetries, Backoff, RetryAfter } from '@roost/queue';
 
 @MaxRetries(5)
 @Backoff('exponential')   // Delays: 10s, 20s, 40s, 80s, 160s
@@ -2068,8 +1972,6 @@ Use `@Backoff('fixed')` with `@RetryAfter(30)` when retrying after a consistent 
 Call `Job.fake()` to intercept dispatches without sending to the queue. Assert what was dispatched, then restore.
 
 ```ts tests/jobs/SendWelcomeEmail.test.ts
-import { describe, it, expect } from 'bun:test';
-import { SendWelcomeEmail } from '../../src/jobs/SendWelcomeEmail';
 
 describe('SendWelcomeEmail', () => {
   it('is dispatched after signup', async () => {
@@ -2113,7 +2015,6 @@ describe('SendWelcomeEmail', () => {
 # @roost/cli Guides
 
 > Task-oriented instructions for scaffolding, code generation, migrations, and deployment.
-
 
 ## How to scaffold a new project
 
@@ -2183,7 +2084,7 @@ roost migrate
 roost migrate:generate
 ```
 
-Migrations run in filename order. The CLI tracks which migrations have run in a `migrations` table in your D1 database. See [the migrations guide](/docs/guides/migrations) for defining columns and indexes.
+Migrations run in filename order. The CLI tracks which migrations have run in a `migrations` table in your D1 database. See [the migrations guide](/docs/guides/migrations.md) for defining columns and indexes.
 
 ## How to deploy your application
 
@@ -2211,7 +2112,7 @@ After first deployment, run migrations against the production D1 database:
 wrangler d1 execute my-app-db --remote --file=database/migrations/0001_create_users.sql
 ```
 
-See [the deployment guide](/docs/guides/deployment) for custom domains, preview deployments, and CI/CD setup.
+See [the deployment guide](/docs/guides/deployment.md) for custom domains, preview deployments, and CI/CD setup.
 
 
 ---
@@ -2219,7 +2120,6 @@ See [the deployment guide](/docs/guides/deployment) for custom domains, preview 
 # @roost/cloudflare Guides
 
 > Task-oriented instructions for Cloudflare bindings: D1, R2, KV, Queues, Workers AI, and Vectorize.
-
 
 ## How to configure Cloudflare bindings in wrangler.jsonc
 
@@ -2258,7 +2158,6 @@ Create D1 databases and KV namespaces via the Cloudflare dashboard or `wrangler`
 Wrap the raw D1 binding with `D1Database` for typed prepared statements and batch operations.
 
 ```ts
-import { D1Database } from '@roost/cloudflare';
 
 const db = new D1Database(env.DB);
 
@@ -2278,14 +2177,13 @@ const results = await db.batch([
 ]);
 ```
 
-For application-level querying, prefer [@roost/orm](/docs/packages/orm) models over raw D1. Use raw D1 for migrations or complex SQL not covered by the query builder.
+For application-level querying, prefer [@roost/orm](/docs/packages/orm.md) models over raw D1. Use raw D1 for migrations or complex SQL not covered by the query builder.
 
 ## How to store and retrieve files with R2
 
 Use `R2Storage` to upload and download objects. Pass a `contentType` in `httpMetadata` so browsers render files correctly.
 
 ```ts
-import { R2Storage } from '@roost/cloudflare';
 
 const storage = new R2Storage(env.FILES);
 
@@ -2319,7 +2217,6 @@ const exists = meta !== null;
 Use `KVStore` for short-lived cache entries. Always set `expirationTtl` to avoid stale data accumulating.
 
 ```ts
-import { KVStore } from '@roost/cloudflare';
 
 const kv = new KVStore(env.CACHE);
 
@@ -2348,10 +2245,9 @@ for (const key of result.keys) {
 
 ## How to send messages to a Queue
 
-Use `QueueSender` for direct queue access, or use [@roost/queue](/docs/packages/queue) jobs for structured background processing.
+Use `QueueSender` for direct queue access, or use [@roost/queue](/docs/packages/queue.md) jobs for structured background processing.
 
 ```ts
-import { QueueSender } from '@roost/cloudflare';
 
 const queue = new QueueSender(env.MY_QUEUE);
 
@@ -2371,7 +2267,6 @@ await queue.sendBatch([
 Use `AIClient` to run inference on Cloudflare's hosted models. No API keys required — the `AI` binding in `wrangler.jsonc` is all you need.
 
 ```ts
-import { AIClient } from '@roost/cloudflare';
 
 const ai = new AIClient(env.AI);
 
@@ -2389,14 +2284,13 @@ const embeddings = await ai.run('@cf/baai/bge-base-en-v1.5', {
 });
 ```
 
-For full agent capabilities with tools and conversation memory, use [@roost/ai](/docs/packages/ai). `AIClient` is the low-level binding wrapper.
+For full agent capabilities with tools and conversation memory, use [@roost/ai](/docs/packages/ai.md). `AIClient` is the low-level binding wrapper.
 
 ## How to configure Vectorize for embeddings
 
 Create a Vectorize index in the Cloudflare dashboard matching the dimensionality of your embedding model, then use `VectorStore` to insert and query.
 
 ```ts
-import { VectorStore, AIClient } from '@roost/cloudflare';
 
 const vectorize = new VectorStore(env.VECTORIZE);
 const ai = new AIClient(env.AI);
@@ -2434,7 +2328,6 @@ The Vectorize index dimension must match your embedding model's output size. `bg
 # Migrations
 
 > Task-oriented instructions for creating, running, and managing database schema changes.
-
 
 ## How to create a migration
 
@@ -2560,7 +2453,7 @@ export default {
 };
 ```
 
-Related: [ORM guides](/docs/guides/orm) for model definitions, [@roost/orm reference](/docs/reference/orm) for the full Model and QueryBuilder API.
+Related: [ORM guides](/docs/guides/orm.md) for model definitions, [@roost/orm reference](/docs/reference/orm.md) for the full Model and QueryBuilder API.
 
 
 ---
@@ -2569,7 +2462,6 @@ Related: [ORM guides](/docs/guides/orm) for model definitions, [@roost/orm refer
 
 > Task-oriented instructions for accomplishing specific goals with Roost.
 
-
 Guides assume you already know the basics. Each one addresses a specific goal — how to
 configure something, how to integrate a feature, how to solve a particular problem.
 
@@ -2577,37 +2469,37 @@ configure something, how to integrate a feature, how to solve a particular probl
 
 Guides that span multiple packages or apply to the full application lifecycle.
 
-- [Migrations — create, run, rollback, and define columns](/docs/guides/migrations)
-- [Deployment — deploy to Cloudflare Workers, custom domains, previews](/docs/guides/deployment)
-- [Environment — .dev.vars, production secrets, per-environment config](/docs/guides/environment)
-- [Error Handling — routes, jobs, logging, custom error responses](/docs/guides/error-handling)
+- [Migrations — create, run, rollback, and define columns](/docs/guides/migrations.md)
+- [Deployment — deploy to Cloudflare Workers, custom domains, previews](/docs/guides/deployment.md)
+- [Environment — .dev.vars, production secrets, per-environment config](/docs/guides/environment.md)
+- [Error Handling — routes, jobs, logging, custom error responses](/docs/guides/error-handling.md)
 
 ## Core
 
 Guides for the foundational packages every Roost app uses.
 
-- [@roost/core — service providers, DI bindings, middleware, config](/docs/guides/core)
-- [@roost/cloudflare — D1, R2, KV, Queues, Workers AI, Vectorize](/docs/guides/cloudflare)
-- [@roost/start — routes, server functions, SSR](/docs/guides/start)
+- [@roost/core — service providers, DI bindings, middleware, config](/docs/guides/core.md)
+- [@roost/cloudflare — D1, R2, KV, Queues, Workers AI, Vectorize](/docs/guides/cloudflare.md)
+- [@roost/start — routes, server functions, SSR](/docs/guides/start.md)
 
 ## Features
 
 Guides for feature packages you add as your application grows.
 
-- [@roost/auth — authentication, roles, multi-tenancy, sessions, CSRF](/docs/guides/auth)
-- [@roost/orm — models, migrations, queries, relationships, factories](/docs/guides/orm)
-- [@roost/ai — agents, tools, streaming, conversation memory](/docs/guides/ai)
-- [@roost/mcp — MCP servers, tools, resources, prompts](/docs/guides/mcp)
-- [@roost/billing — Stripe, subscriptions, webhooks, metered billing](/docs/guides/billing)
-- [@roost/queue — jobs, dispatch, chains, batches, retries](/docs/guides/queue)
+- [@roost/auth — authentication, roles, multi-tenancy, sessions, CSRF](/docs/guides/auth.md)
+- [@roost/orm — models, migrations, queries, relationships, factories](/docs/guides/orm.md)
+- [@roost/ai — agents, tools, streaming, conversation memory](/docs/guides/ai.md)
+- [@roost/mcp — MCP servers, tools, resources, prompts](/docs/guides/mcp.md)
+- [@roost/billing — Stripe, subscriptions, webhooks, metered billing](/docs/guides/billing.md)
+- [@roost/queue — jobs, dispatch, chains, batches, retries](/docs/guides/queue.md)
 
 ## Tooling
 
 Guides for the development and testing tools.
 
-- [@roost/cli — scaffold, generate, migrate, deploy](/docs/guides/cli)
-- [@roost/testing — HTTP tests, assertions, fakes, database isolation](/docs/guides/testing)
-- [@roost/schema — tool input schemas, optional fields, descriptions](/docs/guides/schema)
+- [@roost/cli — scaffold, generate, migrate, deploy](/docs/guides/cli.md)
+- [@roost/testing — HTTP tests, assertions, fakes, database isolation](/docs/guides/testing.md)
+- [@roost/schema — tool input schemas, optional fields, descriptions](/docs/guides/schema.md)
 
 
 ---
@@ -2616,15 +2508,11 @@ Guides for the development and testing tools.
 
 > Task-oriented instructions for authentication, authorization, sessions, and multi-tenancy.
 
-
 ## How to protect routes with authentication
 
 Add `AuthMiddleware` globally to require authentication on every route, or scope it to specific routes via a pipeline.
 
 ```ts src/app.ts
-import { Application } from '@roost/core';
-import { AuthMiddleware } from '@roost/auth';
-import { AuthServiceProvider } from '@roost/auth';
 
 const app = Application.create(env, {
   auth: { redirectUrl: 'https://myapp.com/auth/callback' },
@@ -2644,8 +2532,6 @@ Unauthenticated requests are redirected to `/auth/login` automatically. Pass `re
 In TanStack Start, enforce authentication in route `beforeLoad` hooks for page routes:
 
 ```tsx src/routes/dashboard.tsx
-import { createFileRoute, redirect } from '@tanstack/react-router';
-import { getCurrentUser } from '../functions/auth';
 
 export const Route = createFileRoute('/dashboard')({
   beforeLoad: async () => {
@@ -2661,7 +2547,6 @@ export const Route = createFileRoute('/dashboard')({
 Use `RoleMiddleware` to gate access by organization role. Pass one or more allowed roles as middleware arguments.
 
 ```ts
-import { RoleMiddleware } from '@roost/auth';
 
 // Only 'admin' role can access
 app.useMiddleware(RoleMiddleware, 'admin');
@@ -2689,7 +2574,6 @@ if (!isAdmin) {
 Use `OrgResolver` to detect the tenant from the request. Pick a resolution strategy that fits your URL scheme.
 
 ```ts
-import { OrgResolver } from '@roost/auth';
 
 // Resolve from subdomain: acme.myapp.com → 'acme'
 const resolver = new OrgResolver(['subdomain']);
@@ -2718,7 +2602,6 @@ To direct a user to a specific organization's login, pass `organization_id` to t
 Sessions are stored in KV with a sliding TTL. Use `SessionManager` to create, resolve, and destroy sessions.
 
 ```ts
-import { SessionManager } from '@roost/auth';
 
 const sessionManager = new SessionManager(env.SESSION_KV, env.SESSION_SECRET);
 
@@ -2756,7 +2639,6 @@ After the callback, the user is redirected to the URL in `return_to`, or to `/da
 Add `CsrfMiddleware` globally. All POST/PUT/PATCH/DELETE requests must include the `_csrf` token.
 
 ```ts
-import { CsrfMiddleware } from '@roost/auth';
 
 app.useMiddleware(CsrfMiddleware);
 ```
@@ -2791,14 +2673,11 @@ CSRF middleware uses the double-submit cookie pattern. Requests missing a valid 
 
 > Task-oriented instructions for HTTP tests, response assertions, fakes, and database isolation.
 
-
 ## How to write HTTP tests with TestClient
 
 Create a `TestClient` and call HTTP methods directly. The client handles application bootstrapping automatically.
 
 ```ts tests/api/posts.test.ts
-import { describe, it, expect } from 'bun:test';
-import { TestClient } from '@roost/testing';
 
 describe('POST /api/posts', () => {
   it('creates a post', async () => {
@@ -2872,10 +2751,6 @@ const data = await response.json<{ users: User[] }>();
 Use `fakeAll()` to stub all external services at once, or fake individual services selectively.
 
 ```ts tests/signup.test.ts
-import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
-import { TestClient, fakeAll, restoreAll } from '@roost/testing';
-import { SendWelcomeEmail } from '../src/jobs/SendWelcomeEmail';
-import { BillingFake } from '@roost/billing';
 
 describe('User signup', () => {
   beforeEach(() => fakeAll());
@@ -2914,8 +2789,6 @@ To fake only specific services, call their individual fake methods (`SendWelcome
 Use `createTestApp` with a fresh in-memory D1 database for each test run to avoid state leaking between tests.
 
 ```ts
-import { createTestApp } from '@roost/testing';
-import { TestClient } from '@roost/testing';
 
 // Create a fresh app with test configuration
 const app = await createTestApp({
@@ -2935,7 +2808,6 @@ const client = new TestClient(app);
 For test isolation, run migrations before each suite and use a teardown to clear tables:
 
 ```ts
-import { describe, it, beforeAll, afterEach } from 'bun:test';
 
 describe('User API', () => {
   beforeAll(async () => {
@@ -2966,13 +2838,11 @@ describe('User API', () => {
 
 > Task-oriented instructions for routing, server functions, and SSR with TanStack Start.
 
-
 ## How to create a new route
 
 Routes in TanStack Start are file-based. Create a file under `src/routes/` and export a `Route` using `createFileRoute`.
 
 ```tsx src/routes/posts/$id.tsx
-import { createFileRoute } from '@tanstack/react-router';
 
 export const Route = createFileRoute('/posts/$id')({
   component: PostPage,
@@ -2987,7 +2857,6 @@ function PostPage() {
 For API endpoints, use a loader or server function rather than returning HTML from the component. Nested routes inherit the parent layout automatically.
 
 ```tsx src/routes/posts/index.tsx
-import { createFileRoute, Link } from '@tanstack/react-router';
 
 export const Route = createFileRoute('/posts/')({
   loader: async () => {
@@ -3015,8 +2884,6 @@ function PostsPage() {
 Use `roostFn` for server functions that read data, and `roostFnWithInput` when the function accepts typed user input.
 
 ```ts src/functions/posts.ts
-import { roostFn, roostFnWithInput } from '@roost/start';
-import { roostMiddleware } from '../middleware';
 
 // No input — read-only server function
 export const listPosts = roostFn(roostMiddleware, async (roost) => {
@@ -3036,8 +2903,6 @@ export const createPost = roostFnWithInput(
 ```
 
 ```tsx src/routes/posts/new.tsx
-import { createFileRoute } from '@tanstack/react-router';
-import { createPost } from '../../functions/posts';
 
 export const Route = createFileRoute('/posts/new')({ component: NewPostPage });
 
@@ -3063,10 +2928,6 @@ function NewPostPage() {
 Use `createRoostMiddleware` to bootstrap your application and expose the container via the `roost` context in server functions and loaders.
 
 ```ts src/middleware.ts
-import { createRoostMiddleware } from '@roost/start';
-import { Application } from '@roost/core';
-import { CloudflareServiceProvider } from '@roost/cloudflare';
-import { AuthServiceProvider } from '@roost/auth';
 
 export const roostMiddleware = createRoostMiddleware(() => {
   const app = new Application({});
@@ -3077,8 +2938,6 @@ export const roostMiddleware = createRoostMiddleware(() => {
 ```
 
 ```ts src/functions/users.ts
-import { roostFn } from '@roost/start';
-import { roostMiddleware } from '../middleware';
 
 export const getCurrentUser = roostFn(roostMiddleware, async (roost) => {
   // roost.container gives you the fully-booted DI container
@@ -3092,7 +2951,6 @@ export const getCurrentUser = roostFn(roostMiddleware, async (roost) => {
 SSR is enabled by default in TanStack Start. Configure it in `app.config.ts`. For streaming SSR, set `renderMode` to `'stream'`.
 
 ```ts app.config.ts
-import { defineConfig } from '@tanstack/start/config';
 
 export default defineConfig({
   server: {
@@ -3117,7 +2975,6 @@ To opt a route out of SSR and render it client-only, use the `clientOnly` loader
 # Environment
 
 > Task-oriented instructions for managing environment variables and secrets across local and production environments.
-
 
 ## How to manage .dev.vars for local development
 
@@ -3172,7 +3029,6 @@ Via dashboard: Cloudflare dashboard → Workers & Pages → your worker → Sett
 In a Worker, all env vars arrive as properties on the `env` object passed to the `fetch` handler. Access them directly or merge them into `ConfigManager`.
 
 ```ts src/app.ts
-import { Application, ConfigManager } from '@roost/core';
 
 export default {
   async fetch(request: Request, env: Env) {
@@ -3230,7 +3086,6 @@ export function buildAppConfig(env: Env) {
 ```
 
 ```ts src/app.ts
-import { buildAppConfig } from './config/app';
 
 export default {
   async fetch(request: Request, env: Env) {
@@ -3240,7 +3095,7 @@ export default {
 };
 ```
 
-Related: [Deployment guide](/docs/guides/deployment) for setting production secrets, [@roost/core reference](/docs/packages/core) for the ConfigManager API.
+Related: [Deployment guide](/docs/guides/deployment.md) for setting production secrets, [@roost/core reference](/docs/packages/core.md) for the ConfigManager API.
 
 
 ---
@@ -3248,7 +3103,6 @@ Related: [Deployment guide](/docs/guides/deployment) for setting production secr
 # Error Handling
 
 > Task-oriented instructions for handling errors in routes, jobs, and across the stack.
-
 
 ## How to handle errors in routes
 
@@ -3261,8 +3115,6 @@ export function errorResponse(message: string, status: number, details?: unknown
 ```
 
 ```ts src/routes/api/users/$id.ts
-import { ModelNotFoundError } from '@roost/orm';
-import { errorResponse } from '../../lib/errors';
 
 export async function GET(request: Request, { params }) {
   try {
@@ -3281,7 +3133,6 @@ export async function GET(request: Request, { params }) {
 In TanStack Start route loaders, throw a `redirect()` or use the error boundary pattern. Thrown non-redirect errors propagate to the nearest `errorComponent`.
 
 ```tsx src/routes/dashboard.tsx
-import { createFileRoute, redirect } from '@tanstack/react-router';
 
 export const Route = createFileRoute('/dashboard')({
   loader: async ({ context }) => {
@@ -3301,7 +3152,6 @@ export const Route = createFileRoute('/dashboard')({
 Throw from `handle()` to trigger the retry flow. Implement `onFailure()` for cleanup after all retries are exhausted.
 
 ```ts src/jobs/ProcessPayment.ts
-import { Job, MaxRetries, Backoff } from '@roost/queue';
 
 @MaxRetries(3)
 @Backoff('exponential')
@@ -3407,8 +3257,6 @@ export class ForbiddenError extends HttpError {
 ```
 
 ```ts src/middleware/error-handler.ts
-import { HttpError, ValidationError } from '../lib/errors';
-import type { Handler } from '@roost/core';
 
 export async function errorHandlerMiddleware(
   request: Request,
@@ -3438,12 +3286,11 @@ export async function errorHandlerMiddleware(
 ```
 
 ```ts src/app.ts
-import { errorHandlerMiddleware } from './middleware/error-handler';
 
 app.useMiddleware(errorHandlerMiddleware); // Register first — runs outermost
 ```
 
-Related: [@roost/core reference](/docs/packages/core) for middleware pipeline details, [@roost/queue reference](/docs/packages/queue) for job retry configuration.
+Related: [@roost/core reference](/docs/packages/core.md) for middleware pipeline details, [@roost/queue reference](/docs/packages/queue.md) for job retry configuration.
 
 
 ---
@@ -3452,13 +3299,11 @@ Related: [@roost/core reference](/docs/packages/core) for middleware pipeline de
 
 > Task-oriented instructions for the container, config, middleware, and service providers.
 
-
 ## How to register a service provider
 
 Service providers are the correct place to register container bindings and run boot logic.
 
 ```ts src/providers/CacheServiceProvider.ts
-import { ServiceProvider } from '@roost/core';
 
 export class CacheServiceProvider extends ServiceProvider {
   async register(): Promise<void> {
@@ -3475,22 +3320,19 @@ export class CacheServiceProvider extends ServiceProvider {
 ```
 
 ```ts src/app.ts
-import { Application } from '@roost/core';
-import { CacheServiceProvider } from './providers/CacheServiceProvider';
 
 const app = Application.create(env, config);
 app.register(CacheServiceProvider);
 await app.boot();
 ```
 
-The `register()` method runs before all `boot()` calls, so you can safely resolve services registered by other providers inside `boot()`. See [@roost/core reference](/docs/packages/core) for full ServiceProvider API.
+The `register()` method runs before all `boot()` calls, so you can safely resolve services registered by other providers inside `boot()`. See [@roost/core reference](/docs/packages/core.md) for full ServiceProvider API.
 
 ## How to configure dependency injection bindings
 
 Use `singleton` for services that should be shared across the request, and `bind` for services that need a fresh instance each time.
 
 ```ts
-import { RoostContainer } from '@roost/core';
 
 const container = new RoostContainer();
 
@@ -3520,7 +3362,6 @@ const requestContainer = appContainer.scoped();
 Middleware is a function or class that wraps the request/response cycle. Return early to short-circuit.
 
 ```ts src/middleware/RateLimitMiddleware.ts
-import type { Handler } from '@roost/core';
 
 export async function rateLimitMiddleware(request: Request, next: Handler): Promise<Response> {
   const ip = request.headers.get('cf-connecting-ip') ?? 'unknown';
@@ -3549,14 +3390,13 @@ app.useMiddleware(rateLimitMiddleware);
 app.useMiddleware(rateLimit(100));
 ```
 
-For class-based middleware, extend the framework's middleware class and use `withContainer` to get DI access. See [Pipeline reference](/docs/packages/core) for the class middleware interface.
+For class-based middleware, extend the framework's middleware class and use `withContainer` to get DI access. See [Pipeline reference](/docs/packages/core.md) for the class middleware interface.
 
 ## How to access configuration values
 
 Use `ConfigManager` with dot-notation keys. Pass a default to avoid throwing on missing keys.
 
 ```ts
-import { ConfigManager } from '@roost/core';
 
 const config = new ConfigManager({
   app: { name: 'My App', debug: false },
@@ -3585,7 +3425,6 @@ In a service provider, resolve `ConfigManager` from the container rather than co
 Use `Pipeline` to compose multiple middleware functions in order. Each middleware calls `next` to pass control forward.
 
 ```ts
-import { Pipeline } from '@roost/core';
 
 const pipeline = new Pipeline()
   .use(loggerMiddleware)
@@ -3614,7 +3453,6 @@ const pipeline = new Pipeline()
 # Deployment
 
 > Task-oriented instructions for deploying Roost applications to Cloudflare Workers.
-
 
 ## How to deploy with roost deploy
 
@@ -3658,7 +3496,7 @@ To set multiple secrets non-interactively (e.g., in CI), pipe the value:
 echo "$STRIPE_SECRET_KEY" | wrangler secret put STRIPE_SECRET_KEY
 ```
 
-Via dashboard: Workers → your worker → Settings → Variables & Secrets. See [the environment guide](/docs/guides/environment) for local vs production secret management patterns.
+Via dashboard: Workers → your worker → Settings → Variables & Secrets. See [the environment guide](/docs/guides/environment.md) for local vs production secret management patterns.
 
 ## How to configure custom domains
 
@@ -3707,7 +3545,7 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
 ```
 
-Related: [Environment guide](/docs/guides/environment) for managing per-environment configuration, [Migrations guide](/docs/guides/migrations) for running migrations post-deploy.
+Related: [Environment guide](/docs/guides/environment.md) for managing per-environment configuration, [Migrations guide](/docs/guides/migrations.md) for running migrations post-deploy.
 
 
 ---
@@ -3715,7 +3553,6 @@ Related: [Environment guide](/docs/guides/environment) for managing per-environm
 # @roost/ai Guides
 
 > Task-oriented instructions for agents, tools, streaming, and testing. Powered by Cloudflare Workers AI — no API keys required.
-
 
 ## How to create an AI agent
 
@@ -3728,7 +3565,6 @@ Extend `Agent` and implement `instructions()` to define the system prompt. The A
 ```
 
 ```ts src/agents/SupportAgent.ts
-import { Agent } from '@roost/ai';
 
 export class SupportAgent extends Agent {
   instructions(): string {
@@ -3749,8 +3585,6 @@ Each agent instance maintains its own conversation history. Create a new instanc
 Implement the `Tool` interface and add the tool to your agent's `tools()` method.
 
 ```ts src/tools/OrderStatusTool.ts
-import { type Tool, type ToolRequest } from '@roost/ai';
-import { schema } from '@roost/schema';
 
 export class OrderStatusTool implements Tool {
   constructor(private db: Database) {}
@@ -3775,8 +3609,6 @@ export class OrderStatusTool implements Tool {
 ```
 
 ```ts src/agents/SupportAgent.ts
-import { Agent, type HasTools } from '@roost/ai';
-import { OrderStatusTool } from '../tools/OrderStatusTool';
 
 export class SupportAgent extends Agent implements HasTools {
   constructor(private db: Database) {
@@ -3798,7 +3630,6 @@ export class SupportAgent extends Agent implements HasTools {
 Use class decorators to set defaults. All decorators can be overridden per-prompt via the options argument.
 
 ```ts src/agents/WritingAgent.ts
-import { Agent, Model, MaxSteps, Temperature, MaxTokens } from '@roost/ai';
 
 @Model('@cf/meta/llama-3.1-70b-instruct')
 @Temperature(0.9)     // More creative responses
@@ -3879,8 +3710,6 @@ export class SupportAgent extends Agent {
 Use `Agent.fake()` to inject predetermined responses. Always call `Agent.restore()` after each test.
 
 ```ts tests/agents/SupportAgent.test.ts
-import { describe, it, expect } from 'bun:test';
-import { SupportAgent } from '../../src/agents/SupportAgent';
 
 describe('SupportAgent', () => {
   it('responds to password reset questions', async () => {
@@ -3912,7 +3741,6 @@ describe('SupportAgent', () => {
 
 > Task-oriented instructions for Stripe integration, subscriptions, webhooks, and metered billing.
 
-
 ## How to configure Stripe credentials
 
 Add your Stripe keys to `.dev.vars` for local development and to the Cloudflare dashboard for production.
@@ -3923,20 +3751,18 @@ STRIPE_WEBHOOK_SECRET=whsec_...
 ```
 
 ```ts src/app.ts
-import { BillingServiceProvider } from '@roost/billing';
 
 app.register(BillingServiceProvider);
 // BillingProvider is now available in the container
 ```
 
-For production, add secrets via the Cloudflare dashboard under Workers → Settings → Variables. See [the environment guide](/docs/guides/environment) for the full secrets workflow.
+For production, add secrets via the Cloudflare dashboard under Workers → Settings → Variables. See [the environment guide](/docs/guides/environment.md) for the full secrets workflow.
 
 ## How to create a customer and subscription
 
 Resolve `BillingProviderToken` from the container and call `createCustomer`, then `subscribe`. Store the returned IDs on your user record.
 
 ```ts
-import { BillingProviderToken } from '@roost/billing';
 
 async function subscribeUser(userId: string, priceId: string) {
   const billing = container.resolve(BillingProviderToken);
@@ -3972,8 +3798,6 @@ async function subscribeUser(userId: string, priceId: string) {
 Use `parseWebhookEvent` to verify the signature and parse the event. Return 200 immediately — process asynchronously if the handler is slow.
 
 ```ts src/routes/api/webhooks/stripe.ts
-import { createFileRoute } from '@tanstack/react-router';
-import { BillingProviderToken } from '@roost/billing';
 
 export const Route = createFileRoute('/api/webhooks/stripe')({ component: () => null });
 
@@ -4022,7 +3846,6 @@ Register the webhook endpoint URL in the Stripe dashboard under Developers → W
 Add `SubscribedMiddleware` or `OnTrialMiddleware` to routes that require an active subscription or trial.
 
 ```ts
-import { SubscribedMiddleware, OnTrialMiddleware } from '@roost/billing';
 
 // Require an active subscription
 app.useMiddleware(SubscribedMiddleware);
@@ -4052,7 +3875,6 @@ async function requireSubscription(request: Request, next: Handler): Promise<Res
 Report usage to Stripe after each billable action using `reportUsage` with the subscription item ID from the subscription object.
 
 ```ts
-import { BillingProviderToken } from '@roost/billing';
 
 async function runAiQuery(userId: string, query: string) {
   const user = await User.findOrFail(userId);
@@ -4081,13 +3903,11 @@ The `subscriptionItemId` (format: `si_...`) is the metered item within the subsc
 
 > Task-oriented instructions for models, querying, relationships, factories, and testing.
 
-
 ## How to define a model
 
 Extend `Model`, set `tableName`, and configure optional flags for timestamps and soft deletes.
 
 ```ts src/models/Post.ts
-import { Model } from '@roost/orm';
 
 export class Post extends Model {
   static tableName = 'posts';
@@ -4104,7 +3924,6 @@ Access attributes via the `attributes` proxy: `post.attributes.title`. Do not ad
 Chain query methods on model static calls. All queries are lazy — execute with `.all()`, `.first()`, or `.count()`.
 
 ```ts
-import { Post } from '../models/Post';
 
 // Simple equality
 const published = await Post.where('status', 'published').all();
@@ -4146,9 +3965,6 @@ the relation to fetch related records for a single model, or `loadMany(instances
 for a collection.
 
 ```ts src/models/User.ts
-import { Model, HasManyRelation, HasOneRelation } from '@roost/orm';
-import { Post } from './Post';
-import { Profile } from './Profile';
 
 export class User extends Model {
   static tableName = 'users';
@@ -4162,8 +3978,6 @@ export class User extends Model {
 ```
 
 ```ts src/models/Post.ts
-import { Model, BelongsToRelation } from '@roost/orm';
-import { User } from './User';
 
 export class Post extends Model {
   static tableName = 'posts';
@@ -4185,7 +3999,6 @@ const posts = await User.posts.load(user); // Post[]
 Register hooks via `Model.on(event, callback)`. Return `false` from a `creating` or `updating` hook to abort the operation.
 
 ```ts src/models/Post.ts
-import { Model } from '@roost/orm';
 
 export class Post extends Model {
   static tableName = 'posts';
@@ -4220,8 +4033,6 @@ Extend `Factory`, implement the `definition()` method, and use `.count()` / `.st
 customise what gets created.
 
 ```ts database/factories/PostFactory.ts
-import { Factory } from '@roost/orm';
-import { Post } from '../../src/models/Post';
 
 export class PostFactory extends Factory<typeof Post> {
   definition() {
@@ -4237,7 +4048,6 @@ export class PostFactory extends Factory<typeof Post> {
 ```
 
 ```ts tests/posts.test.ts
-import { PostFactory } from '../database/factories/PostFactory';
 
 const factory = new PostFactory(Post);
 
@@ -4287,7 +4097,7 @@ roost make:migration create_posts_table
 roost migrate
 ```
 
-Migrations are raw SQL files executed against D1. See [the migrations guide](/docs/guides/migrations) for the full column reference and rollback patterns.
+Migrations are raw SQL files executed against D1. See [the migrations guide](/docs/guides/migrations.md) for the full column reference and rollback patterns.
 
 
 ---
@@ -4296,14 +4106,11 @@ Migrations are raw SQL files executed against D1. See [the migrations guide](/do
 
 > Task-oriented instructions for defining tool input schemas, optional fields, nested objects, and descriptions.
 
-
 ## How to define a tool input schema
 
 Return a record of field names to schema builders from the `schema()` method in any AI tool or MCP tool. All fields are required by default.
 
 ```ts src/tools/SearchTool.ts
-import { type Tool, type ToolRequest } from '@roost/ai';
-import { schema } from '@roost/schema';
 
 export class SearchTool implements Tool {
   description(): string {
@@ -4334,7 +4141,6 @@ export class SearchTool implements Tool {
 Chain `.optional()` to make a field not required. Use `s.object()` to nest structured data.
 
 ```ts
-import { schema } from '@roost/schema';
 
 // Optional primitive
 const s_optional_number = schema.integer().min(0).optional();
@@ -4367,7 +4173,6 @@ Nested objects in tool schemas let the AI provide structured sub-parameters. Acc
 Chain `.description()` on every field. The AI model uses these descriptions to decide what values to pass — clear descriptions reduce tool call errors.
 
 ```ts
-import { schema } from '@roost/schema';
 
 // Descriptions help the model understand intent and constraints
 const createUserSchema = {
@@ -4414,16 +4219,11 @@ Good description guidelines: state the purpose, mention format constraints (ISO 
 
 > Task-oriented instructions for building MCP servers with tools, resources, and prompts.
 
-
 ## How to create an MCP server
 
 Extend `McpServer`, declare the classes to expose, and set server metadata. The server handles JSON-RPC over HTTP automatically.
 
 ```ts src/mcp/AppServer.ts
-import { McpServer } from '@roost/mcp';
-import { SearchTool } from './tools/SearchTool';
-import { DocsResource } from './resources/DocsResource';
-import { SummarizePrompt } from './prompts/SummarizePrompt';
 
 export class AppServer extends McpServer {
   tools = [SearchTool];
@@ -4444,17 +4244,13 @@ export class AppServer extends McpServer {
 }
 ```
 
-Mount the server on a route to accept MCP connections from clients like Claude or Cursor. See [@roost/mcp reference](/docs/packages/mcp) for mounting details.
+Mount the server on a route to accept MCP connections from clients like Claude or Cursor. See [@roost/mcp reference](/docs/packages/mcp.md) for mounting details.
 
 ## How to define MCP tools
 
 Extend `McpTool` and implement `description()`, `schema()`, and `handle()`. Return an `McpResponse`.
 
 ```ts src/mcp/tools/CreatePostTool.ts
-import { McpTool, McpResponse } from '@roost/mcp';
-import { schema } from '@roost/schema';
-import type { McpRequest } from '@roost/mcp';
-import { Post } from '../../models/Post';
 
 export class CreatePostTool extends McpTool {
   description(): string {
@@ -4494,8 +4290,6 @@ shouldRegister(): boolean {
 Extend `McpResource` to provide documents or data the AI can read. URIs are unique identifiers for each resource.
 
 ```ts src/mcp/resources/SchemaResource.ts
-import { McpResource, McpResponse } from '@roost/mcp';
-import type { McpRequest } from '@roost/mcp';
 
 export class SchemaResource extends McpResource {
   uri(): string {
@@ -4531,9 +4325,6 @@ Use protocol-style URIs (`docs://`, `db://`, `config://`) to namespace related r
 Extend `McpPrompt` to create reusable prompt templates the AI client can invoke by name.
 
 ```ts src/mcp/prompts/ReviewCodePrompt.ts
-import { McpPrompt, McpResponse } from '@roost/mcp';
-import { schema } from '@roost/schema';
-import type { McpRequest } from '@roost/mcp';
 
 export class ReviewCodePrompt extends McpPrompt {
   description(): string {
@@ -4576,7 +4367,6 @@ Prompts can return a single `McpResponse` or an array of them. Arrays are useful
 # @roost/queue
 
 > Background job processing on Cloudflare Queues. Typed job classes with retry configuration, dispatch methods, chaining, batching, and lifecycle hooks.
-
 
 ## Installation
 
@@ -4741,7 +4531,6 @@ interface JobDescriptor {
 
 > The roost command-line tool for project scaffolding, code generation, database operations, and deployment.
 
-
 ## Installation
 
 ```bash title="terminal"
@@ -4869,7 +4658,6 @@ Build the project and deploy to Cloudflare Workers via Wrangler.
 
 > Typed wrappers around all Cloudflare Worker bindings: D1, KV, R2, Queues, AI, Vectorize, Durable Objects, and Hyperdrive.
 
-
 ## Installation
 
 ```bash title="terminal"
@@ -4882,8 +4670,6 @@ Register `CloudflareServiceProvider` to make all binding wrappers available
 via the container. Bindings are resolved from the Worker `env` object by name.
 
 ```ts title="src/app.ts"
-import { Application } from '@roost/core';
-import { CloudflareServiceProvider } from '@roost/cloudflare';
 
 const app = Application.create(env);
 app.register(CloudflareServiceProvider);
@@ -5085,7 +4871,6 @@ The following bindings are registered by convention: `DB` → `D1Database`,
 
 > Technical descriptions of every package, class, and method in the Roost framework.
 
-
 Reference documentation describes what things are and what they do — API signatures,
 configuration options, type definitions. It is designed for looking things up, not reading
 start to finish.
@@ -5094,28 +4879,28 @@ start to finish.
 
 Foundational packages required by every Roost application.
 
-- [`@roost/core`](/docs/reference/core) — Dependency injection, configuration, middleware pipeline, application lifecycle, and service providers.
-- [`@roost/cloudflare`](/docs/reference/cloudflare) — Typed wrappers for D1, KV, R2, Queues, AI, Vectorize, Durable Objects, and Hyperdrive bindings.
-- [`@roost/start`](/docs/reference/start) — TanStack Start bridge: middleware factory and server function wrappers.
-- [`@roost/schema`](/docs/reference/schema) — Fluent JSON Schema builder used by AI tools and MCP tool definitions.
+- [`@roost/core`](/docs/reference/core.md) — Dependency injection, configuration, middleware pipeline, application lifecycle, and service providers.
+- [`@roost/cloudflare`](/docs/reference/cloudflare.md) — Typed wrappers for D1, KV, R2, Queues, AI, Vectorize, Durable Objects, and Hyperdrive bindings.
+- [`@roost/start`](/docs/reference/start.md) — TanStack Start bridge: middleware factory and server function wrappers.
+- [`@roost/schema`](/docs/reference/schema.md) — Fluent JSON Schema builder used by AI tools and MCP tool definitions.
 
 ## Features
 
 Optional packages that add application capabilities.
 
-- [`@roost/auth`](/docs/reference/auth) — WorkOS authentication, session management, middleware guards, CSRF protection, and multi-tenancy.
-- [`@roost/orm`](/docs/reference/orm) — Model classes, query builder, relationships, lifecycle hooks, migrations, factories, and seeders for D1.
-- [`@roost/ai`](/docs/reference/ai) — Class-based agents, typed tools, conversation memory, and streaming on Cloudflare Workers AI.
-- [`@roost/mcp`](/docs/reference/mcp) — Model Context Protocol server with tools, resources, and prompts.
-- [`@roost/billing`](/docs/reference/billing) — Abstract billing interface with a Stripe adapter for subscriptions, checkout, and webhooks.
-- [`@roost/queue`](/docs/reference/queue) — Background job processing on Cloudflare Queues with retry strategies and lifecycle hooks.
+- [`@roost/auth`](/docs/reference/auth.md) — WorkOS authentication, session management, middleware guards, CSRF protection, and multi-tenancy.
+- [`@roost/orm`](/docs/reference/orm.md) — Model classes, query builder, relationships, lifecycle hooks, migrations, factories, and seeders for D1.
+- [`@roost/ai`](/docs/reference/ai.md) — Class-based agents, typed tools, conversation memory, and streaming on Cloudflare Workers AI.
+- [`@roost/mcp`](/docs/reference/mcp.md) — Model Context Protocol server with tools, resources, and prompts.
+- [`@roost/billing`](/docs/reference/billing.md) — Abstract billing interface with a Stripe adapter for subscriptions, checkout, and webhooks.
+- [`@roost/queue`](/docs/reference/queue.md) — Background job processing on Cloudflare Queues with retry strategies and lifecycle hooks.
 
 ## Tooling
 
 Development and testing utilities.
 
-- [`@roost/cli`](/docs/reference/cli) — Project scaffolding, code generators, database commands, and deployment.
-- [`@roost/testing`](/docs/reference/testing) — HTTP test client, response assertions, unified fakes, and test setup helpers.
+- [`@roost/cli`](/docs/reference/cli.md) — Project scaffolding, code generators, database commands, and deployment.
+- [`@roost/testing`](/docs/reference/testing.md) — HTTP test client, response assertions, unified fakes, and test setup helpers.
 
 
 ---
@@ -5123,7 +4908,6 @@ Development and testing utilities.
 # @roost/auth
 
 > WorkOS-backed authentication with session management, middleware guards, CSRF protection, RBAC, and multi-tenancy support.
-
 
 ## Installation
 
@@ -5153,7 +4937,7 @@ Required application config:
 Register the service provider:
 
 ```ts title="src/app.ts"
-import { AuthServiceProvider } from '@roost/auth';
+
 app.register(AuthServiceProvider);
 ```
 
@@ -5347,7 +5131,6 @@ type OrgResolutionStrategy = 'subdomain' | 'path-prefix' | 'header';
 
 > HTTP test client, response assertions, unified fakes, and test setup utilities for Roost applications on bun:test.
 
-
 ## Installation
 
 ```bash title="terminal"
@@ -5504,7 +5287,6 @@ interface TestSuiteHelpers {
 
 > Bridges the Roost framework with TanStack Start. Provides the context bridge, middleware factory, and server function wrappers.
 
-
 ## Installation
 
 ```bash title="terminal"
@@ -5526,9 +5308,6 @@ once per request. Returns a middleware compatible with TanStack Start's
 `createMiddleware()` system.
 
 ```ts title="src/middleware.ts"
-import { createRoostMiddleware } from '@roost/start';
-import { Application } from '@roost/core';
-import { CloudflareServiceProvider } from '@roost/cloudflare';
 
 export const roostMiddleware = createRoostMiddleware(() => {
   const app = new Application({});
@@ -5546,8 +5325,6 @@ a `RoostContext` object with access to the container and resolved application.
 Use when the server function takes no user input.
 
 ```ts title="src/functions/users.ts"
-import { roostFn } from '@roost/start';
-import { roostMiddleware } from '../middleware';
 
 const listUsers = roostFn(roostMiddleware, async (roost) => {
   return roost.container.resolve(UserService).findAll();
@@ -5563,8 +5340,6 @@ The `validator` function receives the raw deserialized input and returns
 the typed value. Throw from the validator to reject invalid input.
 
 ```ts title="src/functions/users.ts"
-import { roostFnWithInput } from '@roost/start';
-import { roostMiddleware } from '../middleware';
 
 const getUser = roostFnWithInput(
   roostMiddleware,
@@ -5624,7 +5399,6 @@ interface RoostMiddlewareContext {
 # @roost/core
 
 > Dependency injection container, configuration management, middleware pipeline, application lifecycle, and service provider base class.
-
 
 ## Installation
 
@@ -5804,7 +5578,6 @@ Thrown by `ConfigManager.get()` when the key does not exist and no default is pr
 
 > Class-based AI agents with typed tools, conversation memory, and streaming. Powered exclusively by Cloudflare Workers AI — no API keys required.
 
-
 ## Installation
 
 ```bash title="terminal"
@@ -5826,7 +5599,7 @@ in `wrangler.jsonc`:
 Register the service provider to inject the provider into all agent classes:
 
 ```ts title="src/app.ts"
-import { AiServiceProvider } from '@roost/ai';
+
 app.register(AiServiceProvider);
 ```
 
@@ -6036,7 +5809,6 @@ interface ProviderResponse {
 
 > Abstract billing provider interface with a Stripe adapter. Implemented using only fetch for Cloudflare Worker compatibility — no Node.js SDK.
 
-
 ## Installation
 
 ```bash title="terminal"
@@ -6055,14 +5827,14 @@ STRIPE_WEBHOOK_SECRET=whsec_...
 Register the service provider:
 
 ```ts title="src/app.ts"
-import { BillingServiceProvider } from '@roost/billing';
+
 app.register(BillingServiceProvider);
 ```
 
 Resolve the provider via the `BillingProviderToken` symbol:
 
 ```ts
-import { BillingProviderToken } from '@roost/billing';
+
 const billing = container.resolve(BillingProviderToken);
 ```
 
@@ -6137,7 +5909,6 @@ In-memory implementation of `BillingProvider` for use in tests. Records
 all calls and returns synthetic results without network requests.
 
 ```ts
-import { FakeBillingProvider } from '@roost/billing';
 
 const fake = new FakeBillingProvider();
 const customer = await fake.createCustomer({ name: 'Test', email: 'test@example.com' });
@@ -6146,7 +5917,6 @@ const customer = await fake.createCustomer({ name: 'Test', email: 'test@example.
 Use the `Billing` helper object to enable/disable the fake globally:
 
 ```ts
-import { Billing } from '@roost/billing';
 
 const fake = Billing.fake();   // enable fake mode, returns FakeBillingProvider
 Billing.restore();             // disable fake mode
@@ -6158,7 +5928,7 @@ Middleware that gates access to users with an active subscription. Returns
 `402 Payment Required` if the user has no active subscription.
 
 ```ts
-import { SubscribedMiddleware } from '@roost/billing';
+
 app.useMiddleware(SubscribedMiddleware);
 ```
 
@@ -6167,7 +5937,7 @@ app.useMiddleware(SubscribedMiddleware);
 Middleware that gates access to users currently on a trial subscription.
 
 ```ts
-import { OnTrialMiddleware } from '@roost/billing';
+
 app.useMiddleware(OnTrialMiddleware);
 ```
 
@@ -6246,7 +6016,6 @@ type SubscriptionStatus =
 # @roost/orm
 
 > Laravel-inspired ORM built on Drizzle for D1 databases. Model classes, query builder, relationships, lifecycle hooks, factories.
-
 
 ## Installation
 
@@ -6412,8 +6181,6 @@ Inverse of `HasOneRelation` or `HasManyRelation`. `localKey` defaults to `'id'`.
 `load()` returns `Promise<RelatedModel | null>`.
 
 ```ts
-import { Model, HasManyRelation, BelongsToRelation } from '@roost/orm';
-import { Post } from './Post';
 
 export class User extends Model {
   static tableName = 'users';
@@ -6480,8 +6247,6 @@ Create and persist model instances.
 Create and persist a single model instance.
 
 ```ts
-import { Factory } from '@roost/orm';
-import { Post } from '../../src/models/Post';
 
 class PostFactory extends Factory<typeof Post> {
   definition() {
@@ -6541,7 +6306,6 @@ Thrown when a relation name that is not defined on the model is accessed.
 # @roost/schema
 
 > Fluent JSON Schema builder with zero runtime dependencies. Used by @roost/ai and @roost/mcp to define tool and prompt parameters.
-
 
 ## Installation
 
@@ -6733,7 +6497,6 @@ type EnumSchemaBuilder<T extends string> = SchemaBuilder & { ... };
 
 > Model Context Protocol server implementation. Expose application capabilities as tools, resources, and prompts to MCP-compatible AI clients.
 
-
 ## Installation
 
 ```bash title="terminal"
@@ -6916,7 +6679,6 @@ interface PromptArgument {
 
 > How Cloudflare Queues work, the job lifecycle from dispatch to completion, retry strategies, and why queues beat cron for deferred work.
 
-
 ## How Cloudflare Queues Work
 
 Cloudflare Queues are a message queue service built on top of the Workers platform.
@@ -6978,8 +6740,8 @@ jobs with no triggering event, but they should not be the default.
 
 ## Further Reading
 
-- [@roost/queue reference — Job, dispatch, and consumer API](/docs/packages/queue)
-- [Testing Philosophy — Job.fake() and how queue testing works](/docs/concepts/testing-philosophy)
+- [@roost/queue reference — Job, dispatch, and consumer API](/docs/packages/queue.md)
+- [Testing Philosophy — Job.fake() and how queue testing works](/docs/concepts/testing-philosophy.md)
 - [Cloudflare Queues Documentation](https://developers.cloudflare.com/queues/)
 
 
@@ -6988,7 +6750,6 @@ jobs with no triggering event, but they should not be the default.
 # Service Container
 
 > How Roost manages dependencies, why dependency injection matters at the edge, and how service providers wire everything together.
-
 
 ## The Problem That Dependency Injection Solves
 
@@ -7047,10 +6808,10 @@ code without runtime reflection.
 
 ## Further Reading
 
-- [Application Architecture — how the container fits into the boot sequence](/docs/concepts/architecture)
-- [Laravel Patterns — what was adopted, what was changed, and why](/docs/concepts/laravel-patterns)
-- [@roost/core concepts — the container and pipeline design in detail](/docs/concepts/core)
-- [Reference — Container, ServiceProvider, and Application API](/docs/reference)
+- [Application Architecture — how the container fits into the boot sequence](/docs/concepts/architecture.md)
+- [Laravel Patterns — what was adopted, what was changed, and why](/docs/concepts/laravel-patterns.md)
+- [@roost/core concepts — the container and pipeline design in detail](/docs/concepts/core.md)
+- [Reference — Container, ServiceProvider, and Application API](/docs/reference.md)
 
 
 ---
@@ -7058,7 +6819,6 @@ code without runtime reflection.
 # @roost/cli
 
 > The code generation philosophy behind Roost's generators, how scaffolding reduces decision fatigue, and convention enforcement through generators.
-
 
 ## Generate Once, Own Forever
 
@@ -7110,8 +6870,8 @@ CLI is never part of the deployed bundle.
 
 ## Further Reading
 
-- [Laravel Patterns — Artisan as the inspiration for Roost's CLI model](/docs/concepts/laravel-patterns)
-- [@roost/cli reference — available generators and their options](/docs/packages/cli)
+- [Laravel Patterns — Artisan as the inspiration for Roost's CLI model](/docs/concepts/laravel-patterns.md)
+- [@roost/cli reference — available generators and their options](/docs/packages/cli.md)
 
 
 ---
@@ -7119,7 +6879,6 @@ CLI is never part of the deployed bundle.
 # @roost/cloudflare
 
 > Why Roost wraps Cloudflare's native bindings, how typed clients improve the developer experience, and how binding names are resolved.
-
 
 ## The Raw Binding Problem
 
@@ -7168,9 +6927,9 @@ structure.
 
 ## Further Reading
 
-- [Edge Computing — bindings, the Workers runtime, and what they mean for design](/docs/concepts/edge-computing)
-- [@roost/ai concepts — how the agent abstraction uses AIClient](/docs/concepts/ai)
-- [@roost/cloudflare reference — all binding wrapper APIs](/docs/packages/cloudflare)
+- [Edge Computing — bindings, the Workers runtime, and what they mean for design](/docs/concepts/edge-computing.md)
+- [@roost/ai concepts — how the agent abstraction uses AIClient](/docs/concepts/ai.md)
+- [@roost/cloudflare reference — all binding wrapper APIs](/docs/packages/cloudflare.md)
 - [Cloudflare Workers AI Documentation](https://developers.cloudflare.com/workers-ai/)
 
 
@@ -7180,7 +6939,6 @@ structure.
 
 > Explanations of architecture, design decisions, and how things work under the hood.
 
-
 Concept pages explain _why_ Roost is built the way it is. They cover architecture,
 design trade-offs, and the thinking behind each package — reading material for when you want
 to deepen your understanding rather than look up a specific API.
@@ -7189,28 +6947,28 @@ to deepen your understanding rather than look up a specific API.
 
 These pages explain how Roost's parts fit together and the broader decisions that shaped the framework.
 
-- [Application Architecture](/docs/concepts/architecture) — Request lifecycle, boot sequence, and the middleware pipeline
-- [Service Container](/docs/concepts/service-container) — Dependency injection, service providers, and the boot protocol
-- [Edge Computing](/docs/concepts/edge-computing) — Why Cloudflare Workers, the V8 isolate model, and what the binding system is
-- [Laravel-Inspired Patterns](/docs/concepts/laravel-patterns) — What Roost adopted, what it changed, and the DX philosophy
-- [Testing Philosophy](/docs/concepts/testing-philosophy) — Fakes over mocks, TestClient, and integration-first testing
+- [Application Architecture](/docs/concepts/architecture.md) — Request lifecycle, boot sequence, and the middleware pipeline
+- [Service Container](/docs/concepts/service-container.md) — Dependency injection, service providers, and the boot protocol
+- [Edge Computing](/docs/concepts/edge-computing.md) — Why Cloudflare Workers, the V8 isolate model, and what the binding system is
+- [Laravel-Inspired Patterns](/docs/concepts/laravel-patterns.md) — What Roost adopted, what it changed, and the DX philosophy
+- [Testing Philosophy](/docs/concepts/testing-philosophy.md) — Fakes over mocks, TestClient, and integration-first testing
 
 ## Package Concepts
 
 Each package has its own design rationale. These pages explain why each package is built the way it is.
 
-- [@roost/core](/docs/concepts/core) — Why a DI container for Workers, pipeline middleware design
-- [@roost/cloudflare](/docs/concepts/cloudflare) — Typed binding wrappers, name resolution, AIClient design
-- [@roost/start](/docs/concepts/start) — TanStack Start integration, the context bridge, SSR on Workers
-- [@roost/auth](/docs/concepts/auth) — Why WorkOS, session storage on KV, organization model
-- [@roost/orm](/docs/concepts/orm) — Active Record on D1, why not Prisma, migration design
-- [@roost/ai](/docs/concepts/ai) — Class-based agents, the agentic loop, Workers AI and no API keys
-- [@roost/mcp](/docs/concepts/mcp) — What MCP is, server-side tool exposure, MCP vs AI tools
-- [@roost/billing](/docs/concepts/billing) — Abstract billing interface, adapter pattern, webhook verification
-- [@roost/queue](/docs/concepts/queue) — CF Queues model, job lifecycle, retry and backoff
-- [@roost/cli](/docs/concepts/cli) — Code generation philosophy, scaffolding, convention enforcement
-- [@roost/testing](/docs/concepts/testing) — TestClient, test application setup, connection to testing philosophy
-- [@roost/schema](/docs/concepts/schema) — Fluent schema builder, JSON Schema output, shared AI and MCP schemas
+- [@roost/core](/docs/concepts/core.md) — Why a DI container for Workers, pipeline middleware design
+- [@roost/cloudflare](/docs/concepts/cloudflare.md) — Typed binding wrappers, name resolution, AIClient design
+- [@roost/start](/docs/concepts/start.md) — TanStack Start integration, the context bridge, SSR on Workers
+- [@roost/auth](/docs/concepts/auth.md) — Why WorkOS, session storage on KV, organization model
+- [@roost/orm](/docs/concepts/orm.md) — Active Record on D1, why not Prisma, migration design
+- [@roost/ai](/docs/concepts/ai.md) — Class-based agents, the agentic loop, Workers AI and no API keys
+- [@roost/mcp](/docs/concepts/mcp.md) — What MCP is, server-side tool exposure, MCP vs AI tools
+- [@roost/billing](/docs/concepts/billing.md) — Abstract billing interface, adapter pattern, webhook verification
+- [@roost/queue](/docs/concepts/queue.md) — CF Queues model, job lifecycle, retry and backoff
+- [@roost/cli](/docs/concepts/cli.md) — Code generation philosophy, scaffolding, convention enforcement
+- [@roost/testing](/docs/concepts/testing.md) — TestClient, test application setup, connection to testing philosophy
+- [@roost/schema](/docs/concepts/schema.md) — Fluent schema builder, JSON Schema output, shared AI and MCP schemas
 
 
 ---
@@ -7218,7 +6976,6 @@ Each package has its own design rationale. These pages explain why each package 
 # Testing Philosophy
 
 > Why Roost uses fakes over mocks, how TestClient eliminates server setup, and what testing on Workers requires differently.
-
 
 ## Fakes Over Mocks
 
@@ -7284,10 +7041,10 @@ rather than hiding it behind another fake.
 
 ## Further Reading
 
-- [@roost/testing concepts — the package-specific testing model](/docs/concepts/testing)
-- [@roost/testing reference — TestClient, fakes, and setup](/docs/packages/testing)
-- [@roost/ai reference — Agent.fake() and assertion methods](/docs/packages/ai)
-- [@roost/queue reference — Job.fake() and assertion methods](/docs/packages/queue)
+- [@roost/testing concepts — the package-specific testing model](/docs/concepts/testing.md)
+- [@roost/testing reference — TestClient, fakes, and setup](/docs/packages/testing.md)
+- [@roost/ai reference — Agent.fake() and assertion methods](/docs/packages/ai.md)
+- [@roost/queue reference — Job.fake() and assertion methods](/docs/packages/queue.md)
 
 
 ---
@@ -7295,7 +7052,6 @@ rather than hiding it behind another fake.
 # @roost/auth
 
 > Why Roost delegates authentication to WorkOS, how sessions are stored on KV, and the organization model that makes multi-tenancy a first-class concern.
-
 
 ## Why WorkOS Instead of Rolling Auth
 
@@ -7348,8 +7104,8 @@ not automatically an admin in another.
 
 ## Further Reading
 
-- [@roost/auth reference — middleware, session management, and RBAC API](/docs/packages/auth)
-- [Edge Computing — why KV is the right session store for Workers](/docs/concepts/edge-computing)
+- [@roost/auth reference — middleware, session management, and RBAC API](/docs/packages/auth.md)
+- [Edge Computing — why KV is the right session store for Workers](/docs/concepts/edge-computing.md)
 - [WorkOS Documentation](https://workos.com/docs)
 
 
@@ -7358,7 +7114,6 @@ not automatically an admin in another.
 # @roost/testing
 
 > What the testing package provides, how it connects to Roost's broader testing philosophy, and the specific patterns it enables.
-
 
 ## The Testing Package's Scope
 
@@ -7410,8 +7165,8 @@ This package page focuses on the specific tools the package provides.
 
 ## Further Reading
 
-- [Testing Philosophy — the reasoning behind Roost's testing approach](/docs/concepts/testing-philosophy)
-- [@roost/testing reference — TestClient, TestResponse, and setup API](/docs/packages/testing)
+- [Testing Philosophy — the reasoning behind Roost's testing approach](/docs/concepts/testing-philosophy.md)
+- [@roost/testing reference — TestClient, TestResponse, and setup API](/docs/packages/testing.md)
 - [Bun Test Documentation](https://bun.sh/docs/test/writing)
 
 
@@ -7420,7 +7175,6 @@ This package page focuses on the specific tools the package provides.
 # Application Architecture
 
 > How a Roost application is structured, what happens at boot time, and how a request travels from the Cloudflare edge to a response.
-
 
 ## A Single Entry Point at the Edge
 
@@ -7475,10 +7229,10 @@ globals.
 
 ## Further Reading
 
-- [Service Container — DI, providers, and the boot sequence in depth](/docs/concepts/service-container)
-- [Edge Computing — why Workers, and how the runtime shapes the architecture](/docs/concepts/edge-computing)
-- [@roost/core concepts — the design decisions behind the container and pipeline](/docs/concepts/core)
-- [Reference — Application, Pipeline, and ServiceProvider API](/docs/reference)
+- [Service Container — DI, providers, and the boot sequence in depth](/docs/concepts/service-container.md)
+- [Edge Computing — why Workers, and how the runtime shapes the architecture](/docs/concepts/edge-computing.md)
+- [@roost/core concepts — the design decisions behind the container and pipeline](/docs/concepts/core.md)
+- [Reference — Application, Pipeline, and ServiceProvider API](/docs/reference.md)
 
 
 ---
@@ -7486,7 +7240,6 @@ globals.
 # @roost/start
 
 > Why Roost integrates with TanStack Start, how the context bridge connects server and client, and what SSR looks like on Workers.
-
 
 ## Why TanStack Start Over Next.js or Remix
 
@@ -7536,9 +7289,9 @@ any incompatibilities.
 
 ## Further Reading
 
-- [Application Architecture — how start integrates with the Roost request lifecycle](/docs/concepts/architecture)
-- [Edge Computing — the Workers runtime and SSR implications](/docs/concepts/edge-computing)
-- [@roost/start reference — bootApp, roostFn, and provider API](/docs/packages/start)
+- [Application Architecture — how start integrates with the Roost request lifecycle](/docs/concepts/architecture.md)
+- [Edge Computing — the Workers runtime and SSR implications](/docs/concepts/edge-computing.md)
+- [@roost/start reference — bootApp, roostFn, and provider API](/docs/packages/start.md)
 - [TanStack Start Documentation](https://tanstack.com/start)
 
 
@@ -7547,7 +7300,6 @@ any incompatibilities.
 # @roost/core
 
 > Why Roost has a service container, how the pipeline middleware model works, and what the Application class is actually doing.
-
 
 ## Why a Service Container for Workers?
 
@@ -7599,9 +7351,9 @@ the pipeline instantiates them from the container rather than requiring manual c
 
 ## Further Reading
 
-- [Service Container — the DI model in depth](/docs/concepts/service-container)
-- [Application Architecture — how core fits into the full request lifecycle](/docs/concepts/architecture)
-- [@roost/core reference — Application, Container, Pipeline API](/docs/packages/core)
+- [Service Container — the DI model in depth](/docs/concepts/service-container.md)
+- [Application Architecture — how core fits into the full request lifecycle](/docs/concepts/architecture.md)
+- [@roost/core reference — Application, Container, Pipeline API](/docs/packages/core.md)
 
 
 ---
@@ -7609,7 +7361,6 @@ the pipeline instantiates them from the container rather than requiring manual c
 # @roost/ai
 
 > Why agents are classes, how the agentic loop works, and why Cloudflare Workers AI means no external API keys or network calls.
-
 
 ## Why Class-Based Agents
 
@@ -7680,10 +7431,10 @@ and cost less, which is the right default before profiling.
 
 ## Further Reading
 
-- [@roost/cloudflare concepts — AIClient and the Workers AI binding](/docs/concepts/cloudflare)
-- [@roost/mcp concepts — how MCP tools relate to AI agent tools](/docs/concepts/mcp)
-- [@roost/schema concepts — how tool schemas are defined](/docs/concepts/schema)
-- [@roost/ai reference — Agent, Tool, and decorator API](/docs/packages/ai)
+- [@roost/cloudflare concepts — AIClient and the Workers AI binding](/docs/concepts/cloudflare.md)
+- [@roost/mcp concepts — how MCP tools relate to AI agent tools](/docs/concepts/mcp.md)
+- [@roost/schema concepts — how tool schemas are defined](/docs/concepts/schema.md)
+- [@roost/ai reference — Agent, Tool, and decorator API](/docs/packages/ai.md)
 
 
 ---
@@ -7691,7 +7442,6 @@ and cost less, which is the right default before profiling.
 # @roost/billing
 
 > Why billing is an abstract interface, how the adapter pattern lets you swap providers, and the subscription lifecycle model.
-
 
 ## Why an Abstract Billing Interface
 
@@ -7748,8 +7498,8 @@ appropriate. The middleware resolves the current user's subscription status thro
 
 ## Further Reading
 
-- [@roost/billing reference — BillingProvider, StripeProvider, FakeBillingProvider API](/docs/packages/billing)
-- [Testing Philosophy — fakes over mocks and how FakeBillingProvider fits the pattern](/docs/concepts/testing-philosophy)
+- [@roost/billing reference — BillingProvider, StripeProvider, FakeBillingProvider API](/docs/packages/billing.md)
+- [Testing Philosophy — fakes over mocks and how FakeBillingProvider fits the pattern](/docs/concepts/testing-philosophy.md)
 - [Stripe Documentation](https://stripe.com/docs)
 
 
@@ -7758,7 +7508,6 @@ appropriate. The middleware resolves the current user's subscription status thro
 # @roost/orm
 
 > Why Roost uses Active Record on D1, why it is not Prisma, and the design of the query builder and migration system.
-
 
 ## Active Record on D1
 
@@ -7815,9 +7564,9 @@ the cost of a bad deployment significantly.
 
 ## Further Reading
 
-- [Laravel Patterns — the Eloquent model and what Roost adapts](/docs/concepts/laravel-patterns)
-- [Edge Computing — D1 as the edge database and its consistency model](/docs/concepts/edge-computing)
-- [@roost/orm reference — Model, QueryBuilder, and factory API](/docs/reference/orm)
+- [Laravel Patterns — the Eloquent model and what Roost adapts](/docs/concepts/laravel-patterns.md)
+- [Edge Computing — D1 as the edge database and its consistency model](/docs/concepts/edge-computing.md)
+- [@roost/orm reference — Model, QueryBuilder, and factory API](/docs/reference/orm.md)
 - [Drizzle ORM Documentation](https://orm.drizzle.team)
 
 
@@ -7826,7 +7575,6 @@ the cost of a bad deployment significantly.
 # Laravel-Inspired Patterns
 
 > Which Laravel patterns Roost adopts, what it deliberately changes, and the developer-experience philosophy behind both choices.
-
 
 ## Why Draw From Laravel at All
 
@@ -7898,9 +7646,9 @@ the runtime's actual constraints rather than pretending those constraints do not
 
 ## Further Reading
 
-- [Service Container — the DI and provider model in depth](/docs/concepts/service-container)
-- [@roost/orm concepts — Active Record on D1](/docs/concepts/orm)
-- [@roost/cli concepts — code generation philosophy](/docs/concepts/cli)
+- [Service Container — the DI and provider model in depth](/docs/concepts/service-container.md)
+- [@roost/orm concepts — Active Record on D1](/docs/concepts/orm.md)
+- [@roost/cli concepts — code generation philosophy](/docs/concepts/cli.md)
 - [Laravel Service Providers](https://laravel.com/docs/providers)
 - [Laravel Eloquent ORM](https://laravel.com/docs/eloquent)
 
@@ -7910,7 +7658,6 @@ the runtime's actual constraints rather than pretending those constraints do not
 # Edge Computing
 
 > What Cloudflare Workers are, why Roost runs on them, and how the edge runtime shapes every design decision in the framework.
-
 
 ## What "Edge" Actually Means
 
@@ -7970,8 +7717,8 @@ applications, Workers' cold start overhead is imperceptible to users.
 
 ## Further Reading
 
-- [Application Architecture — how the Worker handles requests](/docs/concepts/architecture)
-- [@roost/cloudflare concepts — the binding wrapper design](/docs/concepts/cloudflare)
+- [Application Architecture — how the Worker handles requests](/docs/concepts/architecture.md)
+- [@roost/cloudflare concepts — the binding wrapper design](/docs/concepts/cloudflare.md)
 - [Cloudflare Workers Documentation](https://developers.cloudflare.com/workers/)
 - [Cloudflare D1 Documentation](https://developers.cloudflare.com/d1/)
 
@@ -7981,7 +7728,6 @@ applications, Workers' cold start overhead is imperceptible to users.
 # @roost/schema
 
 > Why Roost has a schema builder, what it produces, and why the same schema definitions power both AI tools and MCP tools.
-
 
 ## Why a Fluent Builder Instead of Raw JSON Schema
 
@@ -8034,9 +7780,9 @@ better fits. For AI tool parameters, the schema builder does exactly what is nee
 
 ## Further Reading
 
-- [@roost/ai concepts — how tool schemas are used by agents](/docs/concepts/ai)
-- [@roost/mcp concepts — how MCP tools use schema definitions](/docs/concepts/mcp)
-- [@roost/schema reference — all builder methods and types](/docs/packages/schema)
+- [@roost/ai concepts — how tool schemas are used by agents](/docs/concepts/ai.md)
+- [@roost/mcp concepts — how MCP tools use schema definitions](/docs/concepts/mcp.md)
+- [@roost/schema reference — all builder methods and types](/docs/packages/schema.md)
 
 
 ---
@@ -8044,7 +7790,6 @@ better fits. For AI tool parameters, the schema builder does exactly what is nee
 # @roost/mcp
 
 > What the Model Context Protocol is, why Roost supports it as a server, and how MCP tools differ from AI agent tools.
-
 
 ## What MCP Is
 
@@ -8091,7 +7836,7 @@ outward-facing API contract for AI clients you do not control.
 
 ## Further Reading
 
-- [@roost/ai concepts — agent tools and the agentic loop](/docs/concepts/ai)
-- [@roost/schema concepts — shared schema between AI and MCP tools](/docs/concepts/schema)
-- [@roost/mcp reference — McpServer, McpTool, McpResource, and McpPrompt API](/docs/packages/mcp)
+- [@roost/ai concepts — agent tools and the agentic loop](/docs/concepts/ai.md)
+- [@roost/schema concepts — shared schema between AI and MCP tools](/docs/concepts/schema.md)
+- [@roost/mcp reference — McpServer, McpTool, McpResource, and McpPrompt API](/docs/packages/mcp.md)
 - [Model Context Protocol Specification](https://modelcontextprotocol.io)

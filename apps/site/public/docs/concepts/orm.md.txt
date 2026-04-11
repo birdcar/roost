@@ -1,4 +1,3 @@
-
 ## Active Record on D1
 
 Active Record — where the model class is both a domain object and its own database interface
@@ -54,7 +53,7 @@ the cost of a bad deployment significantly.
 
 ## Further Reading
 
-- [Laravel Patterns — the Eloquent model and what Roost adapts](/docs/concepts/laravel-patterns)
-- [Edge Computing — D1 as the edge database and its consistency model](/docs/concepts/edge-computing)
-- [@roost/orm reference — Model, QueryBuilder, and factory API](/docs/reference/orm)
+- [Laravel Patterns — the Eloquent model and what Roost adapts](/docs/concepts/laravel-patterns.md)
+- [Edge Computing — D1 as the edge database and its consistency model](/docs/concepts/edge-computing.md)
+- [@roost/orm reference — Model, QueryBuilder, and factory API](/docs/reference/orm.md)
 - [Drizzle ORM Documentation](https://orm.drizzle.team)

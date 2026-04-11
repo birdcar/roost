@@ -13,6 +13,13 @@ const SITE_URL = 'https://roost.dev'
 const SECTIONS = ['tutorials', 'guides', 'reference', 'concepts'] as const
 type Section = (typeof SECTIONS)[number]
 
+const SECTION_LABELS: Record<Section, string> = {
+  tutorials: 'Tutorials',
+  guides: 'Guides',
+  reference: 'Reference',
+  concepts: 'Optional',
+}
+
 interface DocEntry {
   path: string
   title: string
@@ -26,6 +33,20 @@ function sectionFromPath(p: string): Section {
     if (p.startsWith(s + '/') || p === s) return s
   }
   return 'guides'
+}
+
+function rewriteInternalLinks(content: string): string {
+  return content.replace(
+    /\[([^\]]+)\]\((\/docs\/[^)]+?)(?<!\.md)\)/g,
+    '[$1]($2.md)',
+  )
+}
+
+function stripMdxArtifacts(content: string): string {
+  return content
+    .replace(/^import\s+.*$/gm, '')
+    .replace(/^\s*\n/gm, '\n')
+    .replace(/^\n+/, '')
 }
 
 const files = await glob('**/*.mdx', { cwd: CONTENT_DIR, absolute: false })
@@ -61,20 +82,23 @@ for (const e of entries) {
 const llmsTxt = [
   `# Roost`,
   ``,
-  `> Roost is a Laravel-inspired full-stack framework for Cloudflare Workers. Convention-over-configuration for the edge.`,
+  `> Roost is a Laravel-inspired full-stack framework for building applications on Cloudflare Workers. Convention-over-configuration for the edge — models, routing, auth, queues, AI agents, and more, all wired together out of the box.`,
   ``,
   `@doc-version: 0.1.0`,
   ``,
   ...SECTIONS.flatMap((s) =>
     sectionLines[s].length
-      ? [`## ${s.charAt(0).toUpperCase() + s.slice(1)}`, ``, ...sectionLines[s], ``]
+      ? [`## ${SECTION_LABELS[s]}`, ``, ...sectionLines[s], ``]
       : [],
   ),
 ].join('\n')
 
-// llms-full.txt
+// llms-full.txt — with link rewriting and MDX artifact stripping
 const llmsFullTxt = entries
-  .map((e) => `# ${e.title}\n\n> ${e.description}\n\n${e.rawContent}`)
+  .map((e) => {
+    const clean = rewriteInternalLinks(stripMdxArtifacts(e.rawContent))
+    return `# ${e.title}\n\n> ${e.description}\n\n${clean}`
+  })
   .join('\n\n---\n\n')
 
 // sitemap.xml
@@ -92,11 +116,12 @@ writeFileSync(join(PUBLIC_DIR, 'llms.txt'), llmsTxt)
 writeFileSync(join(PUBLIC_DIR, 'llms-full.txt'), llmsFullTxt)
 writeFileSync(join(PUBLIC_DIR, 'sitemap.xml'), sitemap)
 
-// Write raw markdown copies for Worker serving
+// Write raw markdown copies for Worker serving — with link rewriting and MDX stripping
 for (const e of entries) {
   const outPath = join(PUBLIC_DIR, 'docs', `${e.path}.md.txt`)
   mkdirSync(dirname(outPath), { recursive: true })
-  writeFileSync(outPath, e.rawContent)
+  const clean = rewriteInternalLinks(stripMdxArtifacts(e.rawContent))
+  writeFileSync(outPath, clean)
 }
 
 console.log(`Generated llms.txt (${entries.length} entries), llms-full.txt, sitemap.xml`)

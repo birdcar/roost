@@ -1,4 +1,3 @@
-
 ## What "Edge" Actually Means
 
 Cloudflare Workers run in over 300 data centers around the world. When a user in Tokyo makes a
@@ -57,7 +56,7 @@ applications, Workers' cold start overhead is imperceptible to users.
 
 ## Further Reading
 
-- [Application Architecture — how the Worker handles requests](/docs/concepts/architecture)
-- [@roost/cloudflare concepts — the binding wrapper design](/docs/concepts/cloudflare)
+- [Application Architecture — how the Worker handles requests](/docs/concepts/architecture.md)
+- [@roost/cloudflare concepts — the binding wrapper design](/docs/concepts/cloudflare.md)
 - [Cloudflare Workers Documentation](https://developers.cloudflare.com/workers/)
 - [Cloudflare D1 Documentation](https://developers.cloudflare.com/d1/)

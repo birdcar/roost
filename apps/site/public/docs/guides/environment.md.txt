@@ -1,4 +1,3 @@
-
 ## How to manage .dev.vars for local development
 
 Wrangler reads `.dev.vars` during local development and injects values into `env`. This file should never be committed.
@@ -52,7 +51,6 @@ Via dashboard: Cloudflare dashboard → Workers & Pages → your worker → Sett
 In a Worker, all env vars arrive as properties on the `env` object passed to the `fetch` handler. Access them directly or merge them into `ConfigManager`.
 
 ```ts src/app.ts
-import { Application, ConfigManager } from '@roost/core';
 
 export default {
   async fetch(request: Request, env: Env) {
@@ -110,7 +108,6 @@ export function buildAppConfig(env: Env) {
 ```
 
 ```ts src/app.ts
-import { buildAppConfig } from './config/app';
 
 export default {
   async fetch(request: Request, env: Env) {
@@ -120,4 +117,4 @@ export default {
 };
 ```
 
-Related: [Deployment guide](/docs/guides/deployment) for setting production secrets, [@roost/core reference](/docs/packages/core) for the ConfigManager API.
+Related: [Deployment guide](/docs/guides/deployment.md) for setting production secrets, [@roost/core reference](/docs/packages/core.md) for the ConfigManager API.

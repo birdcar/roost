@@ -1,6 +1,3 @@
-
-import { Callout } from '../../../src/components/callout'
-
 <Callout type="note">
   <p><strong>What you'll learn</strong></p>
   <ul>
@@ -53,8 +50,6 @@ This creates `src/models/task.ts` with a stub. Open it and replace the placehold
 columns with the schema for our task:
 
 ```ts title="src/models/task.ts"
-import { Model } from '@roost/orm';
-import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
 
 export const tasks = sqliteTable('tasks', {
   id:          integer('id').primaryKey({ autoIncrement: true }),
@@ -94,8 +89,6 @@ roost migrate
 Create the index route. It fetches all tasks from the database and returns them as JSON.
 
 ```ts title="src/routes/api/tasks/index.ts"
-import { createAPIFileRoute } from '@tanstack/start/api';
-import { Task } from '../../../models/task';
 
 export const APIRoute = createAPIFileRoute('/api/tasks')({
   GET: async () => {
@@ -119,9 +112,6 @@ Add the `POST` handler to the same route file. We parse the request
 body, validate the required fields, and persist the new task.
 
 ```ts title="src/routes/api/tasks/index.ts"
-import { createAPIFileRoute } from '@tanstack/start/api';
-import { z } from 'zod';
-import { Task } from '../../../models/task';
 
 const createTaskSchema = z.object({
   title:       z.string().min(1),
@@ -169,9 +159,6 @@ Create a separate file for the parameterised route. TanStack Start uses
 filename brackets for path parameters.
 
 ```ts title="src/routes/api/tasks/$id.ts"
-import { createAPIFileRoute } from '@tanstack/start/api';
-import { z } from 'zod';
-import { Task } from '../../../models/task';
 
 const updateTaskSchema = z.object({
   title:       z.string().min(1).optional(),
@@ -219,9 +206,6 @@ export const APIRoute = createAPIFileRoute('/api/tasks/$id')({
 Add a `DELETE` handler to the same `$id.ts` file.
 
 ```ts title="src/routes/api/tasks/$id.ts (updated)"
-import { createAPIFileRoute } from '@tanstack/start/api';
-import { z } from 'zod';
-import { Task } from '../../../models/task';
 
 const updateTaskSchema = z.object({
   title:       z.string().min(1).optional(),
@@ -308,8 +292,6 @@ Create a test file that covers every endpoint. `setupTestSuite`
 boots the application once per suite and gives you a pre-configured `TestClient`.
 
 ```ts title="tests/tasks.test.ts"
-import { describe, it, beforeAll, afterAll } from 'bun:test';
-import { setupTestSuite } from '@roost/testing';
 
 const suite = setupTestSuite();
 
@@ -430,8 +412,6 @@ roost migrate
 Now declare the relationship on the `Task` model using `BelongsToRelation`, and add the inverse `HasManyRelation` to the `User` model:
 
 ```ts title="src/models/task.ts (updated)"
-import { Model, BelongsToRelation } from '@roost/orm';
-import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
 
 export const tasks = sqliteTable('tasks', {
   id:          integer('id').primaryKey({ autoIncrement: true }),
@@ -459,9 +439,6 @@ export class Task extends Model {
 ```
 
 ```ts title="src/models/user.ts (updated)"
-import { Model, HasManyRelation } from '@roost/orm';
-import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
-import { Task } from './task';
 
 export const users = sqliteTable('users', {
   id:         integer('id').primaryKey({ autoIncrement: true }),
@@ -501,9 +478,6 @@ requests require authentication — unauthenticated requests receive a
 `302` redirect to `/auth/login`.
 
 ```ts title="src/app.ts"
-import { Application } from '@roost/core';
-import { AuthServiceProvider, AuthMiddleware } from '@roost/auth';
-import { OrmServiceProvider } from '@roost/orm';
 
 export function createApp(env: Record<string, unknown>) {
   return Application.create(env)
@@ -516,9 +490,6 @@ export function createApp(env: Record<string, unknown>) {
 The route file itself needs no middleware import:
 
 ```ts title="src/routes/api/tasks/index.ts (with auth applied globally)"
-import { createAPIFileRoute } from '@tanstack/start/api';
-import { z } from 'zod';
-import { Task } from '../../../models/task';
 
 const createTaskSchema = z.object({
   title:       z.string().min(1),
@@ -595,6 +566,6 @@ You now have a fully functional, tested REST API with:
 
 ## Next steps
 
-- [@roost/orm reference](/docs/reference/orm) — full API documentation for `Model`, `QueryBuilder`, and all relation types
-- [ORM guide](/docs/guides/orm) — pagination, soft deletes, model hooks, and eager loading
-- [ORM concepts](/docs/concepts/orm) — how the ORM maps to Drizzle and D1 under the hood
+- [@roost/orm reference](/docs/reference/orm.md) — full API documentation for `Model`, `QueryBuilder`, and all relation types
+- [ORM guide](/docs/guides/orm.md) — pagination, soft deletes, model hooks, and eager loading
+- [ORM concepts](/docs/concepts/orm.md) — how the ORM maps to Drizzle and D1 under the hood

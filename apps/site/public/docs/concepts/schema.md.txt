@@ -1,4 +1,3 @@
-
 ## Why a Fluent Builder Instead of Raw JSON Schema
 
 JSON Schema is the standard for describing the shape of data exchanged between AI models
@@ -50,6 +49,6 @@ better fits. For AI tool parameters, the schema builder does exactly what is nee
 
 ## Further Reading
 
-- [@roost/ai concepts — how tool schemas are used by agents](/docs/concepts/ai)
-- [@roost/mcp concepts — how MCP tools use schema definitions](/docs/concepts/mcp)
-- [@roost/schema reference — all builder methods and types](/docs/packages/schema)
+- [@roost/ai concepts — how tool schemas are used by agents](/docs/concepts/ai.md)
+- [@roost/mcp concepts — how MCP tools use schema definitions](/docs/concepts/mcp.md)
+- [@roost/schema reference — all builder methods and types](/docs/packages/schema.md)

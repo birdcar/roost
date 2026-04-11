@@ -1,6 +1,3 @@
-
-import { Callout } from '../../../src/components/callout'
-
 <Callout type="note">
   <p><strong>What you'll learn</strong></p>
   <ul>
@@ -86,8 +83,6 @@ placeholder columns with the schema your SaaS app needs. Each workspace belongs
 to a WorkOS organization:
 
 ```ts title="src/models/workspace.ts"
-import { Model } from '@roost/orm';
-import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
 
 export const workspaces = sqliteTable('workspaces', {
   id:                  integer('id').primaryKey({ autoIncrement: true }),
@@ -121,9 +116,6 @@ Register it globally in your app entry point so it runs on every request before
 route handlers execute:
 
 ```ts title="src/app.ts"
-import { Application } from '@roost/core';
-import { AuthServiceProvider, AuthMiddleware } from '@roost/auth';
-import { OrmServiceProvider } from '@roost/orm';
 
 export function createApp(env: Record<string, unknown>) {
   return Application.create(env)
@@ -137,7 +129,6 @@ Then create the dashboard route — it renders only for authenticated users beca
 `AuthMiddleware` redirects to `/auth/login` before the handler runs:
 
 ```tsx title="src/routes/dashboard.tsx"
-import { createFileRoute } from '@tanstack/react-router';
 
 export const Route = createFileRoute('/dashboard')({
   component: DashboardPage,
@@ -163,10 +154,6 @@ when the current user's workspace does not have an active subscription. Add it
 after `AuthMiddleware` in the pipeline so auth is checked first:
 
 ```ts title="src/app.ts (updated)"
-import { Application } from '@roost/core';
-import { AuthServiceProvider, AuthMiddleware } from '@roost/auth';
-import { BillingServiceProvider, SubscribedMiddleware } from '@roost/billing';
-import { OrmServiceProvider } from '@roost/orm';
 
 export function createApp(env: Record<string, unknown>) {
   return Application.create(env)
@@ -181,7 +168,6 @@ export function createApp(env: Record<string, unknown>) {
 Create the premium route — it renders only for subscribed users:
 
 ```tsx title="src/routes/features/premium.tsx"
-import { createFileRoute } from '@tanstack/react-router';
 
 export const Route = createFileRoute('/features/premium')({
   component: PremiumPage,
@@ -216,10 +202,6 @@ Now create the checkout route. It uses `StripeProvider.createCheckoutSession`
 to generate a hosted Stripe Checkout URL and redirects the user there.
 
 ```tsx title="src/routes/billing/checkout.tsx"
-import { createFileRoute, redirect } from '@tanstack/react-router';
-import { createServerFn } from '@tanstack/react-start';
-import { AuthMiddleware } from '@roost/auth';
-import { StripeProvider } from '@roost/billing';
 
 const startCheckout = createServerFn({ method: 'GET' }).handler(async ({ context }) => {
   const env = context.env as { STRIPE_SECRET_KEY: string; STRIPE_WEBHOOK_SECRET: string; STRIPE_PRICE_ID: string };
@@ -258,10 +240,6 @@ event to your webhook endpoint. `verifyStripeWebhook` validates the
 signature before you process the event.
 
 ```ts title="src/routes/billing/webhook.ts"
-import { createServerFileRoute } from '@tanstack/react-start/server';
-import { verifyStripeWebhook, WebhookVerificationError } from '@roost/billing';
-import { Workspace } from '../../models/workspace';
-import { SendWelcomeEmail } from '../../jobs/send-welcome-email';
 
 export const ServerRoute = createServerFileRoute('/billing/webhook').methods({
   POST: async ({ request, context }) => {
@@ -325,7 +303,6 @@ roost make:job SendWelcomeEmail
 Fill in the generated file:
 
 ```ts title="src/jobs/send-welcome-email.ts"
-import { Job, Queue } from '@roost/queue';
 
 interface Payload {
   organizationId: string;
@@ -415,6 +392,6 @@ In this tutorial you:
 
 ## Next Steps
 
-- [@roost/auth reference](/docs/reference/auth) — full API for `SessionManager`, `OrgResolver`, and role-based middleware
-- [@roost/billing guide](/docs/guides/billing) — subscription swaps, usage-based billing, the customer portal, and webhook event catalogue
-- [Auth concepts](/docs/concepts/auth) — how WorkOS AuthKit, the session layer, and organization membership fit together in Roost
+- [@roost/auth reference](/docs/reference/auth.md) — full API for `SessionManager`, `OrgResolver`, and role-based middleware
+- [@roost/billing guide](/docs/guides/billing.md) — subscription swaps, usage-based billing, the customer portal, and webhook event catalogue
+- [Auth concepts](/docs/concepts/auth.md) — how WorkOS AuthKit, the session layer, and organization membership fit together in Roost

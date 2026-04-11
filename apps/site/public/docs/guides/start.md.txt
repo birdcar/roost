@@ -1,10 +1,8 @@
-
 ## How to create a new route
 
 Routes in TanStack Start are file-based. Create a file under `src/routes/` and export a `Route` using `createFileRoute`.
 
 ```tsx src/routes/posts/$id.tsx
-import { createFileRoute } from '@tanstack/react-router';
 
 export const Route = createFileRoute('/posts/$id')({
   component: PostPage,
@@ -19,7 +17,6 @@ function PostPage() {
 For API endpoints, use a loader or server function rather than returning HTML from the component. Nested routes inherit the parent layout automatically.
 
 ```tsx src/routes/posts/index.tsx
-import { createFileRoute, Link } from '@tanstack/react-router';
 
 export const Route = createFileRoute('/posts/')({
   loader: async () => {
@@ -47,8 +44,6 @@ function PostsPage() {
 Use `roostFn` for server functions that read data, and `roostFnWithInput` when the function accepts typed user input.
 
 ```ts src/functions/posts.ts
-import { roostFn, roostFnWithInput } from '@roost/start';
-import { roostMiddleware } from '../middleware';
 
 // No input — read-only server function
 export const listPosts = roostFn(roostMiddleware, async (roost) => {
@@ -68,8 +63,6 @@ export const createPost = roostFnWithInput(
 ```
 
 ```tsx src/routes/posts/new.tsx
-import { createFileRoute } from '@tanstack/react-router';
-import { createPost } from '../../functions/posts';
 
 export const Route = createFileRoute('/posts/new')({ component: NewPostPage });
 
@@ -95,10 +88,6 @@ function NewPostPage() {
 Use `createRoostMiddleware` to bootstrap your application and expose the container via the `roost` context in server functions and loaders.
 
 ```ts src/middleware.ts
-import { createRoostMiddleware } from '@roost/start';
-import { Application } from '@roost/core';
-import { CloudflareServiceProvider } from '@roost/cloudflare';
-import { AuthServiceProvider } from '@roost/auth';
 
 export const roostMiddleware = createRoostMiddleware(() => {
   const app = new Application({});
@@ -109,8 +98,6 @@ export const roostMiddleware = createRoostMiddleware(() => {
 ```
 
 ```ts src/functions/users.ts
-import { roostFn } from '@roost/start';
-import { roostMiddleware } from '../middleware';
 
 export const getCurrentUser = roostFn(roostMiddleware, async (roost) => {
   // roost.container gives you the fully-booted DI container
@@ -124,7 +111,6 @@ export const getCurrentUser = roostFn(roostMiddleware, async (roost) => {
 SSR is enabled by default in TanStack Start. Configure it in `app.config.ts`. For streaming SSR, set `renderMode` to `'stream'`.
 
 ```ts app.config.ts
-import { defineConfig } from '@tanstack/start/config';
 
 export default defineConfig({
   server: {

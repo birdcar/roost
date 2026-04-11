@@ -1,4 +1,3 @@
-
 ## Installation
 
 ```bash title="terminal"
@@ -17,14 +16,14 @@ STRIPE_WEBHOOK_SECRET=whsec_...
 Register the service provider:
 
 ```ts title="src/app.ts"
-import { BillingServiceProvider } from '@roost/billing';
+
 app.register(BillingServiceProvider);
 ```
 
 Resolve the provider via the `BillingProviderToken` symbol:
 
 ```ts
-import { BillingProviderToken } from '@roost/billing';
+
 const billing = container.resolve(BillingProviderToken);
 ```
 
@@ -99,7 +98,6 @@ In-memory implementation of `BillingProvider` for use in tests. Records
 all calls and returns synthetic results without network requests.
 
 ```ts
-import { FakeBillingProvider } from '@roost/billing';
 
 const fake = new FakeBillingProvider();
 const customer = await fake.createCustomer({ name: 'Test', email: 'test@example.com' });
@@ -108,7 +106,6 @@ const customer = await fake.createCustomer({ name: 'Test', email: 'test@example.
 Use the `Billing` helper object to enable/disable the fake globally:
 
 ```ts
-import { Billing } from '@roost/billing';
 
 const fake = Billing.fake();   // enable fake mode, returns FakeBillingProvider
 Billing.restore();             // disable fake mode
@@ -120,7 +117,7 @@ Middleware that gates access to users with an active subscription. Returns
 `402 Payment Required` if the user has no active subscription.
 
 ```ts
-import { SubscribedMiddleware } from '@roost/billing';
+
 app.useMiddleware(SubscribedMiddleware);
 ```
 
@@ -129,7 +126,7 @@ app.useMiddleware(SubscribedMiddleware);
 Middleware that gates access to users currently on a trial subscription.
 
 ```ts
-import { OnTrialMiddleware } from '@roost/billing';
+
 app.useMiddleware(OnTrialMiddleware);
 ```
 

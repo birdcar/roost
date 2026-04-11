@@ -1,4 +1,3 @@
-
 ## Why TanStack Start Over Next.js or Remix
 
 The React full-stack framework space has several contenders. Next.js is the most widely
@@ -47,7 +46,7 @@ any incompatibilities.
 
 ## Further Reading
 
-- [Application Architecture — how start integrates with the Roost request lifecycle](/docs/concepts/architecture)
-- [Edge Computing — the Workers runtime and SSR implications](/docs/concepts/edge-computing)
-- [@roost/start reference — bootApp, roostFn, and provider API](/docs/packages/start)
+- [Application Architecture — how start integrates with the Roost request lifecycle](/docs/concepts/architecture.md)
+- [Edge Computing — the Workers runtime and SSR implications](/docs/concepts/edge-computing.md)
+- [@roost/start reference — bootApp, roostFn, and provider API](/docs/packages/start.md)
 - [TanStack Start Documentation](https://tanstack.com/start)

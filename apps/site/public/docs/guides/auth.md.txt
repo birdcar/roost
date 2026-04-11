@@ -1,12 +1,8 @@
-
 ## How to protect routes with authentication
 
 Add `AuthMiddleware` globally to require authentication on every route, or scope it to specific routes via a pipeline.
 
 ```ts src/app.ts
-import { Application } from '@roost/core';
-import { AuthMiddleware } from '@roost/auth';
-import { AuthServiceProvider } from '@roost/auth';
 
 const app = Application.create(env, {
   auth: { redirectUrl: 'https://myapp.com/auth/callback' },
@@ -26,8 +22,6 @@ Unauthenticated requests are redirected to `/auth/login` automatically. Pass `re
 In TanStack Start, enforce authentication in route `beforeLoad` hooks for page routes:
 
 ```tsx src/routes/dashboard.tsx
-import { createFileRoute, redirect } from '@tanstack/react-router';
-import { getCurrentUser } from '../functions/auth';
 
 export const Route = createFileRoute('/dashboard')({
   beforeLoad: async () => {
@@ -43,7 +37,6 @@ export const Route = createFileRoute('/dashboard')({
 Use `RoleMiddleware` to gate access by organization role. Pass one or more allowed roles as middleware arguments.
 
 ```ts
-import { RoleMiddleware } from '@roost/auth';
 
 // Only 'admin' role can access
 app.useMiddleware(RoleMiddleware, 'admin');
@@ -71,7 +64,6 @@ if (!isAdmin) {
 Use `OrgResolver` to detect the tenant from the request. Pick a resolution strategy that fits your URL scheme.
 
 ```ts
-import { OrgResolver } from '@roost/auth';
 
 // Resolve from subdomain: acme.myapp.com → 'acme'
 const resolver = new OrgResolver(['subdomain']);
@@ -100,7 +92,6 @@ To direct a user to a specific organization's login, pass `organization_id` to t
 Sessions are stored in KV with a sliding TTL. Use `SessionManager` to create, resolve, and destroy sessions.
 
 ```ts
-import { SessionManager } from '@roost/auth';
 
 const sessionManager = new SessionManager(env.SESSION_KV, env.SESSION_SECRET);
 
@@ -138,7 +129,6 @@ After the callback, the user is redirected to the URL in `return_to`, or to `/da
 Add `CsrfMiddleware` globally. All POST/PUT/PATCH/DELETE requests must include the `_csrf` token.
 
 ```ts
-import { CsrfMiddleware } from '@roost/auth';
 
 app.useMiddleware(CsrfMiddleware);
 ```

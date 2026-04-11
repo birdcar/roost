@@ -1,4 +1,3 @@
-
 ## The Problem That Dependency Injection Solves
 
 In a traditional application, code that needs a database connection creates one: `new Database(config)`.
@@ -56,7 +55,7 @@ code without runtime reflection.
 
 ## Further Reading
 
-- [Application Architecture — how the container fits into the boot sequence](/docs/concepts/architecture)
-- [Laravel Patterns — what was adopted, what was changed, and why](/docs/concepts/laravel-patterns)
-- [@roost/core concepts — the container and pipeline design in detail](/docs/concepts/core)
-- [Reference — Container, ServiceProvider, and Application API](/docs/reference)
+- [Application Architecture — how the container fits into the boot sequence](/docs/concepts/architecture.md)
+- [Laravel Patterns — what was adopted, what was changed, and why](/docs/concepts/laravel-patterns.md)
+- [@roost/core concepts — the container and pipeline design in detail](/docs/concepts/core.md)
+- [Reference — Container, ServiceProvider, and Application API](/docs/reference.md)

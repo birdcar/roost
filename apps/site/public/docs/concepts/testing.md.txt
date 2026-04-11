@@ -1,4 +1,3 @@
-
 ## The Testing Package's Scope
 
 `@roost/testing` provides the shared testing infrastructure that other packages
@@ -49,6 +48,6 @@ This package page focuses on the specific tools the package provides.
 
 ## Further Reading
 
-- [Testing Philosophy — the reasoning behind Roost's testing approach](/docs/concepts/testing-philosophy)
-- [@roost/testing reference — TestClient, TestResponse, and setup API](/docs/packages/testing)
+- [Testing Philosophy — the reasoning behind Roost's testing approach](/docs/concepts/testing-philosophy.md)
+- [@roost/testing reference — TestClient, TestResponse, and setup API](/docs/packages/testing.md)
 - [Bun Test Documentation](https://bun.sh/docs/test/writing)

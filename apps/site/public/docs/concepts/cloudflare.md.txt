@@ -1,4 +1,3 @@
-
 ## The Raw Binding Problem
 
 Cloudflare injects bindings into the Worker's `env` object. Accessing KV looks
@@ -46,7 +45,7 @@ structure.
 
 ## Further Reading
 
-- [Edge Computing — bindings, the Workers runtime, and what they mean for design](/docs/concepts/edge-computing)
-- [@roost/ai concepts — how the agent abstraction uses AIClient](/docs/concepts/ai)
-- [@roost/cloudflare reference — all binding wrapper APIs](/docs/packages/cloudflare)
+- [Edge Computing — bindings, the Workers runtime, and what they mean for design](/docs/concepts/edge-computing.md)
+- [@roost/ai concepts — how the agent abstraction uses AIClient](/docs/concepts/ai.md)
+- [@roost/cloudflare reference — all binding wrapper APIs](/docs/packages/cloudflare.md)
 - [Cloudflare Workers AI Documentation](https://developers.cloudflare.com/workers-ai/)

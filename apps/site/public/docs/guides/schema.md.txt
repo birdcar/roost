@@ -1,11 +1,8 @@
-
 ## How to define a tool input schema
 
 Return a record of field names to schema builders from the `schema()` method in any AI tool or MCP tool. All fields are required by default.
 
 ```ts src/tools/SearchTool.ts
-import { type Tool, type ToolRequest } from '@roost/ai';
-import { schema } from '@roost/schema';
 
 export class SearchTool implements Tool {
   description(): string {
@@ -36,7 +33,6 @@ export class SearchTool implements Tool {
 Chain `.optional()` to make a field not required. Use `s.object()` to nest structured data.
 
 ```ts
-import { schema } from '@roost/schema';
 
 // Optional primitive
 const s_optional_number = schema.integer().min(0).optional();
@@ -69,7 +65,6 @@ Nested objects in tool schemas let the AI provide structured sub-parameters. Acc
 Chain `.description()` on every field. The AI model uses these descriptions to decide what values to pass — clear descriptions reduce tool call errors.
 
 ```ts
-import { schema } from '@roost/schema';
 
 // Descriptions help the model understand intent and constraints
 const createUserSchema = {

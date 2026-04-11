@@ -1,4 +1,3 @@
-
 <div className="pillar-grid">
   <a href="/docs/tutorials" className="pillar-card">
     <h3>Learning Roost?</h3>
@@ -27,5 +26,5 @@
 
 ## New to Roost?
 
-Start with the [Quick Start](/docs/getting-started) — install the CLI,
+Start with the [Quick Start](/docs/getting-started.md) — install the CLI,
 scaffold a project, and deploy your first app in minutes.

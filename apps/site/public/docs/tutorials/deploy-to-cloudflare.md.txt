@@ -1,6 +1,3 @@
-
-import { Callout } from '../../../src/components/callout'
-
 <Callout type="note">
   <p><strong>What you'll learn</strong></p>
   <ul>
@@ -163,7 +160,7 @@ within seconds.
 
 ## Next steps
 
-- [@roost/cloudflare](/docs/packages/cloudflare) — D1, KV, AI bindings in depth
-- [@roost/auth](/docs/packages/auth) — configure production WorkOS callbacks
-- [@roost/billing](/docs/packages/billing) — connect Stripe webhooks for production
-- [@roost/queue](/docs/packages/queue) — background jobs with Cloudflare Queues
+- [@roost/cloudflare](/docs/packages/cloudflare.md) — D1, KV, AI bindings in depth
+- [@roost/auth](/docs/packages/auth.md) — configure production WorkOS callbacks
+- [@roost/billing](/docs/packages/billing.md) — connect Stripe webhooks for production
+- [@roost/queue](/docs/packages/queue.md) — background jobs with Cloudflare Queues

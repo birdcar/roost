@@ -1,4 +1,3 @@
-
 ## How Cloudflare Queues Work
 
 Cloudflare Queues are a message queue service built on top of the Workers platform.
@@ -60,6 +59,6 @@ jobs with no triggering event, but they should not be the default.
 
 ## Further Reading
 
-- [@roost/queue reference — Job, dispatch, and consumer API](/docs/packages/queue)
-- [Testing Philosophy — Job.fake() and how queue testing works](/docs/concepts/testing-philosophy)
+- [@roost/queue reference — Job, dispatch, and consumer API](/docs/packages/queue.md)
+- [Testing Philosophy — Job.fake() and how queue testing works](/docs/concepts/testing-philosophy.md)
 - [Cloudflare Queues Documentation](https://developers.cloudflare.com/queues/)

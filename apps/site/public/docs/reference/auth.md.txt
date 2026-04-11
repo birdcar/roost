@@ -1,4 +1,3 @@
-
 ## Installation
 
 ```bash title="terminal"
@@ -27,7 +26,7 @@ Required application config:
 Register the service provider:
 
 ```ts title="src/app.ts"
-import { AuthServiceProvider } from '@roost/auth';
+
 app.register(AuthServiceProvider);
 ```
 

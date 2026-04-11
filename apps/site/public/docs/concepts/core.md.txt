@@ -1,4 +1,3 @@
-
 ## Why a Service Container for Workers?
 
 The obvious question is whether a dependency injection container is overkill for a Cloudflare
@@ -49,6 +48,6 @@ the pipeline instantiates them from the container rather than requiring manual c
 
 ## Further Reading
 
-- [Service Container — the DI model in depth](/docs/concepts/service-container)
-- [Application Architecture — how core fits into the full request lifecycle](/docs/concepts/architecture)
-- [@roost/core reference — Application, Container, Pipeline API](/docs/packages/core)
+- [Service Container — the DI model in depth](/docs/concepts/service-container.md)
+- [Application Architecture — how core fits into the full request lifecycle](/docs/concepts/architecture.md)
+- [@roost/core reference — Application, Container, Pipeline API](/docs/packages/core.md)

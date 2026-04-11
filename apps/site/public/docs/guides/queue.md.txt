@@ -1,10 +1,8 @@
-
 ## How to define a background job
 
 Extend `Job<TPayload>` with a typed payload interface and implement `handle()`.
 
 ```ts src/jobs/SendWelcomeEmail.ts
-import { Job, MaxRetries, Backoff } from '@roost/queue';
 
 interface SendWelcomeEmailPayload {
   userId: string;
@@ -43,7 +41,6 @@ Use `this.attempt` to access the current retry count inside `handle()`. Throw an
 Call the static `dispatch` method. For delayed execution, use `dispatchAfter` with a delay in seconds.
 
 ```ts
-import { SendWelcomeEmail } from '../jobs/SendWelcomeEmail';
 
 // Immediate
 await SendWelcomeEmail.dispatch({
@@ -65,10 +62,6 @@ await SendWelcomeEmail.dispatchAfter(600, {
 Use `Job.chain` for sequential jobs where each step depends on the previous one, and `Job.batch` for parallel independent work.
 
 ```ts
-import { Job } from '@roost/queue';
-import { ProcessOrder } from '../jobs/ProcessOrder';
-import { SendReceipt } from '../jobs/SendReceipt';
-import { UpdateInventory } from '../jobs/UpdateInventory';
 
 // Chain: runs in order, stops if any job fails
 await Job.chain([
@@ -79,7 +72,6 @@ await Job.chain([
 ```
 
 ```ts
-import { SendWelcomeEmail } from '../jobs/SendWelcomeEmail';
 
 // Batch: runs in parallel, returns a batch ID
 const batchId = await Job.batch([
@@ -94,7 +86,6 @@ const batchId = await Job.batch([
 Configure retry behavior with decorators. Implement `onFailure()` for cleanup or alerting after all retries are exhausted.
 
 ```ts
-import { Job, MaxRetries, Backoff, RetryAfter } from '@roost/queue';
 
 @MaxRetries(5)
 @Backoff('exponential')   // Delays: 10s, 20s, 40s, 80s, 160s
@@ -134,8 +125,6 @@ Use `@Backoff('fixed')` with `@RetryAfter(30)` when retrying after a consistent 
 Call `Job.fake()` to intercept dispatches without sending to the queue. Assert what was dispatched, then restore.
 
 ```ts tests/jobs/SendWelcomeEmail.test.ts
-import { describe, it, expect } from 'bun:test';
-import { SendWelcomeEmail } from '../../src/jobs/SendWelcomeEmail';
 
 describe('SendWelcomeEmail', () => {
   it('is dispatched after signup', async () => {

@@ -1,4 +1,3 @@
-
 ## Installation
 
 ```bash title="terminal"
@@ -20,7 +19,7 @@ in `wrangler.jsonc`:
 Register the service provider to inject the provider into all agent classes:
 
 ```ts title="src/app.ts"
-import { AiServiceProvider } from '@roost/ai';
+
 app.register(AiServiceProvider);
 ```
 

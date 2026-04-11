@@ -1,4 +1,3 @@
-
 ## A Single Entry Point at the Edge
 
 Every Roost application is a Cloudflare Worker — a V8 isolate that receives HTTP requests and returns
@@ -52,7 +51,7 @@ globals.
 
 ## Further Reading
 
-- [Service Container — DI, providers, and the boot sequence in depth](/docs/concepts/service-container)
-- [Edge Computing — why Workers, and how the runtime shapes the architecture](/docs/concepts/edge-computing)
-- [@roost/core concepts — the design decisions behind the container and pipeline](/docs/concepts/core)
-- [Reference — Application, Pipeline, and ServiceProvider API](/docs/reference)
+- [Service Container — DI, providers, and the boot sequence in depth](/docs/concepts/service-container.md)
+- [Edge Computing — why Workers, and how the runtime shapes the architecture](/docs/concepts/edge-computing.md)
+- [@roost/core concepts — the design decisions behind the container and pipeline](/docs/concepts/core.md)
+- [Reference — Application, Pipeline, and ServiceProvider API](/docs/reference.md)

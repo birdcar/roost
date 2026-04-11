@@ -1,4 +1,3 @@
-
 ## How to create an AI agent
 
 Extend `Agent` and implement `instructions()` to define the system prompt. The AI binding in `wrangler.jsonc` is the only credential needed.
@@ -10,7 +9,6 @@ Extend `Agent` and implement `instructions()` to define the system prompt. The A
 ```
 
 ```ts src/agents/SupportAgent.ts
-import { Agent } from '@roost/ai';
 
 export class SupportAgent extends Agent {
   instructions(): string {
@@ -31,8 +29,6 @@ Each agent instance maintains its own conversation history. Create a new instanc
 Implement the `Tool` interface and add the tool to your agent's `tools()` method.
 
 ```ts src/tools/OrderStatusTool.ts
-import { type Tool, type ToolRequest } from '@roost/ai';
-import { schema } from '@roost/schema';
 
 export class OrderStatusTool implements Tool {
   constructor(private db: Database) {}
@@ -57,8 +53,6 @@ export class OrderStatusTool implements Tool {
 ```
 
 ```ts src/agents/SupportAgent.ts
-import { Agent, type HasTools } from '@roost/ai';
-import { OrderStatusTool } from '../tools/OrderStatusTool';
 
 export class SupportAgent extends Agent implements HasTools {
   constructor(private db: Database) {
@@ -80,7 +74,6 @@ export class SupportAgent extends Agent implements HasTools {
 Use class decorators to set defaults. All decorators can be overridden per-prompt via the options argument.
 
 ```ts src/agents/WritingAgent.ts
-import { Agent, Model, MaxSteps, Temperature, MaxTokens } from '@roost/ai';
 
 @Model('@cf/meta/llama-3.1-70b-instruct')
 @Temperature(0.9)     // More creative responses
@@ -161,8 +154,6 @@ export class SupportAgent extends Agent {
 Use `Agent.fake()` to inject predetermined responses. Always call `Agent.restore()` after each test.
 
 ```ts tests/agents/SupportAgent.test.ts
-import { describe, it, expect } from 'bun:test';
-import { SupportAgent } from '../../src/agents/SupportAgent';
 
 describe('SupportAgent', () => {
   it('responds to password reset questions', async () => {

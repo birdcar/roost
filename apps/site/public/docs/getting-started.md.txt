@@ -1,6 +1,3 @@
-
-import { Callout } from '../../src/components/callout'
-
 <Callout type="tip">
   <p><strong>What you'll do:</strong> Install the Roost CLI, scaffold a project, add a route, create a database model, add authentication, and deploy — all in about 15 minutes.</p>
   <p><strong>Prerequisites:</strong> <a href="https://bun.sh">Bun 1.0+</a>, a <a href="https://dash.cloudflare.com/sign-up">Cloudflare account</a> (free tier), and a <a href="https://workos.com">WorkOS account</a> (free tier).</p>
@@ -47,7 +44,6 @@ You should see output indicating the dev server is running. Open `http://localho
 Create a new file at `src/routes/hello.tsx`:
 
 ```src/routes/hello.tsx
-import { createFileRoute } from '@tanstack/react-router';
 
 export const Route = createFileRoute('/hello')({
   component: HelloPage,
@@ -76,8 +72,6 @@ roost make:model Post
 This creates `src/models/post.ts`. Edit it to define your schema columns using Drizzle's SQLite core helpers:
 
 ```src/models/post.ts
-import { Model } from '@roost/orm';
-import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
 
 export const posts = sqliteTable('posts', {
   id:         integer('id').primaryKey({ autoIncrement: true }),
@@ -106,9 +100,6 @@ You should see output confirming the `posts` table was created in your local D1 
 Update your hello route to read from the database:
 
 ```src/routes/hello.tsx
-import { createFileRoute } from '@tanstack/react-router';
-import { createServerFn } from '@tanstack/react-start';
-import { Post } from '../models/post';
 
 const getPosts = createServerFn({ method: 'GET' }).handler(async () => {
   return Post.where('id', '>', 0).orderBy('created_at', 'desc').all();
@@ -163,7 +154,7 @@ Auth routes are available automatically once credentials are configured:
 /auth/logout     # Clear session
 ```
 
-Visit `http://localhost:3000/auth/login`. You should be redirected to the WorkOS login page. After authenticating, you'll be redirected back to your app. To protect a route, add `AuthMiddleware` — see the [auth guides](/docs/guides/auth) for details.
+Visit `http://localhost:3000/auth/login`. You should be redirected to the WorkOS login page. After authenticating, you'll be redirected back to your app. To protect a route, add `AuthMiddleware` — see the [auth guides](/docs/guides/auth.md) for details.
 
 ## Step 8: Deploy
 
@@ -181,8 +172,8 @@ Cloudflare Workers. That's a full-stack app running at the edge.
 
 ## Next Steps
 
-- [Build a REST API](/docs/tutorials/build-a-task-api) — CRUD endpoints, validation, and testing
-- [Build an AI Chat App](/docs/tutorials/build-a-chat-app) — agents, tools, and streaming on Workers AI
-- [Build a SaaS App](/docs/tutorials/build-a-saas-app) — auth, billing, and background jobs
-- [@roost/core Reference](/docs/reference/core) — service container, config, and middleware
-- [Architecture Concepts](/docs/concepts/architecture) — understand how Roost works under the hood
+- [Build a REST API](/docs/tutorials/build-a-task-api.md) — CRUD endpoints, validation, and testing
+- [Build an AI Chat App](/docs/tutorials/build-a-chat-app.md) — agents, tools, and streaming on Workers AI
+- [Build a SaaS App](/docs/tutorials/build-a-saas-app.md) — auth, billing, and background jobs
+- [@roost/core Reference](/docs/reference/core.md) — service container, config, and middleware
+- [Architecture Concepts](/docs/concepts/architecture.md) — understand how Roost works under the hood

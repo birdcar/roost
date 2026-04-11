@@ -1,4 +1,3 @@
-
 ## What MCP Is
 
 The Model Context Protocol (MCP) is an open standard for connecting AI models to external
@@ -44,7 +43,7 @@ outward-facing API contract for AI clients you do not control.
 
 ## Further Reading
 
-- [@roost/ai concepts — agent tools and the agentic loop](/docs/concepts/ai)
-- [@roost/schema concepts — shared schema between AI and MCP tools](/docs/concepts/schema)
-- [@roost/mcp reference — McpServer, McpTool, McpResource, and McpPrompt API](/docs/packages/mcp)
+- [@roost/ai concepts — agent tools and the agentic loop](/docs/concepts/ai.md)
+- [@roost/schema concepts — shared schema between AI and MCP tools](/docs/concepts/schema.md)
+- [@roost/mcp reference — McpServer, McpTool, McpResource, and McpPrompt API](/docs/packages/mcp.md)
 - [Model Context Protocol Specification](https://modelcontextprotocol.io)

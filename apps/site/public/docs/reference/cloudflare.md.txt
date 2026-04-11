@@ -1,4 +1,3 @@
-
 ## Installation
 
 ```bash title="terminal"
@@ -11,8 +10,6 @@ Register `CloudflareServiceProvider` to make all binding wrappers available
 via the container. Bindings are resolved from the Worker `env` object by name.
 
 ```ts title="src/app.ts"
-import { Application } from '@roost/core';
-import { CloudflareServiceProvider } from '@roost/cloudflare';
 
 const app = Application.create(env);
 app.register(CloudflareServiceProvider);

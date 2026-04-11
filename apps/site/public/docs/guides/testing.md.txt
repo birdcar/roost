@@ -1,11 +1,8 @@
-
 ## How to write HTTP tests with TestClient
 
 Create a `TestClient` and call HTTP methods directly. The client handles application bootstrapping automatically.
 
 ```ts tests/api/posts.test.ts
-import { describe, it, expect } from 'bun:test';
-import { TestClient } from '@roost/testing';
 
 describe('POST /api/posts', () => {
   it('creates a post', async () => {
@@ -79,10 +76,6 @@ const data = await response.json<{ users: User[] }>();
 Use `fakeAll()` to stub all external services at once, or fake individual services selectively.
 
 ```ts tests/signup.test.ts
-import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
-import { TestClient, fakeAll, restoreAll } from '@roost/testing';
-import { SendWelcomeEmail } from '../src/jobs/SendWelcomeEmail';
-import { BillingFake } from '@roost/billing';
 
 describe('User signup', () => {
   beforeEach(() => fakeAll());
@@ -121,8 +114,6 @@ To fake only specific services, call their individual fake methods (`SendWelcome
 Use `createTestApp` with a fresh in-memory D1 database for each test run to avoid state leaking between tests.
 
 ```ts
-import { createTestApp } from '@roost/testing';
-import { TestClient } from '@roost/testing';
 
 // Create a fresh app with test configuration
 const app = await createTestApp({
@@ -142,7 +133,6 @@ const client = new TestClient(app);
 For test isolation, run migrations before each suite and use a teardown to clear tables:
 
 ```ts
-import { describe, it, beforeAll, afterEach } from 'bun:test';
 
 describe('User API', () => {
   beforeAll(async () => {

@@ -1,10 +1,8 @@
-
 ## How to define a model
 
 Extend `Model`, set `tableName`, and configure optional flags for timestamps and soft deletes.
 
 ```ts src/models/Post.ts
-import { Model } from '@roost/orm';
 
 export class Post extends Model {
   static tableName = 'posts';
@@ -21,7 +19,6 @@ Access attributes via the `attributes` proxy: `post.attributes.title`. Do not ad
 Chain query methods on model static calls. All queries are lazy — execute with `.all()`, `.first()`, or `.count()`.
 
 ```ts
-import { Post } from '../models/Post';
 
 // Simple equality
 const published = await Post.where('status', 'published').all();
@@ -63,9 +60,6 @@ the relation to fetch related records for a single model, or `loadMany(instances
 for a collection.
 
 ```ts src/models/User.ts
-import { Model, HasManyRelation, HasOneRelation } from '@roost/orm';
-import { Post } from './Post';
-import { Profile } from './Profile';
 
 export class User extends Model {
   static tableName = 'users';
@@ -79,8 +73,6 @@ export class User extends Model {
 ```
 
 ```ts src/models/Post.ts
-import { Model, BelongsToRelation } from '@roost/orm';
-import { User } from './User';
 
 export class Post extends Model {
   static tableName = 'posts';
@@ -102,7 +94,6 @@ const posts = await User.posts.load(user); // Post[]
 Register hooks via `Model.on(event, callback)`. Return `false` from a `creating` or `updating` hook to abort the operation.
 
 ```ts src/models/Post.ts
-import { Model } from '@roost/orm';
 
 export class Post extends Model {
   static tableName = 'posts';
@@ -137,8 +128,6 @@ Extend `Factory`, implement the `definition()` method, and use `.count()` / `.st
 customise what gets created.
 
 ```ts database/factories/PostFactory.ts
-import { Factory } from '@roost/orm';
-import { Post } from '../../src/models/Post';
 
 export class PostFactory extends Factory<typeof Post> {
   definition() {
@@ -154,7 +143,6 @@ export class PostFactory extends Factory<typeof Post> {
 ```
 
 ```ts tests/posts.test.ts
-import { PostFactory } from '../database/factories/PostFactory';
 
 const factory = new PostFactory(Post);
 
@@ -204,4 +192,4 @@ roost make:migration create_posts_table
 roost migrate
 ```
 
-Migrations are raw SQL files executed against D1. See [the migrations guide](/docs/guides/migrations) for the full column reference and rollback patterns.
+Migrations are raw SQL files executed against D1. See [the migrations guide](/docs/guides/migrations.md) for the full column reference and rollback patterns.

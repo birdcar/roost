@@ -1,4 +1,3 @@
-
 Guides assume you already know the basics. Each one addresses a specific goal — how to
 configure something, how to integrate a feature, how to solve a particular problem.
 
@@ -6,34 +5,34 @@ configure something, how to integrate a feature, how to solve a particular probl
 
 Guides that span multiple packages or apply to the full application lifecycle.
 
-- [Migrations — create, run, rollback, and define columns](/docs/guides/migrations)
-- [Deployment — deploy to Cloudflare Workers, custom domains, previews](/docs/guides/deployment)
-- [Environment — .dev.vars, production secrets, per-environment config](/docs/guides/environment)
-- [Error Handling — routes, jobs, logging, custom error responses](/docs/guides/error-handling)
+- [Migrations — create, run, rollback, and define columns](/docs/guides/migrations.md)
+- [Deployment — deploy to Cloudflare Workers, custom domains, previews](/docs/guides/deployment.md)
+- [Environment — .dev.vars, production secrets, per-environment config](/docs/guides/environment.md)
+- [Error Handling — routes, jobs, logging, custom error responses](/docs/guides/error-handling.md)
 
 ## Core
 
 Guides for the foundational packages every Roost app uses.
 
-- [@roost/core — service providers, DI bindings, middleware, config](/docs/guides/core)
-- [@roost/cloudflare — D1, R2, KV, Queues, Workers AI, Vectorize](/docs/guides/cloudflare)
-- [@roost/start — routes, server functions, SSR](/docs/guides/start)
+- [@roost/core — service providers, DI bindings, middleware, config](/docs/guides/core.md)
+- [@roost/cloudflare — D1, R2, KV, Queues, Workers AI, Vectorize](/docs/guides/cloudflare.md)
+- [@roost/start — routes, server functions, SSR](/docs/guides/start.md)
 
 ## Features
 
 Guides for feature packages you add as your application grows.
 
-- [@roost/auth — authentication, roles, multi-tenancy, sessions, CSRF](/docs/guides/auth)
-- [@roost/orm — models, migrations, queries, relationships, factories](/docs/guides/orm)
-- [@roost/ai — agents, tools, streaming, conversation memory](/docs/guides/ai)
-- [@roost/mcp — MCP servers, tools, resources, prompts](/docs/guides/mcp)
-- [@roost/billing — Stripe, subscriptions, webhooks, metered billing](/docs/guides/billing)
-- [@roost/queue — jobs, dispatch, chains, batches, retries](/docs/guides/queue)
+- [@roost/auth — authentication, roles, multi-tenancy, sessions, CSRF](/docs/guides/auth.md)
+- [@roost/orm — models, migrations, queries, relationships, factories](/docs/guides/orm.md)
+- [@roost/ai — agents, tools, streaming, conversation memory](/docs/guides/ai.md)
+- [@roost/mcp — MCP servers, tools, resources, prompts](/docs/guides/mcp.md)
+- [@roost/billing — Stripe, subscriptions, webhooks, metered billing](/docs/guides/billing.md)
+- [@roost/queue — jobs, dispatch, chains, batches, retries](/docs/guides/queue.md)
 
 ## Tooling
 
 Guides for the development and testing tools.
 
-- [@roost/cli — scaffold, generate, migrate, deploy](/docs/guides/cli)
-- [@roost/testing — HTTP tests, assertions, fakes, database isolation](/docs/guides/testing)
-- [@roost/schema — tool input schemas, optional fields, descriptions](/docs/guides/schema)
+- [@roost/cli — scaffold, generate, migrate, deploy](/docs/guides/cli.md)
+- [@roost/testing — HTTP tests, assertions, fakes, database isolation](/docs/guides/testing.md)
+- [@roost/schema — tool input schemas, optional fields, descriptions](/docs/guides/schema.md)

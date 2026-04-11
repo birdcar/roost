@@ -1,4 +1,3 @@
-
 ## Installation
 
 ```bash title="terminal"
@@ -163,8 +162,6 @@ Inverse of `HasOneRelation` or `HasManyRelation`. `localKey` defaults to `'id'`.
 `load()` returns `Promise<RelatedModel | null>`.
 
 ```ts
-import { Model, HasManyRelation, BelongsToRelation } from '@roost/orm';
-import { Post } from './Post';
 
 export class User extends Model {
   static tableName = 'users';
@@ -231,8 +228,6 @@ Create and persist model instances.
 Create and persist a single model instance.
 
 ```ts
-import { Factory } from '@roost/orm';
-import { Post } from '../../src/models/Post';
 
 class PostFactory extends Factory<typeof Post> {
   definition() {

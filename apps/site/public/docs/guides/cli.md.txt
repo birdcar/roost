@@ -1,4 +1,3 @@
-
 ## How to scaffold a new project
 
 Use `roost new` with flags to include the packages your application needs. Generated projects are deployment-ready on Cloudflare Workers.
@@ -67,7 +66,7 @@ roost migrate
 roost migrate:generate
 ```
 
-Migrations run in filename order. The CLI tracks which migrations have run in a `migrations` table in your D1 database. See [the migrations guide](/docs/guides/migrations) for defining columns and indexes.
+Migrations run in filename order. The CLI tracks which migrations have run in a `migrations` table in your D1 database. See [the migrations guide](/docs/guides/migrations.md) for defining columns and indexes.
 
 ## How to deploy your application
 
@@ -95,4 +94,4 @@ After first deployment, run migrations against the production D1 database:
 wrangler d1 execute my-app-db --remote --file=database/migrations/0001_create_users.sql
 ```
 
-See [the deployment guide](/docs/guides/deployment) for custom domains, preview deployments, and CI/CD setup.
+See [the deployment guide](/docs/guides/deployment.md) for custom domains, preview deployments, and CI/CD setup.

@@ -16,14 +16,28 @@ export default {
       return env.ASSETS.fetch(request)
     }
 
-    // Raw markdown serving
+    // Raw markdown serving with index-route normalization
     if (url.pathname.startsWith('/docs/') && wantsMarkdown(request)) {
       const docPath = docPathFromUrl(url)
-      const asset = await env.ASSETS.fetch(
+
+      // Try exact path first
+      const exactAsset = await env.ASSETS.fetch(
         new Request(`${url.origin}/${docPath}.md.txt`),
-      )
-      if (asset.ok) {
-        return new Response(await asset.text(), {
+      ).catch(() => null)
+
+      if (exactAsset?.ok) {
+        return new Response(await exactAsset.text(), {
+          headers: { 'Content-Type': MARKDOWN_CONTENT_TYPE },
+        })
+      }
+
+      // Try index route (e.g., /docs/guides.md → docs/guides/index.md.txt)
+      const indexAsset = await env.ASSETS.fetch(
+        new Request(`${url.origin}/${docPath}/index.md.txt`),
+      ).catch(() => null)
+
+      if (indexAsset?.ok) {
+        return new Response(await indexAsset.text(), {
           headers: { 'Content-Type': MARKDOWN_CONTENT_TYPE },
         })
       }

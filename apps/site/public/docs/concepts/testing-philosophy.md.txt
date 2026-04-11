@@ -1,4 +1,3 @@
-
 ## Fakes Over Mocks
 
 The standard advice in JavaScript testing is to mock dependencies with libraries like
@@ -63,7 +62,7 @@ rather than hiding it behind another fake.
 
 ## Further Reading
 
-- [@roost/testing concepts — the package-specific testing model](/docs/concepts/testing)
-- [@roost/testing reference — TestClient, fakes, and setup](/docs/packages/testing)
-- [@roost/ai reference — Agent.fake() and assertion methods](/docs/packages/ai)
-- [@roost/queue reference — Job.fake() and assertion methods](/docs/packages/queue)
+- [@roost/testing concepts — the package-specific testing model](/docs/concepts/testing.md)
+- [@roost/testing reference — TestClient, fakes, and setup](/docs/packages/testing.md)
+- [@roost/ai reference — Agent.fake() and assertion methods](/docs/packages/ai.md)
+- [@roost/queue reference — Job.fake() and assertion methods](/docs/packages/queue.md)

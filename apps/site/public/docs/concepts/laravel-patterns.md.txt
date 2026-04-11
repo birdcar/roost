@@ -1,4 +1,3 @@
-
 ## Why Draw From Laravel at All
 
 Laravel earned its reputation not by being the most technically innovative PHP framework, but
@@ -69,8 +68,8 @@ the runtime's actual constraints rather than pretending those constraints do not
 
 ## Further Reading
 
-- [Service Container — the DI and provider model in depth](/docs/concepts/service-container)
-- [@roost/orm concepts — Active Record on D1](/docs/concepts/orm)
-- [@roost/cli concepts — code generation philosophy](/docs/concepts/cli)
+- [Service Container — the DI and provider model in depth](/docs/concepts/service-container.md)
+- [@roost/orm concepts — Active Record on D1](/docs/concepts/orm.md)
+- [@roost/cli concepts — code generation philosophy](/docs/concepts/cli.md)
 - [Laravel Service Providers](https://laravel.com/docs/providers)
 - [Laravel Eloquent ORM](https://laravel.com/docs/eloquent)
