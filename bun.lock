@@ -24,6 +24,20 @@
         "vite-tsconfig-paths": "^5.1.0",
       },
     },
+    "packages/ai": {
+      "name": "@roost/ai",
+      "version": "0.1.0",
+      "dependencies": {
+        "@roost/cloudflare": "workspace:*",
+        "@roost/core": "workspace:*",
+        "@roost/schema": "workspace:*",
+      },
+      "devDependencies": {
+        "@cloudflare/workers-types": "^4.20250409.0",
+        "bun-types": "latest",
+        "typescript": "^5.8.0",
+      },
+    },
     "packages/auth": {
       "name": "@roost/auth",
       "version": "0.1.0",
@@ -74,6 +88,18 @@
         "@cloudflare/workers-types": "^4.0.0",
       },
     },
+    "packages/mcp": {
+      "name": "@roost/mcp",
+      "version": "0.1.0",
+      "dependencies": {
+        "@roost/core": "workspace:*",
+        "@roost/schema": "workspace:*",
+      },
+      "devDependencies": {
+        "bun-types": "latest",
+        "typescript": "^5.8.0",
+      },
+    },
     "packages/orm": {
       "name": "@roost/orm",
       "version": "0.1.0",
@@ -87,6 +113,14 @@
         "@faker-js/faker": "^9.0.0",
         "bun-types": "latest",
         "drizzle-kit": "^0.30.0",
+        "typescript": "^5.8.0",
+      },
+    },
+    "packages/schema": {
+      "name": "@roost/schema",
+      "version": "0.1.0",
+      "devDependencies": {
+        "bun-types": "latest",
         "typescript": "^5.8.0",
       },
     },
@@ -334,13 +368,19 @@
 
     "@rollup/rollup-win32-x64-msvc": ["@rollup/rollup-win32-x64-msvc@4.60.1", "", { "os": "win32", "cpu": "x64" }, "sha512-lWMnixq/QzxyhTV6NjQJ4SFo1J6PvOX8vUx5Wb4bBPsEb+8xZ89Bz6kOXpfXj9ak9AHTQVQzlgzBEc1SyM27xQ=="],
 
+    "@roost/ai": ["@roost/ai@workspace:packages/ai"],
+
     "@roost/auth": ["@roost/auth@workspace:packages/auth"],
 
     "@roost/cloudflare": ["@roost/cloudflare@workspace:packages/cloudflare"],
 
     "@roost/core": ["@roost/core@workspace:packages/core"],
 
+    "@roost/mcp": ["@roost/mcp@workspace:packages/mcp"],
+
     "@roost/orm": ["@roost/orm@workspace:packages/orm"],
+
+    "@roost/schema": ["@roost/schema@workspace:packages/schema"],
 
     "@roost/start": ["@roost/start@workspace:packages/start"],
 
