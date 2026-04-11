@@ -4,48 +4,29 @@
     "": {
       "name": "roost",
     },
-    "apps/docs": {
-      "name": "roost-docs",
-      "dependencies": {
-        "@roost/core": "workspace:*",
-        "@roost/start": "workspace:*",
-        "@tanstack/react-router": "catalog:",
-        "@tanstack/react-start": "catalog:",
-        "react": "catalog:",
-        "react-dom": "catalog:",
-      },
-      "devDependencies": {
-        "@types/react": "catalog:",
-        "@types/react-dom": "catalog:",
-        "@vitejs/plugin-react": "catalog:",
-        "typescript": "catalog:",
-        "vite": "catalog:",
-        "vite-tsconfig-paths": "catalog:",
-      },
-    },
-    "apps/marketing": {
-      "name": "roost-marketing",
-      "dependencies": {
-        "@roost/core": "workspace:*",
-        "@roost/start": "workspace:*",
-        "@tanstack/react-router": "catalog:",
-        "@tanstack/react-start": "catalog:",
-        "react": "catalog:",
-        "react-dom": "catalog:",
-      },
-      "devDependencies": {
-        "@types/react": "catalog:",
-        "@types/react-dom": "catalog:",
-        "@vitejs/plugin-react": "catalog:",
-        "typescript": "catalog:",
-        "vite": "catalog:",
-        "vite-tsconfig-paths": "catalog:",
-      },
-    },
     "apps/playground": {
       "name": "roost-playground",
       "dependencies": {
         "@roost/cloudflare": "workspace:*",
+        "@roost/core": "workspace:*",
+        "@roost/start": "workspace:*",
+        "@tanstack/react-router": "catalog:",
+        "@tanstack/react-start": "catalog:",
+        "react": "catalog:",
+        "react-dom": "catalog:",
+      },
+      "devDependencies": {
+        "@types/react": "catalog:",
+        "@types/react-dom": "catalog:",
+        "@vitejs/plugin-react": "catalog:",
+        "typescript": "catalog:",
+        "vite": "catalog:",
+        "vite-tsconfig-paths": "catalog:",
+      },
+    },
+    "apps/site": {
+      "name": "roost-site",
+      "dependencies": {
         "@roost/core": "workspace:*",
         "@roost/start": "workspace:*",
         "@tanstack/react-router": "catalog:",
@@ -911,17 +892,15 @@
 
     "rollup": ["rollup@4.60.1", "", { "dependencies": { "@types/estree": "1.0.8" }, "optionalDependencies": { "@rollup/rollup-android-arm-eabi": "4.60.1", "@rollup/rollup-android-arm64": "4.60.1", "@rollup/rollup-darwin-arm64": "4.60.1", "@rollup/rollup-darwin-x64": "4.60.1", "@rollup/rollup-freebsd-arm64": "4.60.1", "@rollup/rollup-freebsd-x64": "4.60.1", "@rollup/rollup-linux-arm-gnueabihf": "4.60.1", "@rollup/rollup-linux-arm-musleabihf": "4.60.1", "@rollup/rollup-linux-arm64-gnu": "4.60.1", "@rollup/rollup-linux-arm64-musl": "4.60.1", "@rollup/rollup-linux-loong64-gnu": "4.60.1", "@rollup/rollup-linux-loong64-musl": "4.60.1", "@rollup/rollup-linux-ppc64-gnu": "4.60.1", "@rollup/rollup-linux-ppc64-musl": "4.60.1", "@rollup/rollup-linux-riscv64-gnu": "4.60.1", "@rollup/rollup-linux-riscv64-musl": "4.60.1", "@rollup/rollup-linux-s390x-gnu": "4.60.1", "@rollup/rollup-linux-x64-gnu": "4.60.1", "@rollup/rollup-linux-x64-musl": "4.60.1", "@rollup/rollup-openbsd-x64": "4.60.1", "@rollup/rollup-openharmony-arm64": "4.60.1", "@rollup/rollup-win32-arm64-msvc": "4.60.1", "@rollup/rollup-win32-ia32-msvc": "4.60.1", "@rollup/rollup-win32-x64-gnu": "4.60.1", "@rollup/rollup-win32-x64-msvc": "4.60.1", "fsevents": "~2.3.2" }, "bin": { "rollup": "dist/bin/rollup" } }, "sha512-VmtB2rFU/GroZ4oL8+ZqXgSA38O6GR8KSIvWmEFv63pQ0G6KaBH9s07PO8XTXP4vI+3UJUEypOfjkGfmSBBR0w=="],
 
-    "roost-docs": ["roost-docs@workspace:apps/docs"],
-
     "roost-example-ai-chat": ["roost-example-ai-chat@workspace:examples/ai-chat"],
 
     "roost-example-saas-starter": ["roost-example-saas-starter@workspace:examples/saas-starter"],
 
     "roost-example-todo": ["roost-example-todo@workspace:examples/todo"],
 
-    "roost-marketing": ["roost-marketing@workspace:apps/marketing"],
-
     "roost-playground": ["roost-playground@workspace:apps/playground"],
+
+    "roost-site": ["roost-site@workspace:apps/site"],
 
     "rou3": ["rou3@0.8.1", "", {}, "sha512-ePa+XGk00/3HuCqrEnK3LxJW7I0SdNg6EFzKUJG73hMAdDcOUC/i/aSz7LSDwLrGr33kal/rqOGydzwl6U7zBA=="],
 

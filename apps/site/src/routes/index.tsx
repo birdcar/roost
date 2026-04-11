@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router';
+import { createFileRoute, Link } from '@tanstack/react-router';
 
 export const Route = createFileRoute('/')({
   component: LandingPage,
@@ -73,19 +73,19 @@ function CodeComparison() {
   async fetch(request, env) {
     const url = new URL(request.url);
     if (url.pathname === '/api/todos') {
-      const db = env.DB;
       const cookie = request.headers
         .get('cookie')?.split(';')
         .find(c => c.includes('session='));
       // parse session, verify token,
       // refresh if expired, check org...
-      const rows = await db
-        .prepare('SELECT * FROM todos WHERE user_id = ?')
-        .bind(userId)
-        .all();
+      const rows = await env.DB
+        .prepare('SELECT * FROM todos')
+        .bind(userId).all();
       return Response.json(rows.results);
     }
-    return new Response('Not found', { status: 404 });
+    return new Response('Not found', {
+      status: 404
+    });
   }
 }`}</code>
             </pre>
@@ -93,8 +93,9 @@ function CodeComparison() {
           <div>
             <h3 style={{ fontSize: '0.875rem', color: '#22c55e', marginBottom: '0.5rem' }}>With Roost</h3>
             <pre style={{ background: '#1e1e2e', color: '#cdd6f4', padding: '1rem', borderRadius: '8px', fontSize: '0.8rem', overflow: 'auto' }}>
-              <code>{`// app/routes/todos.tsx
-import { createFileRoute } from '@tanstack/react-router';
+              <code>{`// src/routes/todos.tsx
+import { createFileRoute } from
+  '@tanstack/react-router';
 
 const loadTodos = roostFn(
   roostMiddleware,
@@ -106,10 +107,11 @@ const loadTodos = roostFn(
   }
 );
 
-export const Route = createFileRoute('/todos')({
-  loader: () => loadTodos(),
-  component: TodosPage,
-});`}</code>
+export const Route =
+  createFileRoute('/todos')({
+    loader: () => loadTodos(),
+    component: TodosPage,
+  });`}</code>
             </pre>
           </div>
         </div>
@@ -126,9 +128,9 @@ function CallToAction() {
         From zero to deployed in minutes. Enterprise-ready from the first line.
       </p>
       <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
-        <a href="/docs" style={{ padding: '0.75rem 1.5rem', background: '#000', color: '#fff', borderRadius: '6px', textDecoration: 'none', fontWeight: 600 }}>
+        <Link to="/docs" style={{ padding: '0.75rem 1.5rem', background: '#000', color: '#fff', borderRadius: '6px', textDecoration: 'none', fontWeight: 600 }}>
           Read the Docs
-        </a>
+        </Link>
         <a href="https://github.com/birdcar/roost" style={{ padding: '0.75rem 1.5rem', border: '1px solid #000', borderRadius: '6px', textDecoration: 'none', fontWeight: 600 }}>
           View on GitHub
         </a>
@@ -140,9 +142,7 @@ function CallToAction() {
 function Footer() {
   return (
     <footer style={{ padding: '2rem', borderTop: '1px solid #e5e7eb', textAlign: 'center', color: '#9ca3af', fontSize: '0.875rem' }}>
-      <p>
-        Roost is open source. Built on Cloudflare Workers, TanStack Start, Drizzle, and WorkOS.
-      </p>
+      Roost is open source. Built on Cloudflare Workers, TanStack Start, Drizzle, and WorkOS.
     </footer>
   );
 }
