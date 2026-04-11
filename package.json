@@ -1,7 +1,7 @@
 {
   "name": "roost",
   "private": true,
-  "workspaces": ["packages/*"],
+  "workspaces": ["packages/*", "apps/*"],
   "scripts": {
     "build": "bun run --filter '@roost/*' build",
     "test": "bun test",

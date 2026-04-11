@@ -1,0 +1,31 @@
+{
+  "name": "@roost/start",
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@roost/core": "workspace:*"
+  },
+  "peerDependencies": {
+    "@tanstack/react-start": ">=1.120.0",
+    "@tanstack/react-router": ">=1.120.0"
+  },
+  "devDependencies": {
+    "@tanstack/react-start": "^1.167.0",
+    "@tanstack/react-router": "^1.168.0",
+    "@cloudflare/workers-types": "^4.20250409.0",
+    "bun-types": "latest",
+    "typescript": "^5.8.0",
+    "react": "^19.0.0",
+    "@types/react": "^19.0.0"
+  }
+}

@@ -11,8 +11,12 @@ export class Application {
 
   private providers: ServiceProvider[] = [];
   private globalMiddleware: Array<{ middleware: Middleware | MiddlewareClass; args: string[] }> = [];
-  private booted = false;
+  private _booted = false;
   private dispatcher?: Handler;
+
+  get isBooted(): boolean {
+    return this._booted;
+  }
 
   constructor(env: Record<string, unknown>, config?: Record<string, unknown>) {
     this.env = env;
@@ -43,7 +47,7 @@ export class Application {
   }
 
   async boot(): Promise<void> {
-    if (this.booted) return;
+    if (this._booted) return;
 
     for (const provider of this.providers) {
       await provider.register();
@@ -55,11 +59,11 @@ export class Application {
       }
     }
 
-    this.booted = true;
+    this._booted = true;
   }
 
   async handle(request: Request): Promise<Response> {
-    if (!this.booted) {
+    if (!this._booted) {
       await this.boot();
     }
 
