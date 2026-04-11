@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
+import { CodeBlock } from '../components/code-block';
 
 export const Route = createFileRoute('/')({
   component: LandingPage,
@@ -9,7 +10,7 @@ function LandingPage() {
     <div>
       <Hero />
       <Features />
-      <CodeComparison />
+      <Comparison />
       <CallToAction />
       <Footer />
     </div>
@@ -18,41 +19,140 @@ function LandingPage() {
 
 function Hero() {
   return (
-    <section style={{ textAlign: 'center', padding: '6rem 2rem 4rem', background: 'linear-gradient(135deg, #0a0a0a, #1a1a2e)', color: '#fff' }}>
-      <h1 style={{ fontSize: '3.5rem', fontWeight: 800, lineHeight: 1.1, maxWidth: '700px', margin: '0 auto 1.5rem' }}>
-        The Laravel of<br />Cloudflare Workers
-      </h1>
-      <p style={{ fontSize: '1.25rem', color: '#a0aec0', maxWidth: '600px', margin: '0 auto 2rem' }}>
-        Convention-over-configuration TypeScript framework. Enterprise auth, AI agents,
-        Drizzle ORM, Stripe billing — all running on the edge.
-      </p>
-      <pre style={{ display: 'inline-block', background: '#2d2d3f', padding: '0.75rem 1.5rem', borderRadius: '8px', fontSize: '1rem', color: '#e2e8f0' }}>
-        <code>bun add -g @roost/cli && roost new my-app</code>
-      </pre>
+    <section className="hero">
+      <div className="hero-inner">
+        <div>
+          <div className="hero-eyebrow anim-fade-up anim-d1">TypeScript Framework</div>
+          <h1 className="display anim-fade-up anim-d2">
+            Build for the edge,<br />
+            not around it.
+          </h1>
+          <p className="hero-description anim-fade-up anim-d3">
+            Roost brings convention-over-configuration to Cloudflare Workers.
+            Enterprise auth, Drizzle ORM, AI agents, job queues, and Stripe billing
+            — wired together with a framework that stays out of your way.
+          </p>
+          <div className="hero-actions anim-fade-up anim-d4">
+            <Link to="/docs/getting-started" className="hero-cta-primary">
+              Get Started
+            </Link>
+            <a
+              href="https://github.com/birdcar/roost"
+              className="hero-cta-secondary"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              GitHub
+            </a>
+          </div>
+        </div>
+        <div className="hero-code anim-slide-right anim-d3">
+          <div className="hero-code-header">
+            <div className="hero-code-dot" />
+            <div className="hero-code-dot" />
+            <div className="hero-code-dot" />
+          </div>
+          <pre><code>{heroCode()}</code></pre>
+        </div>
+      </div>
     </section>
   );
 }
 
+function heroCode() {
+  return [
+    s('tok-comment', '# Create a new app'),
+    '\n',
+    s('tok-keyword', '$ '),
+    'roost new my-app ',
+    s('tok-string', '--with-ai --with-billing'),
+    '\n\n',
+    s('tok-comment', '# Generate code'),
+    '\n',
+    s('tok-keyword', '$ '),
+    'roost make:model Post\n',
+    s('tok-keyword', '$ '),
+    'roost make:agent Assistant\n',
+    s('tok-keyword', '$ '),
+    'roost migrate\n\n',
+    s('tok-comment', '# Ship it'),
+    '\n',
+    s('tok-keyword', '$ '),
+    'roost deploy',
+  ];
+}
+
+function s(cls: string, text: string) {
+  return <span key={text} className={cls}>{text}</span>;
+}
+
 function Features() {
-  const features = [
-    { title: 'WorkOS Auth', desc: 'SSO, organizations, RBAC, session management — enterprise-ready from day one.' },
-    { title: 'Drizzle ORM', desc: 'Laravel-like model classes wrapping Drizzle with D1. Migrations, relationships, factories.' },
-    { title: 'AI Agents', desc: 'Class-based agents with typed tools, structured output, streaming. Cloudflare AI native.' },
-    { title: 'MCP Server', desc: 'Expose your app to AI clients with class-based tools, resources, and prompts.' },
-    { title: 'Stripe Billing', desc: 'Abstract billing interface with Stripe adapter. Subscriptions, metering, webhooks.' },
-    { title: 'CF Queues', desc: 'Laravel Horizon-inspired job classes with dispatch, retry, chain, and batch.' },
-    { title: 'TanStack Start', desc: 'Type-safe file routing, SSR, server functions. React on the edge.' },
-    { title: 'CLI', desc: 'roost new, make:model, make:agent — scaffold and generate in seconds.' },
+  const items = [
+    {
+      label: 'Auth',
+      title: 'WorkOS Authentication',
+      desc: 'SSO, RBAC, organizations, and session management. Enterprise-ready from the first line of code.',
+      featured: true,
+    },
+    {
+      label: 'Data',
+      title: 'Drizzle ORM on D1',
+      desc: 'Laravel-like model classes with query builders, relationships, hooks, and migrations.',
+      featured: true,
+    },
+    {
+      label: 'Intelligence',
+      title: 'AI Agent Framework',
+      desc: 'Class-based agents with typed tools, structured output, streaming, and conversation memory.',
+      featured: true,
+    },
+    {
+      label: 'Interop',
+      title: 'MCP Server',
+      desc: 'Expose your app to AI clients with tools, resources, and prompts over the Model Context Protocol.',
+    },
+    {
+      label: 'Revenue',
+      title: 'Stripe Billing',
+      desc: 'Abstract billing interface with subscriptions, metering, webhooks, and customer portal.',
+    },
+    {
+      label: 'Background',
+      title: 'Job Queues',
+      desc: 'Typed job classes on Cloudflare Queues with dispatch, retry, chaining, and batching.',
+    },
+    {
+      label: 'Frontend',
+      title: 'TanStack Start',
+      desc: 'Type-safe file routing, SSR, and server functions. React 19 on the edge.',
+    },
+    {
+      label: 'Platform',
+      title: 'All of Cloudflare',
+      desc: 'Typed wrappers for D1, KV, R2, Queues, Durable Objects, AI, Vectorize, and Hyperdrive.',
+    },
+    {
+      label: 'DX',
+      title: 'CLI Generators',
+      desc: 'Scaffold projects and generate models, agents, jobs, middleware — all from the terminal.',
+    },
   ];
 
   return (
-    <section style={{ padding: '4rem 2rem', maxWidth: '1000px', margin: '0 auto' }}>
-      <h2 style={{ textAlign: 'center', fontSize: '2rem', marginBottom: '2rem' }}>Everything You Need</h2>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.5rem' }}>
-        {features.map((f) => (
-          <div key={f.title} style={{ padding: '1.25rem', border: '1px solid #e5e7eb', borderRadius: '8px' }}>
-            <h3 style={{ fontSize: '1rem', marginBottom: '0.5rem' }}>{f.title}</h3>
-            <p style={{ fontSize: '0.875rem', color: '#6b7280', lineHeight: 1.5 }}>{f.desc}</p>
+    <section className="features">
+      <div className="features-header">
+        <h2 className="display">Everything, wired together.</h2>
+        <p>
+          Each package works standalone, but they're designed to compose.
+          Register a provider, and the framework handles the rest.
+        </p>
+      </div>
+      <div className="features-grid">
+        {items.map((item) => (
+          <div key={item.title} className={`feature-item${'featured' in item && item.featured ? ' featured' : ''}`}>
+            <div className="feature-label">{item.label}</div>
+            <h3>{item.title}</h3>
+            <p>{item.desc}</p>
           </div>
         ))}
       </div>
@@ -60,60 +160,52 @@ function Features() {
   );
 }
 
-function CodeComparison() {
+function Comparison() {
   return (
-    <section style={{ padding: '4rem 2rem', background: '#f9fafb' }}>
-      <div style={{ maxWidth: '900px', margin: '0 auto' }}>
-        <h2 style={{ textAlign: 'center', fontSize: '2rem', marginBottom: '2rem' }}>Before vs After</h2>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
-          <div>
-            <h3 style={{ fontSize: '0.875rem', color: '#ef4444', marginBottom: '0.5rem' }}>Raw Cloudflare Workers</h3>
-            <pre style={{ background: '#1e1e2e', color: '#cdd6f4', padding: '1rem', borderRadius: '8px', fontSize: '0.8rem', overflow: 'auto' }}>
-              <code>{`export default {
+    <section className="comparison">
+      <h2 className="display">Less ceremony, more building.</h2>
+      <p>
+        Same Cloudflare Workers runtime. Dramatically less boilerplate.
+      </p>
+      <div className="comparison-grid">
+        <div>
+          <div className="comparison-label before">Raw Cloudflare Workers</div>
+          <CodeBlock>
+{`export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     if (url.pathname === '/api/todos') {
       const cookie = request.headers
         .get('cookie')?.split(';')
         .find(c => c.includes('session='));
-      // parse session, verify token,
-      // refresh if expired, check org...
+      // parse session, verify, refresh...
       const rows = await env.DB
         .prepare('SELECT * FROM todos')
         .bind(userId).all();
-      return Response.json(rows.results);
+      return Response.json(rows);
     }
-    return new Response('Not found', {
-      status: 404
-    });
   }
-}`}</code>
-            </pre>
-          </div>
-          <div>
-            <h3 style={{ fontSize: '0.875rem', color: '#22c55e', marginBottom: '0.5rem' }}>With Roost</h3>
-            <pre style={{ background: '#1e1e2e', color: '#cdd6f4', padding: '1rem', borderRadius: '8px', fontSize: '0.8rem', overflow: 'auto' }}>
-              <code>{`// src/routes/todos.tsx
-import { createFileRoute } from
-  '@tanstack/react-router';
+}`}
+          </CodeBlock>
+        </div>
+        <div>
+          <div className="comparison-label after">With Roost</div>
+          <CodeBlock>
+{`import { Model } from '@roost/orm';
 
-const loadTodos = roostFn(
-  roostMiddleware,
-  async (roost) => {
-    const user = await requireUser();
-    return Todo
-      .where('user_id', user.id)
-      .all();
-  }
-);
+class Todo extends Model {
+  static tableName = 'todos';
+}
 
-export const Route =
-  createFileRoute('/todos')({
-    loader: () => loadTodos(),
-    component: TodosPage,
-  });`}</code>
-            </pre>
-          </div>
+// In your route loader
+const todos = await Todo
+  .where('user_id', user.id)
+  .orderBy('created_at', 'desc')
+  .all();
+
+// Auth, sessions, CSRF — handled
+// by middleware. Automatically.`}
+          </CodeBlock>
         </div>
       </div>
     </section>
@@ -122,16 +214,19 @@ export const Route =
 
 function CallToAction() {
   return (
-    <section style={{ textAlign: 'center', padding: '4rem 2rem' }}>
-      <h2 style={{ fontSize: '2rem', marginBottom: '1rem' }}>Start Building</h2>
-      <p style={{ color: '#6b7280', marginBottom: '2rem', fontSize: '1.1rem' }}>
-        From zero to deployed in minutes. Enterprise-ready from the first line.
-      </p>
-      <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
-        <Link to="/docs" style={{ padding: '0.75rem 1.5rem', background: '#000', color: '#fff', borderRadius: '6px', textDecoration: 'none', fontWeight: 600 }}>
+    <section className="cta-section">
+      <h2 className="display">Start building.</h2>
+      <p>From zero to deployed in minutes. Enterprise-ready from the first line.</p>
+      <div className="cta-actions">
+        <Link to="/docs/getting-started" className="hero-cta-primary">
           Read the Docs
         </Link>
-        <a href="https://github.com/birdcar/roost" style={{ padding: '0.75rem 1.5rem', border: '1px solid #000', borderRadius: '6px', textDecoration: 'none', fontWeight: 600 }}>
+        <a
+          href="https://github.com/birdcar/roost"
+          className="hero-cta-secondary"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
           View on GitHub
         </a>
       </div>
@@ -141,7 +236,7 @@ function CallToAction() {
 
 function Footer() {
   return (
-    <footer style={{ padding: '2rem', borderTop: '1px solid #e5e7eb', textAlign: 'center', color: '#9ca3af', fontSize: '0.875rem' }}>
+    <footer className="site-footer">
       Roost is open source. Built on Cloudflare Workers, TanStack Start, Drizzle, and WorkOS.
     </footer>
   );

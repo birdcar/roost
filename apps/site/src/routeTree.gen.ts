@@ -12,18 +12,59 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DocsIndexRouteImport } from './routes/docs/index'
 import { Route as DocsGettingStartedRouteImport } from './routes/docs/getting-started'
-import { Route as DocsPackagesTestingRouteImport } from './routes/docs/packages/testing'
-import { Route as DocsPackagesStartRouteImport } from './routes/docs/packages/start'
-import { Route as DocsPackagesSchemaRouteImport } from './routes/docs/packages/schema'
-import { Route as DocsPackagesQueueRouteImport } from './routes/docs/packages/queue'
-import { Route as DocsPackagesOrmRouteImport } from './routes/docs/packages/orm'
-import { Route as DocsPackagesMcpRouteImport } from './routes/docs/packages/mcp'
-import { Route as DocsPackagesCoreRouteImport } from './routes/docs/packages/core'
-import { Route as DocsPackagesCloudflareRouteImport } from './routes/docs/packages/cloudflare'
-import { Route as DocsPackagesCliRouteImport } from './routes/docs/packages/cli'
-import { Route as DocsPackagesBillingRouteImport } from './routes/docs/packages/billing'
-import { Route as DocsPackagesAuthRouteImport } from './routes/docs/packages/auth'
-import { Route as DocsPackagesAiRouteImport } from './routes/docs/packages/ai'
+import { Route as DocsTutorialsIndexRouteImport } from './routes/docs/tutorials/index'
+import { Route as DocsReferenceIndexRouteImport } from './routes/docs/reference/index'
+import { Route as DocsGuidesIndexRouteImport } from './routes/docs/guides/index'
+import { Route as DocsConceptsIndexRouteImport } from './routes/docs/concepts/index'
+import { Route as DocsTutorialsDeployToCloudflareRouteImport } from './routes/docs/tutorials/deploy-to-cloudflare'
+import { Route as DocsTutorialsBuildATaskApiRouteImport } from './routes/docs/tutorials/build-a-task-api'
+import { Route as DocsTutorialsBuildASaasAppRouteImport } from './routes/docs/tutorials/build-a-saas-app'
+import { Route as DocsTutorialsBuildAChatAppRouteImport } from './routes/docs/tutorials/build-a-chat-app'
+import { Route as DocsReferenceTestingRouteImport } from './routes/docs/reference/testing'
+import { Route as DocsReferenceStartRouteImport } from './routes/docs/reference/start'
+import { Route as DocsReferenceSchemaRouteImport } from './routes/docs/reference/schema'
+import { Route as DocsReferenceQueueRouteImport } from './routes/docs/reference/queue'
+import { Route as DocsReferenceOrmRouteImport } from './routes/docs/reference/orm'
+import { Route as DocsReferenceMcpRouteImport } from './routes/docs/reference/mcp'
+import { Route as DocsReferenceCoreRouteImport } from './routes/docs/reference/core'
+import { Route as DocsReferenceCloudflareRouteImport } from './routes/docs/reference/cloudflare'
+import { Route as DocsReferenceCliRouteImport } from './routes/docs/reference/cli'
+import { Route as DocsReferenceBillingRouteImport } from './routes/docs/reference/billing'
+import { Route as DocsReferenceAuthRouteImport } from './routes/docs/reference/auth'
+import { Route as DocsReferenceAiRouteImport } from './routes/docs/reference/ai'
+import { Route as DocsGuidesTestingRouteImport } from './routes/docs/guides/testing'
+import { Route as DocsGuidesStartRouteImport } from './routes/docs/guides/start'
+import { Route as DocsGuidesSchemaRouteImport } from './routes/docs/guides/schema'
+import { Route as DocsGuidesQueueRouteImport } from './routes/docs/guides/queue'
+import { Route as DocsGuidesOrmRouteImport } from './routes/docs/guides/orm'
+import { Route as DocsGuidesMigrationsRouteImport } from './routes/docs/guides/migrations'
+import { Route as DocsGuidesMcpRouteImport } from './routes/docs/guides/mcp'
+import { Route as DocsGuidesErrorHandlingRouteImport } from './routes/docs/guides/error-handling'
+import { Route as DocsGuidesEnvironmentRouteImport } from './routes/docs/guides/environment'
+import { Route as DocsGuidesDeploymentRouteImport } from './routes/docs/guides/deployment'
+import { Route as DocsGuidesCoreRouteImport } from './routes/docs/guides/core'
+import { Route as DocsGuidesCloudflareRouteImport } from './routes/docs/guides/cloudflare'
+import { Route as DocsGuidesCliRouteImport } from './routes/docs/guides/cli'
+import { Route as DocsGuidesBillingRouteImport } from './routes/docs/guides/billing'
+import { Route as DocsGuidesAuthRouteImport } from './routes/docs/guides/auth'
+import { Route as DocsGuidesAiRouteImport } from './routes/docs/guides/ai'
+import { Route as DocsConceptsTestingPhilosophyRouteImport } from './routes/docs/concepts/testing-philosophy'
+import { Route as DocsConceptsTestingRouteImport } from './routes/docs/concepts/testing'
+import { Route as DocsConceptsStartRouteImport } from './routes/docs/concepts/start'
+import { Route as DocsConceptsServiceContainerRouteImport } from './routes/docs/concepts/service-container'
+import { Route as DocsConceptsSchemaRouteImport } from './routes/docs/concepts/schema'
+import { Route as DocsConceptsQueueRouteImport } from './routes/docs/concepts/queue'
+import { Route as DocsConceptsOrmRouteImport } from './routes/docs/concepts/orm'
+import { Route as DocsConceptsMcpRouteImport } from './routes/docs/concepts/mcp'
+import { Route as DocsConceptsLaravelPatternsRouteImport } from './routes/docs/concepts/laravel-patterns'
+import { Route as DocsConceptsEdgeComputingRouteImport } from './routes/docs/concepts/edge-computing'
+import { Route as DocsConceptsCoreRouteImport } from './routes/docs/concepts/core'
+import { Route as DocsConceptsCloudflareRouteImport } from './routes/docs/concepts/cloudflare'
+import { Route as DocsConceptsCliRouteImport } from './routes/docs/concepts/cli'
+import { Route as DocsConceptsBillingRouteImport } from './routes/docs/concepts/billing'
+import { Route as DocsConceptsAuthRouteImport } from './routes/docs/concepts/auth'
+import { Route as DocsConceptsArchitectureRouteImport } from './routes/docs/concepts/architecture'
+import { Route as DocsConceptsAiRouteImport } from './routes/docs/concepts/ai'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -40,64 +81,278 @@ const DocsGettingStartedRoute = DocsGettingStartedRouteImport.update({
   path: '/docs/getting-started',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DocsPackagesTestingRoute = DocsPackagesTestingRouteImport.update({
-  id: '/docs/packages/testing',
-  path: '/docs/packages/testing',
+const DocsTutorialsIndexRoute = DocsTutorialsIndexRouteImport.update({
+  id: '/docs/tutorials/',
+  path: '/docs/tutorials/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DocsPackagesStartRoute = DocsPackagesStartRouteImport.update({
-  id: '/docs/packages/start',
-  path: '/docs/packages/start',
+const DocsReferenceIndexRoute = DocsReferenceIndexRouteImport.update({
+  id: '/docs/reference/',
+  path: '/docs/reference/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DocsPackagesSchemaRoute = DocsPackagesSchemaRouteImport.update({
-  id: '/docs/packages/schema',
-  path: '/docs/packages/schema',
+const DocsGuidesIndexRoute = DocsGuidesIndexRouteImport.update({
+  id: '/docs/guides/',
+  path: '/docs/guides/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DocsPackagesQueueRoute = DocsPackagesQueueRouteImport.update({
-  id: '/docs/packages/queue',
-  path: '/docs/packages/queue',
+const DocsConceptsIndexRoute = DocsConceptsIndexRouteImport.update({
+  id: '/docs/concepts/',
+  path: '/docs/concepts/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DocsPackagesOrmRoute = DocsPackagesOrmRouteImport.update({
-  id: '/docs/packages/orm',
-  path: '/docs/packages/orm',
+const DocsTutorialsDeployToCloudflareRoute =
+  DocsTutorialsDeployToCloudflareRouteImport.update({
+    id: '/docs/tutorials/deploy-to-cloudflare',
+    path: '/docs/tutorials/deploy-to-cloudflare',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const DocsTutorialsBuildATaskApiRoute =
+  DocsTutorialsBuildATaskApiRouteImport.update({
+    id: '/docs/tutorials/build-a-task-api',
+    path: '/docs/tutorials/build-a-task-api',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const DocsTutorialsBuildASaasAppRoute =
+  DocsTutorialsBuildASaasAppRouteImport.update({
+    id: '/docs/tutorials/build-a-saas-app',
+    path: '/docs/tutorials/build-a-saas-app',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const DocsTutorialsBuildAChatAppRoute =
+  DocsTutorialsBuildAChatAppRouteImport.update({
+    id: '/docs/tutorials/build-a-chat-app',
+    path: '/docs/tutorials/build-a-chat-app',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const DocsReferenceTestingRoute = DocsReferenceTestingRouteImport.update({
+  id: '/docs/reference/testing',
+  path: '/docs/reference/testing',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DocsPackagesMcpRoute = DocsPackagesMcpRouteImport.update({
-  id: '/docs/packages/mcp',
-  path: '/docs/packages/mcp',
+const DocsReferenceStartRoute = DocsReferenceStartRouteImport.update({
+  id: '/docs/reference/start',
+  path: '/docs/reference/start',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DocsPackagesCoreRoute = DocsPackagesCoreRouteImport.update({
-  id: '/docs/packages/core',
-  path: '/docs/packages/core',
+const DocsReferenceSchemaRoute = DocsReferenceSchemaRouteImport.update({
+  id: '/docs/reference/schema',
+  path: '/docs/reference/schema',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DocsPackagesCloudflareRoute = DocsPackagesCloudflareRouteImport.update({
-  id: '/docs/packages/cloudflare',
-  path: '/docs/packages/cloudflare',
+const DocsReferenceQueueRoute = DocsReferenceQueueRouteImport.update({
+  id: '/docs/reference/queue',
+  path: '/docs/reference/queue',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DocsPackagesCliRoute = DocsPackagesCliRouteImport.update({
-  id: '/docs/packages/cli',
-  path: '/docs/packages/cli',
+const DocsReferenceOrmRoute = DocsReferenceOrmRouteImport.update({
+  id: '/docs/reference/orm',
+  path: '/docs/reference/orm',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DocsPackagesBillingRoute = DocsPackagesBillingRouteImport.update({
-  id: '/docs/packages/billing',
-  path: '/docs/packages/billing',
+const DocsReferenceMcpRoute = DocsReferenceMcpRouteImport.update({
+  id: '/docs/reference/mcp',
+  path: '/docs/reference/mcp',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DocsPackagesAuthRoute = DocsPackagesAuthRouteImport.update({
-  id: '/docs/packages/auth',
-  path: '/docs/packages/auth',
+const DocsReferenceCoreRoute = DocsReferenceCoreRouteImport.update({
+  id: '/docs/reference/core',
+  path: '/docs/reference/core',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DocsPackagesAiRoute = DocsPackagesAiRouteImport.update({
-  id: '/docs/packages/ai',
-  path: '/docs/packages/ai',
+const DocsReferenceCloudflareRoute = DocsReferenceCloudflareRouteImport.update({
+  id: '/docs/reference/cloudflare',
+  path: '/docs/reference/cloudflare',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocsReferenceCliRoute = DocsReferenceCliRouteImport.update({
+  id: '/docs/reference/cli',
+  path: '/docs/reference/cli',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocsReferenceBillingRoute = DocsReferenceBillingRouteImport.update({
+  id: '/docs/reference/billing',
+  path: '/docs/reference/billing',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocsReferenceAuthRoute = DocsReferenceAuthRouteImport.update({
+  id: '/docs/reference/auth',
+  path: '/docs/reference/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocsReferenceAiRoute = DocsReferenceAiRouteImport.update({
+  id: '/docs/reference/ai',
+  path: '/docs/reference/ai',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocsGuidesTestingRoute = DocsGuidesTestingRouteImport.update({
+  id: '/docs/guides/testing',
+  path: '/docs/guides/testing',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocsGuidesStartRoute = DocsGuidesStartRouteImport.update({
+  id: '/docs/guides/start',
+  path: '/docs/guides/start',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocsGuidesSchemaRoute = DocsGuidesSchemaRouteImport.update({
+  id: '/docs/guides/schema',
+  path: '/docs/guides/schema',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocsGuidesQueueRoute = DocsGuidesQueueRouteImport.update({
+  id: '/docs/guides/queue',
+  path: '/docs/guides/queue',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocsGuidesOrmRoute = DocsGuidesOrmRouteImport.update({
+  id: '/docs/guides/orm',
+  path: '/docs/guides/orm',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocsGuidesMigrationsRoute = DocsGuidesMigrationsRouteImport.update({
+  id: '/docs/guides/migrations',
+  path: '/docs/guides/migrations',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocsGuidesMcpRoute = DocsGuidesMcpRouteImport.update({
+  id: '/docs/guides/mcp',
+  path: '/docs/guides/mcp',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocsGuidesErrorHandlingRoute = DocsGuidesErrorHandlingRouteImport.update({
+  id: '/docs/guides/error-handling',
+  path: '/docs/guides/error-handling',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocsGuidesEnvironmentRoute = DocsGuidesEnvironmentRouteImport.update({
+  id: '/docs/guides/environment',
+  path: '/docs/guides/environment',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocsGuidesDeploymentRoute = DocsGuidesDeploymentRouteImport.update({
+  id: '/docs/guides/deployment',
+  path: '/docs/guides/deployment',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocsGuidesCoreRoute = DocsGuidesCoreRouteImport.update({
+  id: '/docs/guides/core',
+  path: '/docs/guides/core',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocsGuidesCloudflareRoute = DocsGuidesCloudflareRouteImport.update({
+  id: '/docs/guides/cloudflare',
+  path: '/docs/guides/cloudflare',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocsGuidesCliRoute = DocsGuidesCliRouteImport.update({
+  id: '/docs/guides/cli',
+  path: '/docs/guides/cli',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocsGuidesBillingRoute = DocsGuidesBillingRouteImport.update({
+  id: '/docs/guides/billing',
+  path: '/docs/guides/billing',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocsGuidesAuthRoute = DocsGuidesAuthRouteImport.update({
+  id: '/docs/guides/auth',
+  path: '/docs/guides/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocsGuidesAiRoute = DocsGuidesAiRouteImport.update({
+  id: '/docs/guides/ai',
+  path: '/docs/guides/ai',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocsConceptsTestingPhilosophyRoute =
+  DocsConceptsTestingPhilosophyRouteImport.update({
+    id: '/docs/concepts/testing-philosophy',
+    path: '/docs/concepts/testing-philosophy',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const DocsConceptsTestingRoute = DocsConceptsTestingRouteImport.update({
+  id: '/docs/concepts/testing',
+  path: '/docs/concepts/testing',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocsConceptsStartRoute = DocsConceptsStartRouteImport.update({
+  id: '/docs/concepts/start',
+  path: '/docs/concepts/start',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocsConceptsServiceContainerRoute =
+  DocsConceptsServiceContainerRouteImport.update({
+    id: '/docs/concepts/service-container',
+    path: '/docs/concepts/service-container',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const DocsConceptsSchemaRoute = DocsConceptsSchemaRouteImport.update({
+  id: '/docs/concepts/schema',
+  path: '/docs/concepts/schema',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocsConceptsQueueRoute = DocsConceptsQueueRouteImport.update({
+  id: '/docs/concepts/queue',
+  path: '/docs/concepts/queue',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocsConceptsOrmRoute = DocsConceptsOrmRouteImport.update({
+  id: '/docs/concepts/orm',
+  path: '/docs/concepts/orm',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocsConceptsMcpRoute = DocsConceptsMcpRouteImport.update({
+  id: '/docs/concepts/mcp',
+  path: '/docs/concepts/mcp',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocsConceptsLaravelPatternsRoute =
+  DocsConceptsLaravelPatternsRouteImport.update({
+    id: '/docs/concepts/laravel-patterns',
+    path: '/docs/concepts/laravel-patterns',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const DocsConceptsEdgeComputingRoute =
+  DocsConceptsEdgeComputingRouteImport.update({
+    id: '/docs/concepts/edge-computing',
+    path: '/docs/concepts/edge-computing',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const DocsConceptsCoreRoute = DocsConceptsCoreRouteImport.update({
+  id: '/docs/concepts/core',
+  path: '/docs/concepts/core',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocsConceptsCloudflareRoute = DocsConceptsCloudflareRouteImport.update({
+  id: '/docs/concepts/cloudflare',
+  path: '/docs/concepts/cloudflare',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocsConceptsCliRoute = DocsConceptsCliRouteImport.update({
+  id: '/docs/concepts/cli',
+  path: '/docs/concepts/cli',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocsConceptsBillingRoute = DocsConceptsBillingRouteImport.update({
+  id: '/docs/concepts/billing',
+  path: '/docs/concepts/billing',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocsConceptsAuthRoute = DocsConceptsAuthRouteImport.update({
+  id: '/docs/concepts/auth',
+  path: '/docs/concepts/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocsConceptsArchitectureRoute =
+  DocsConceptsArchitectureRouteImport.update({
+    id: '/docs/concepts/architecture',
+    path: '/docs/concepts/architecture',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const DocsConceptsAiRoute = DocsConceptsAiRouteImport.update({
+  id: '/docs/concepts/ai',
+  path: '/docs/concepts/ai',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -105,53 +360,176 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/docs/getting-started': typeof DocsGettingStartedRoute
   '/docs/': typeof DocsIndexRoute
-  '/docs/packages/ai': typeof DocsPackagesAiRoute
-  '/docs/packages/auth': typeof DocsPackagesAuthRoute
-  '/docs/packages/billing': typeof DocsPackagesBillingRoute
-  '/docs/packages/cli': typeof DocsPackagesCliRoute
-  '/docs/packages/cloudflare': typeof DocsPackagesCloudflareRoute
-  '/docs/packages/core': typeof DocsPackagesCoreRoute
-  '/docs/packages/mcp': typeof DocsPackagesMcpRoute
-  '/docs/packages/orm': typeof DocsPackagesOrmRoute
-  '/docs/packages/queue': typeof DocsPackagesQueueRoute
-  '/docs/packages/schema': typeof DocsPackagesSchemaRoute
-  '/docs/packages/start': typeof DocsPackagesStartRoute
-  '/docs/packages/testing': typeof DocsPackagesTestingRoute
+  '/docs/concepts/ai': typeof DocsConceptsAiRoute
+  '/docs/concepts/architecture': typeof DocsConceptsArchitectureRoute
+  '/docs/concepts/auth': typeof DocsConceptsAuthRoute
+  '/docs/concepts/billing': typeof DocsConceptsBillingRoute
+  '/docs/concepts/cli': typeof DocsConceptsCliRoute
+  '/docs/concepts/cloudflare': typeof DocsConceptsCloudflareRoute
+  '/docs/concepts/core': typeof DocsConceptsCoreRoute
+  '/docs/concepts/edge-computing': typeof DocsConceptsEdgeComputingRoute
+  '/docs/concepts/laravel-patterns': typeof DocsConceptsLaravelPatternsRoute
+  '/docs/concepts/mcp': typeof DocsConceptsMcpRoute
+  '/docs/concepts/orm': typeof DocsConceptsOrmRoute
+  '/docs/concepts/queue': typeof DocsConceptsQueueRoute
+  '/docs/concepts/schema': typeof DocsConceptsSchemaRoute
+  '/docs/concepts/service-container': typeof DocsConceptsServiceContainerRoute
+  '/docs/concepts/start': typeof DocsConceptsStartRoute
+  '/docs/concepts/testing': typeof DocsConceptsTestingRoute
+  '/docs/concepts/testing-philosophy': typeof DocsConceptsTestingPhilosophyRoute
+  '/docs/guides/ai': typeof DocsGuidesAiRoute
+  '/docs/guides/auth': typeof DocsGuidesAuthRoute
+  '/docs/guides/billing': typeof DocsGuidesBillingRoute
+  '/docs/guides/cli': typeof DocsGuidesCliRoute
+  '/docs/guides/cloudflare': typeof DocsGuidesCloudflareRoute
+  '/docs/guides/core': typeof DocsGuidesCoreRoute
+  '/docs/guides/deployment': typeof DocsGuidesDeploymentRoute
+  '/docs/guides/environment': typeof DocsGuidesEnvironmentRoute
+  '/docs/guides/error-handling': typeof DocsGuidesErrorHandlingRoute
+  '/docs/guides/mcp': typeof DocsGuidesMcpRoute
+  '/docs/guides/migrations': typeof DocsGuidesMigrationsRoute
+  '/docs/guides/orm': typeof DocsGuidesOrmRoute
+  '/docs/guides/queue': typeof DocsGuidesQueueRoute
+  '/docs/guides/schema': typeof DocsGuidesSchemaRoute
+  '/docs/guides/start': typeof DocsGuidesStartRoute
+  '/docs/guides/testing': typeof DocsGuidesTestingRoute
+  '/docs/reference/ai': typeof DocsReferenceAiRoute
+  '/docs/reference/auth': typeof DocsReferenceAuthRoute
+  '/docs/reference/billing': typeof DocsReferenceBillingRoute
+  '/docs/reference/cli': typeof DocsReferenceCliRoute
+  '/docs/reference/cloudflare': typeof DocsReferenceCloudflareRoute
+  '/docs/reference/core': typeof DocsReferenceCoreRoute
+  '/docs/reference/mcp': typeof DocsReferenceMcpRoute
+  '/docs/reference/orm': typeof DocsReferenceOrmRoute
+  '/docs/reference/queue': typeof DocsReferenceQueueRoute
+  '/docs/reference/schema': typeof DocsReferenceSchemaRoute
+  '/docs/reference/start': typeof DocsReferenceStartRoute
+  '/docs/reference/testing': typeof DocsReferenceTestingRoute
+  '/docs/tutorials/build-a-chat-app': typeof DocsTutorialsBuildAChatAppRoute
+  '/docs/tutorials/build-a-saas-app': typeof DocsTutorialsBuildASaasAppRoute
+  '/docs/tutorials/build-a-task-api': typeof DocsTutorialsBuildATaskApiRoute
+  '/docs/tutorials/deploy-to-cloudflare': typeof DocsTutorialsDeployToCloudflareRoute
+  '/docs/concepts/': typeof DocsConceptsIndexRoute
+  '/docs/guides/': typeof DocsGuidesIndexRoute
+  '/docs/reference/': typeof DocsReferenceIndexRoute
+  '/docs/tutorials/': typeof DocsTutorialsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/docs/getting-started': typeof DocsGettingStartedRoute
   '/docs': typeof DocsIndexRoute
-  '/docs/packages/ai': typeof DocsPackagesAiRoute
-  '/docs/packages/auth': typeof DocsPackagesAuthRoute
-  '/docs/packages/billing': typeof DocsPackagesBillingRoute
-  '/docs/packages/cli': typeof DocsPackagesCliRoute
-  '/docs/packages/cloudflare': typeof DocsPackagesCloudflareRoute
-  '/docs/packages/core': typeof DocsPackagesCoreRoute
-  '/docs/packages/mcp': typeof DocsPackagesMcpRoute
-  '/docs/packages/orm': typeof DocsPackagesOrmRoute
-  '/docs/packages/queue': typeof DocsPackagesQueueRoute
-  '/docs/packages/schema': typeof DocsPackagesSchemaRoute
-  '/docs/packages/start': typeof DocsPackagesStartRoute
-  '/docs/packages/testing': typeof DocsPackagesTestingRoute
+  '/docs/concepts/ai': typeof DocsConceptsAiRoute
+  '/docs/concepts/architecture': typeof DocsConceptsArchitectureRoute
+  '/docs/concepts/auth': typeof DocsConceptsAuthRoute
+  '/docs/concepts/billing': typeof DocsConceptsBillingRoute
+  '/docs/concepts/cli': typeof DocsConceptsCliRoute
+  '/docs/concepts/cloudflare': typeof DocsConceptsCloudflareRoute
+  '/docs/concepts/core': typeof DocsConceptsCoreRoute
+  '/docs/concepts/edge-computing': typeof DocsConceptsEdgeComputingRoute
+  '/docs/concepts/laravel-patterns': typeof DocsConceptsLaravelPatternsRoute
+  '/docs/concepts/mcp': typeof DocsConceptsMcpRoute
+  '/docs/concepts/orm': typeof DocsConceptsOrmRoute
+  '/docs/concepts/queue': typeof DocsConceptsQueueRoute
+  '/docs/concepts/schema': typeof DocsConceptsSchemaRoute
+  '/docs/concepts/service-container': typeof DocsConceptsServiceContainerRoute
+  '/docs/concepts/start': typeof DocsConceptsStartRoute
+  '/docs/concepts/testing': typeof DocsConceptsTestingRoute
+  '/docs/concepts/testing-philosophy': typeof DocsConceptsTestingPhilosophyRoute
+  '/docs/guides/ai': typeof DocsGuidesAiRoute
+  '/docs/guides/auth': typeof DocsGuidesAuthRoute
+  '/docs/guides/billing': typeof DocsGuidesBillingRoute
+  '/docs/guides/cli': typeof DocsGuidesCliRoute
+  '/docs/guides/cloudflare': typeof DocsGuidesCloudflareRoute
+  '/docs/guides/core': typeof DocsGuidesCoreRoute
+  '/docs/guides/deployment': typeof DocsGuidesDeploymentRoute
+  '/docs/guides/environment': typeof DocsGuidesEnvironmentRoute
+  '/docs/guides/error-handling': typeof DocsGuidesErrorHandlingRoute
+  '/docs/guides/mcp': typeof DocsGuidesMcpRoute
+  '/docs/guides/migrations': typeof DocsGuidesMigrationsRoute
+  '/docs/guides/orm': typeof DocsGuidesOrmRoute
+  '/docs/guides/queue': typeof DocsGuidesQueueRoute
+  '/docs/guides/schema': typeof DocsGuidesSchemaRoute
+  '/docs/guides/start': typeof DocsGuidesStartRoute
+  '/docs/guides/testing': typeof DocsGuidesTestingRoute
+  '/docs/reference/ai': typeof DocsReferenceAiRoute
+  '/docs/reference/auth': typeof DocsReferenceAuthRoute
+  '/docs/reference/billing': typeof DocsReferenceBillingRoute
+  '/docs/reference/cli': typeof DocsReferenceCliRoute
+  '/docs/reference/cloudflare': typeof DocsReferenceCloudflareRoute
+  '/docs/reference/core': typeof DocsReferenceCoreRoute
+  '/docs/reference/mcp': typeof DocsReferenceMcpRoute
+  '/docs/reference/orm': typeof DocsReferenceOrmRoute
+  '/docs/reference/queue': typeof DocsReferenceQueueRoute
+  '/docs/reference/schema': typeof DocsReferenceSchemaRoute
+  '/docs/reference/start': typeof DocsReferenceStartRoute
+  '/docs/reference/testing': typeof DocsReferenceTestingRoute
+  '/docs/tutorials/build-a-chat-app': typeof DocsTutorialsBuildAChatAppRoute
+  '/docs/tutorials/build-a-saas-app': typeof DocsTutorialsBuildASaasAppRoute
+  '/docs/tutorials/build-a-task-api': typeof DocsTutorialsBuildATaskApiRoute
+  '/docs/tutorials/deploy-to-cloudflare': typeof DocsTutorialsDeployToCloudflareRoute
+  '/docs/concepts': typeof DocsConceptsIndexRoute
+  '/docs/guides': typeof DocsGuidesIndexRoute
+  '/docs/reference': typeof DocsReferenceIndexRoute
+  '/docs/tutorials': typeof DocsTutorialsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/docs/getting-started': typeof DocsGettingStartedRoute
   '/docs/': typeof DocsIndexRoute
-  '/docs/packages/ai': typeof DocsPackagesAiRoute
-  '/docs/packages/auth': typeof DocsPackagesAuthRoute
-  '/docs/packages/billing': typeof DocsPackagesBillingRoute
-  '/docs/packages/cli': typeof DocsPackagesCliRoute
-  '/docs/packages/cloudflare': typeof DocsPackagesCloudflareRoute
-  '/docs/packages/core': typeof DocsPackagesCoreRoute
-  '/docs/packages/mcp': typeof DocsPackagesMcpRoute
-  '/docs/packages/orm': typeof DocsPackagesOrmRoute
-  '/docs/packages/queue': typeof DocsPackagesQueueRoute
-  '/docs/packages/schema': typeof DocsPackagesSchemaRoute
-  '/docs/packages/start': typeof DocsPackagesStartRoute
-  '/docs/packages/testing': typeof DocsPackagesTestingRoute
+  '/docs/concepts/ai': typeof DocsConceptsAiRoute
+  '/docs/concepts/architecture': typeof DocsConceptsArchitectureRoute
+  '/docs/concepts/auth': typeof DocsConceptsAuthRoute
+  '/docs/concepts/billing': typeof DocsConceptsBillingRoute
+  '/docs/concepts/cli': typeof DocsConceptsCliRoute
+  '/docs/concepts/cloudflare': typeof DocsConceptsCloudflareRoute
+  '/docs/concepts/core': typeof DocsConceptsCoreRoute
+  '/docs/concepts/edge-computing': typeof DocsConceptsEdgeComputingRoute
+  '/docs/concepts/laravel-patterns': typeof DocsConceptsLaravelPatternsRoute
+  '/docs/concepts/mcp': typeof DocsConceptsMcpRoute
+  '/docs/concepts/orm': typeof DocsConceptsOrmRoute
+  '/docs/concepts/queue': typeof DocsConceptsQueueRoute
+  '/docs/concepts/schema': typeof DocsConceptsSchemaRoute
+  '/docs/concepts/service-container': typeof DocsConceptsServiceContainerRoute
+  '/docs/concepts/start': typeof DocsConceptsStartRoute
+  '/docs/concepts/testing': typeof DocsConceptsTestingRoute
+  '/docs/concepts/testing-philosophy': typeof DocsConceptsTestingPhilosophyRoute
+  '/docs/guides/ai': typeof DocsGuidesAiRoute
+  '/docs/guides/auth': typeof DocsGuidesAuthRoute
+  '/docs/guides/billing': typeof DocsGuidesBillingRoute
+  '/docs/guides/cli': typeof DocsGuidesCliRoute
+  '/docs/guides/cloudflare': typeof DocsGuidesCloudflareRoute
+  '/docs/guides/core': typeof DocsGuidesCoreRoute
+  '/docs/guides/deployment': typeof DocsGuidesDeploymentRoute
+  '/docs/guides/environment': typeof DocsGuidesEnvironmentRoute
+  '/docs/guides/error-handling': typeof DocsGuidesErrorHandlingRoute
+  '/docs/guides/mcp': typeof DocsGuidesMcpRoute
+  '/docs/guides/migrations': typeof DocsGuidesMigrationsRoute
+  '/docs/guides/orm': typeof DocsGuidesOrmRoute
+  '/docs/guides/queue': typeof DocsGuidesQueueRoute
+  '/docs/guides/schema': typeof DocsGuidesSchemaRoute
+  '/docs/guides/start': typeof DocsGuidesStartRoute
+  '/docs/guides/testing': typeof DocsGuidesTestingRoute
+  '/docs/reference/ai': typeof DocsReferenceAiRoute
+  '/docs/reference/auth': typeof DocsReferenceAuthRoute
+  '/docs/reference/billing': typeof DocsReferenceBillingRoute
+  '/docs/reference/cli': typeof DocsReferenceCliRoute
+  '/docs/reference/cloudflare': typeof DocsReferenceCloudflareRoute
+  '/docs/reference/core': typeof DocsReferenceCoreRoute
+  '/docs/reference/mcp': typeof DocsReferenceMcpRoute
+  '/docs/reference/orm': typeof DocsReferenceOrmRoute
+  '/docs/reference/queue': typeof DocsReferenceQueueRoute
+  '/docs/reference/schema': typeof DocsReferenceSchemaRoute
+  '/docs/reference/start': typeof DocsReferenceStartRoute
+  '/docs/reference/testing': typeof DocsReferenceTestingRoute
+  '/docs/tutorials/build-a-chat-app': typeof DocsTutorialsBuildAChatAppRoute
+  '/docs/tutorials/build-a-saas-app': typeof DocsTutorialsBuildASaasAppRoute
+  '/docs/tutorials/build-a-task-api': typeof DocsTutorialsBuildATaskApiRoute
+  '/docs/tutorials/deploy-to-cloudflare': typeof DocsTutorialsDeployToCloudflareRoute
+  '/docs/concepts/': typeof DocsConceptsIndexRoute
+  '/docs/guides/': typeof DocsGuidesIndexRoute
+  '/docs/reference/': typeof DocsReferenceIndexRoute
+  '/docs/tutorials/': typeof DocsTutorialsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -159,70 +537,234 @@ export interface FileRouteTypes {
     | '/'
     | '/docs/getting-started'
     | '/docs/'
-    | '/docs/packages/ai'
-    | '/docs/packages/auth'
-    | '/docs/packages/billing'
-    | '/docs/packages/cli'
-    | '/docs/packages/cloudflare'
-    | '/docs/packages/core'
-    | '/docs/packages/mcp'
-    | '/docs/packages/orm'
-    | '/docs/packages/queue'
-    | '/docs/packages/schema'
-    | '/docs/packages/start'
-    | '/docs/packages/testing'
+    | '/docs/concepts/ai'
+    | '/docs/concepts/architecture'
+    | '/docs/concepts/auth'
+    | '/docs/concepts/billing'
+    | '/docs/concepts/cli'
+    | '/docs/concepts/cloudflare'
+    | '/docs/concepts/core'
+    | '/docs/concepts/edge-computing'
+    | '/docs/concepts/laravel-patterns'
+    | '/docs/concepts/mcp'
+    | '/docs/concepts/orm'
+    | '/docs/concepts/queue'
+    | '/docs/concepts/schema'
+    | '/docs/concepts/service-container'
+    | '/docs/concepts/start'
+    | '/docs/concepts/testing'
+    | '/docs/concepts/testing-philosophy'
+    | '/docs/guides/ai'
+    | '/docs/guides/auth'
+    | '/docs/guides/billing'
+    | '/docs/guides/cli'
+    | '/docs/guides/cloudflare'
+    | '/docs/guides/core'
+    | '/docs/guides/deployment'
+    | '/docs/guides/environment'
+    | '/docs/guides/error-handling'
+    | '/docs/guides/mcp'
+    | '/docs/guides/migrations'
+    | '/docs/guides/orm'
+    | '/docs/guides/queue'
+    | '/docs/guides/schema'
+    | '/docs/guides/start'
+    | '/docs/guides/testing'
+    | '/docs/reference/ai'
+    | '/docs/reference/auth'
+    | '/docs/reference/billing'
+    | '/docs/reference/cli'
+    | '/docs/reference/cloudflare'
+    | '/docs/reference/core'
+    | '/docs/reference/mcp'
+    | '/docs/reference/orm'
+    | '/docs/reference/queue'
+    | '/docs/reference/schema'
+    | '/docs/reference/start'
+    | '/docs/reference/testing'
+    | '/docs/tutorials/build-a-chat-app'
+    | '/docs/tutorials/build-a-saas-app'
+    | '/docs/tutorials/build-a-task-api'
+    | '/docs/tutorials/deploy-to-cloudflare'
+    | '/docs/concepts/'
+    | '/docs/guides/'
+    | '/docs/reference/'
+    | '/docs/tutorials/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/docs/getting-started'
     | '/docs'
-    | '/docs/packages/ai'
-    | '/docs/packages/auth'
-    | '/docs/packages/billing'
-    | '/docs/packages/cli'
-    | '/docs/packages/cloudflare'
-    | '/docs/packages/core'
-    | '/docs/packages/mcp'
-    | '/docs/packages/orm'
-    | '/docs/packages/queue'
-    | '/docs/packages/schema'
-    | '/docs/packages/start'
-    | '/docs/packages/testing'
+    | '/docs/concepts/ai'
+    | '/docs/concepts/architecture'
+    | '/docs/concepts/auth'
+    | '/docs/concepts/billing'
+    | '/docs/concepts/cli'
+    | '/docs/concepts/cloudflare'
+    | '/docs/concepts/core'
+    | '/docs/concepts/edge-computing'
+    | '/docs/concepts/laravel-patterns'
+    | '/docs/concepts/mcp'
+    | '/docs/concepts/orm'
+    | '/docs/concepts/queue'
+    | '/docs/concepts/schema'
+    | '/docs/concepts/service-container'
+    | '/docs/concepts/start'
+    | '/docs/concepts/testing'
+    | '/docs/concepts/testing-philosophy'
+    | '/docs/guides/ai'
+    | '/docs/guides/auth'
+    | '/docs/guides/billing'
+    | '/docs/guides/cli'
+    | '/docs/guides/cloudflare'
+    | '/docs/guides/core'
+    | '/docs/guides/deployment'
+    | '/docs/guides/environment'
+    | '/docs/guides/error-handling'
+    | '/docs/guides/mcp'
+    | '/docs/guides/migrations'
+    | '/docs/guides/orm'
+    | '/docs/guides/queue'
+    | '/docs/guides/schema'
+    | '/docs/guides/start'
+    | '/docs/guides/testing'
+    | '/docs/reference/ai'
+    | '/docs/reference/auth'
+    | '/docs/reference/billing'
+    | '/docs/reference/cli'
+    | '/docs/reference/cloudflare'
+    | '/docs/reference/core'
+    | '/docs/reference/mcp'
+    | '/docs/reference/orm'
+    | '/docs/reference/queue'
+    | '/docs/reference/schema'
+    | '/docs/reference/start'
+    | '/docs/reference/testing'
+    | '/docs/tutorials/build-a-chat-app'
+    | '/docs/tutorials/build-a-saas-app'
+    | '/docs/tutorials/build-a-task-api'
+    | '/docs/tutorials/deploy-to-cloudflare'
+    | '/docs/concepts'
+    | '/docs/guides'
+    | '/docs/reference'
+    | '/docs/tutorials'
   id:
     | '__root__'
     | '/'
     | '/docs/getting-started'
     | '/docs/'
-    | '/docs/packages/ai'
-    | '/docs/packages/auth'
-    | '/docs/packages/billing'
-    | '/docs/packages/cli'
-    | '/docs/packages/cloudflare'
-    | '/docs/packages/core'
-    | '/docs/packages/mcp'
-    | '/docs/packages/orm'
-    | '/docs/packages/queue'
-    | '/docs/packages/schema'
-    | '/docs/packages/start'
-    | '/docs/packages/testing'
+    | '/docs/concepts/ai'
+    | '/docs/concepts/architecture'
+    | '/docs/concepts/auth'
+    | '/docs/concepts/billing'
+    | '/docs/concepts/cli'
+    | '/docs/concepts/cloudflare'
+    | '/docs/concepts/core'
+    | '/docs/concepts/edge-computing'
+    | '/docs/concepts/laravel-patterns'
+    | '/docs/concepts/mcp'
+    | '/docs/concepts/orm'
+    | '/docs/concepts/queue'
+    | '/docs/concepts/schema'
+    | '/docs/concepts/service-container'
+    | '/docs/concepts/start'
+    | '/docs/concepts/testing'
+    | '/docs/concepts/testing-philosophy'
+    | '/docs/guides/ai'
+    | '/docs/guides/auth'
+    | '/docs/guides/billing'
+    | '/docs/guides/cli'
+    | '/docs/guides/cloudflare'
+    | '/docs/guides/core'
+    | '/docs/guides/deployment'
+    | '/docs/guides/environment'
+    | '/docs/guides/error-handling'
+    | '/docs/guides/mcp'
+    | '/docs/guides/migrations'
+    | '/docs/guides/orm'
+    | '/docs/guides/queue'
+    | '/docs/guides/schema'
+    | '/docs/guides/start'
+    | '/docs/guides/testing'
+    | '/docs/reference/ai'
+    | '/docs/reference/auth'
+    | '/docs/reference/billing'
+    | '/docs/reference/cli'
+    | '/docs/reference/cloudflare'
+    | '/docs/reference/core'
+    | '/docs/reference/mcp'
+    | '/docs/reference/orm'
+    | '/docs/reference/queue'
+    | '/docs/reference/schema'
+    | '/docs/reference/start'
+    | '/docs/reference/testing'
+    | '/docs/tutorials/build-a-chat-app'
+    | '/docs/tutorials/build-a-saas-app'
+    | '/docs/tutorials/build-a-task-api'
+    | '/docs/tutorials/deploy-to-cloudflare'
+    | '/docs/concepts/'
+    | '/docs/guides/'
+    | '/docs/reference/'
+    | '/docs/tutorials/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DocsGettingStartedRoute: typeof DocsGettingStartedRoute
   DocsIndexRoute: typeof DocsIndexRoute
-  DocsPackagesAiRoute: typeof DocsPackagesAiRoute
-  DocsPackagesAuthRoute: typeof DocsPackagesAuthRoute
-  DocsPackagesBillingRoute: typeof DocsPackagesBillingRoute
-  DocsPackagesCliRoute: typeof DocsPackagesCliRoute
-  DocsPackagesCloudflareRoute: typeof DocsPackagesCloudflareRoute
-  DocsPackagesCoreRoute: typeof DocsPackagesCoreRoute
-  DocsPackagesMcpRoute: typeof DocsPackagesMcpRoute
-  DocsPackagesOrmRoute: typeof DocsPackagesOrmRoute
-  DocsPackagesQueueRoute: typeof DocsPackagesQueueRoute
-  DocsPackagesSchemaRoute: typeof DocsPackagesSchemaRoute
-  DocsPackagesStartRoute: typeof DocsPackagesStartRoute
-  DocsPackagesTestingRoute: typeof DocsPackagesTestingRoute
+  DocsConceptsAiRoute: typeof DocsConceptsAiRoute
+  DocsConceptsArchitectureRoute: typeof DocsConceptsArchitectureRoute
+  DocsConceptsAuthRoute: typeof DocsConceptsAuthRoute
+  DocsConceptsBillingRoute: typeof DocsConceptsBillingRoute
+  DocsConceptsCliRoute: typeof DocsConceptsCliRoute
+  DocsConceptsCloudflareRoute: typeof DocsConceptsCloudflareRoute
+  DocsConceptsCoreRoute: typeof DocsConceptsCoreRoute
+  DocsConceptsEdgeComputingRoute: typeof DocsConceptsEdgeComputingRoute
+  DocsConceptsLaravelPatternsRoute: typeof DocsConceptsLaravelPatternsRoute
+  DocsConceptsMcpRoute: typeof DocsConceptsMcpRoute
+  DocsConceptsOrmRoute: typeof DocsConceptsOrmRoute
+  DocsConceptsQueueRoute: typeof DocsConceptsQueueRoute
+  DocsConceptsSchemaRoute: typeof DocsConceptsSchemaRoute
+  DocsConceptsServiceContainerRoute: typeof DocsConceptsServiceContainerRoute
+  DocsConceptsStartRoute: typeof DocsConceptsStartRoute
+  DocsConceptsTestingRoute: typeof DocsConceptsTestingRoute
+  DocsConceptsTestingPhilosophyRoute: typeof DocsConceptsTestingPhilosophyRoute
+  DocsGuidesAiRoute: typeof DocsGuidesAiRoute
+  DocsGuidesAuthRoute: typeof DocsGuidesAuthRoute
+  DocsGuidesBillingRoute: typeof DocsGuidesBillingRoute
+  DocsGuidesCliRoute: typeof DocsGuidesCliRoute
+  DocsGuidesCloudflareRoute: typeof DocsGuidesCloudflareRoute
+  DocsGuidesCoreRoute: typeof DocsGuidesCoreRoute
+  DocsGuidesDeploymentRoute: typeof DocsGuidesDeploymentRoute
+  DocsGuidesEnvironmentRoute: typeof DocsGuidesEnvironmentRoute
+  DocsGuidesErrorHandlingRoute: typeof DocsGuidesErrorHandlingRoute
+  DocsGuidesMcpRoute: typeof DocsGuidesMcpRoute
+  DocsGuidesMigrationsRoute: typeof DocsGuidesMigrationsRoute
+  DocsGuidesOrmRoute: typeof DocsGuidesOrmRoute
+  DocsGuidesQueueRoute: typeof DocsGuidesQueueRoute
+  DocsGuidesSchemaRoute: typeof DocsGuidesSchemaRoute
+  DocsGuidesStartRoute: typeof DocsGuidesStartRoute
+  DocsGuidesTestingRoute: typeof DocsGuidesTestingRoute
+  DocsReferenceAiRoute: typeof DocsReferenceAiRoute
+  DocsReferenceAuthRoute: typeof DocsReferenceAuthRoute
+  DocsReferenceBillingRoute: typeof DocsReferenceBillingRoute
+  DocsReferenceCliRoute: typeof DocsReferenceCliRoute
+  DocsReferenceCloudflareRoute: typeof DocsReferenceCloudflareRoute
+  DocsReferenceCoreRoute: typeof DocsReferenceCoreRoute
+  DocsReferenceMcpRoute: typeof DocsReferenceMcpRoute
+  DocsReferenceOrmRoute: typeof DocsReferenceOrmRoute
+  DocsReferenceQueueRoute: typeof DocsReferenceQueueRoute
+  DocsReferenceSchemaRoute: typeof DocsReferenceSchemaRoute
+  DocsReferenceStartRoute: typeof DocsReferenceStartRoute
+  DocsReferenceTestingRoute: typeof DocsReferenceTestingRoute
+  DocsTutorialsBuildAChatAppRoute: typeof DocsTutorialsBuildAChatAppRoute
+  DocsTutorialsBuildASaasAppRoute: typeof DocsTutorialsBuildASaasAppRoute
+  DocsTutorialsBuildATaskApiRoute: typeof DocsTutorialsBuildATaskApiRoute
+  DocsTutorialsDeployToCloudflareRoute: typeof DocsTutorialsDeployToCloudflareRoute
+  DocsConceptsIndexRoute: typeof DocsConceptsIndexRoute
+  DocsGuidesIndexRoute: typeof DocsGuidesIndexRoute
+  DocsReferenceIndexRoute: typeof DocsReferenceIndexRoute
+  DocsTutorialsIndexRoute: typeof DocsTutorialsIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -248,88 +790,375 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DocsGettingStartedRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/docs/packages/testing': {
-      id: '/docs/packages/testing'
-      path: '/docs/packages/testing'
-      fullPath: '/docs/packages/testing'
-      preLoaderRoute: typeof DocsPackagesTestingRouteImport
+    '/docs/tutorials/': {
+      id: '/docs/tutorials/'
+      path: '/docs/tutorials'
+      fullPath: '/docs/tutorials/'
+      preLoaderRoute: typeof DocsTutorialsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/docs/packages/start': {
-      id: '/docs/packages/start'
-      path: '/docs/packages/start'
-      fullPath: '/docs/packages/start'
-      preLoaderRoute: typeof DocsPackagesStartRouteImport
+    '/docs/reference/': {
+      id: '/docs/reference/'
+      path: '/docs/reference'
+      fullPath: '/docs/reference/'
+      preLoaderRoute: typeof DocsReferenceIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/docs/packages/schema': {
-      id: '/docs/packages/schema'
-      path: '/docs/packages/schema'
-      fullPath: '/docs/packages/schema'
-      preLoaderRoute: typeof DocsPackagesSchemaRouteImport
+    '/docs/guides/': {
+      id: '/docs/guides/'
+      path: '/docs/guides'
+      fullPath: '/docs/guides/'
+      preLoaderRoute: typeof DocsGuidesIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/docs/packages/queue': {
-      id: '/docs/packages/queue'
-      path: '/docs/packages/queue'
-      fullPath: '/docs/packages/queue'
-      preLoaderRoute: typeof DocsPackagesQueueRouteImport
+    '/docs/concepts/': {
+      id: '/docs/concepts/'
+      path: '/docs/concepts'
+      fullPath: '/docs/concepts/'
+      preLoaderRoute: typeof DocsConceptsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/docs/packages/orm': {
-      id: '/docs/packages/orm'
-      path: '/docs/packages/orm'
-      fullPath: '/docs/packages/orm'
-      preLoaderRoute: typeof DocsPackagesOrmRouteImport
+    '/docs/tutorials/deploy-to-cloudflare': {
+      id: '/docs/tutorials/deploy-to-cloudflare'
+      path: '/docs/tutorials/deploy-to-cloudflare'
+      fullPath: '/docs/tutorials/deploy-to-cloudflare'
+      preLoaderRoute: typeof DocsTutorialsDeployToCloudflareRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/docs/packages/mcp': {
-      id: '/docs/packages/mcp'
-      path: '/docs/packages/mcp'
-      fullPath: '/docs/packages/mcp'
-      preLoaderRoute: typeof DocsPackagesMcpRouteImport
+    '/docs/tutorials/build-a-task-api': {
+      id: '/docs/tutorials/build-a-task-api'
+      path: '/docs/tutorials/build-a-task-api'
+      fullPath: '/docs/tutorials/build-a-task-api'
+      preLoaderRoute: typeof DocsTutorialsBuildATaskApiRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/docs/packages/core': {
-      id: '/docs/packages/core'
-      path: '/docs/packages/core'
-      fullPath: '/docs/packages/core'
-      preLoaderRoute: typeof DocsPackagesCoreRouteImport
+    '/docs/tutorials/build-a-saas-app': {
+      id: '/docs/tutorials/build-a-saas-app'
+      path: '/docs/tutorials/build-a-saas-app'
+      fullPath: '/docs/tutorials/build-a-saas-app'
+      preLoaderRoute: typeof DocsTutorialsBuildASaasAppRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/docs/packages/cloudflare': {
-      id: '/docs/packages/cloudflare'
-      path: '/docs/packages/cloudflare'
-      fullPath: '/docs/packages/cloudflare'
-      preLoaderRoute: typeof DocsPackagesCloudflareRouteImport
+    '/docs/tutorials/build-a-chat-app': {
+      id: '/docs/tutorials/build-a-chat-app'
+      path: '/docs/tutorials/build-a-chat-app'
+      fullPath: '/docs/tutorials/build-a-chat-app'
+      preLoaderRoute: typeof DocsTutorialsBuildAChatAppRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/docs/packages/cli': {
-      id: '/docs/packages/cli'
-      path: '/docs/packages/cli'
-      fullPath: '/docs/packages/cli'
-      preLoaderRoute: typeof DocsPackagesCliRouteImport
+    '/docs/reference/testing': {
+      id: '/docs/reference/testing'
+      path: '/docs/reference/testing'
+      fullPath: '/docs/reference/testing'
+      preLoaderRoute: typeof DocsReferenceTestingRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/docs/packages/billing': {
-      id: '/docs/packages/billing'
-      path: '/docs/packages/billing'
-      fullPath: '/docs/packages/billing'
-      preLoaderRoute: typeof DocsPackagesBillingRouteImport
+    '/docs/reference/start': {
+      id: '/docs/reference/start'
+      path: '/docs/reference/start'
+      fullPath: '/docs/reference/start'
+      preLoaderRoute: typeof DocsReferenceStartRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/docs/packages/auth': {
-      id: '/docs/packages/auth'
-      path: '/docs/packages/auth'
-      fullPath: '/docs/packages/auth'
-      preLoaderRoute: typeof DocsPackagesAuthRouteImport
+    '/docs/reference/schema': {
+      id: '/docs/reference/schema'
+      path: '/docs/reference/schema'
+      fullPath: '/docs/reference/schema'
+      preLoaderRoute: typeof DocsReferenceSchemaRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/docs/packages/ai': {
-      id: '/docs/packages/ai'
-      path: '/docs/packages/ai'
-      fullPath: '/docs/packages/ai'
-      preLoaderRoute: typeof DocsPackagesAiRouteImport
+    '/docs/reference/queue': {
+      id: '/docs/reference/queue'
+      path: '/docs/reference/queue'
+      fullPath: '/docs/reference/queue'
+      preLoaderRoute: typeof DocsReferenceQueueRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs/reference/orm': {
+      id: '/docs/reference/orm'
+      path: '/docs/reference/orm'
+      fullPath: '/docs/reference/orm'
+      preLoaderRoute: typeof DocsReferenceOrmRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs/reference/mcp': {
+      id: '/docs/reference/mcp'
+      path: '/docs/reference/mcp'
+      fullPath: '/docs/reference/mcp'
+      preLoaderRoute: typeof DocsReferenceMcpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs/reference/core': {
+      id: '/docs/reference/core'
+      path: '/docs/reference/core'
+      fullPath: '/docs/reference/core'
+      preLoaderRoute: typeof DocsReferenceCoreRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs/reference/cloudflare': {
+      id: '/docs/reference/cloudflare'
+      path: '/docs/reference/cloudflare'
+      fullPath: '/docs/reference/cloudflare'
+      preLoaderRoute: typeof DocsReferenceCloudflareRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs/reference/cli': {
+      id: '/docs/reference/cli'
+      path: '/docs/reference/cli'
+      fullPath: '/docs/reference/cli'
+      preLoaderRoute: typeof DocsReferenceCliRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs/reference/billing': {
+      id: '/docs/reference/billing'
+      path: '/docs/reference/billing'
+      fullPath: '/docs/reference/billing'
+      preLoaderRoute: typeof DocsReferenceBillingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs/reference/auth': {
+      id: '/docs/reference/auth'
+      path: '/docs/reference/auth'
+      fullPath: '/docs/reference/auth'
+      preLoaderRoute: typeof DocsReferenceAuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs/reference/ai': {
+      id: '/docs/reference/ai'
+      path: '/docs/reference/ai'
+      fullPath: '/docs/reference/ai'
+      preLoaderRoute: typeof DocsReferenceAiRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs/guides/testing': {
+      id: '/docs/guides/testing'
+      path: '/docs/guides/testing'
+      fullPath: '/docs/guides/testing'
+      preLoaderRoute: typeof DocsGuidesTestingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs/guides/start': {
+      id: '/docs/guides/start'
+      path: '/docs/guides/start'
+      fullPath: '/docs/guides/start'
+      preLoaderRoute: typeof DocsGuidesStartRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs/guides/schema': {
+      id: '/docs/guides/schema'
+      path: '/docs/guides/schema'
+      fullPath: '/docs/guides/schema'
+      preLoaderRoute: typeof DocsGuidesSchemaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs/guides/queue': {
+      id: '/docs/guides/queue'
+      path: '/docs/guides/queue'
+      fullPath: '/docs/guides/queue'
+      preLoaderRoute: typeof DocsGuidesQueueRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs/guides/orm': {
+      id: '/docs/guides/orm'
+      path: '/docs/guides/orm'
+      fullPath: '/docs/guides/orm'
+      preLoaderRoute: typeof DocsGuidesOrmRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs/guides/migrations': {
+      id: '/docs/guides/migrations'
+      path: '/docs/guides/migrations'
+      fullPath: '/docs/guides/migrations'
+      preLoaderRoute: typeof DocsGuidesMigrationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs/guides/mcp': {
+      id: '/docs/guides/mcp'
+      path: '/docs/guides/mcp'
+      fullPath: '/docs/guides/mcp'
+      preLoaderRoute: typeof DocsGuidesMcpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs/guides/error-handling': {
+      id: '/docs/guides/error-handling'
+      path: '/docs/guides/error-handling'
+      fullPath: '/docs/guides/error-handling'
+      preLoaderRoute: typeof DocsGuidesErrorHandlingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs/guides/environment': {
+      id: '/docs/guides/environment'
+      path: '/docs/guides/environment'
+      fullPath: '/docs/guides/environment'
+      preLoaderRoute: typeof DocsGuidesEnvironmentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs/guides/deployment': {
+      id: '/docs/guides/deployment'
+      path: '/docs/guides/deployment'
+      fullPath: '/docs/guides/deployment'
+      preLoaderRoute: typeof DocsGuidesDeploymentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs/guides/core': {
+      id: '/docs/guides/core'
+      path: '/docs/guides/core'
+      fullPath: '/docs/guides/core'
+      preLoaderRoute: typeof DocsGuidesCoreRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs/guides/cloudflare': {
+      id: '/docs/guides/cloudflare'
+      path: '/docs/guides/cloudflare'
+      fullPath: '/docs/guides/cloudflare'
+      preLoaderRoute: typeof DocsGuidesCloudflareRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs/guides/cli': {
+      id: '/docs/guides/cli'
+      path: '/docs/guides/cli'
+      fullPath: '/docs/guides/cli'
+      preLoaderRoute: typeof DocsGuidesCliRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs/guides/billing': {
+      id: '/docs/guides/billing'
+      path: '/docs/guides/billing'
+      fullPath: '/docs/guides/billing'
+      preLoaderRoute: typeof DocsGuidesBillingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs/guides/auth': {
+      id: '/docs/guides/auth'
+      path: '/docs/guides/auth'
+      fullPath: '/docs/guides/auth'
+      preLoaderRoute: typeof DocsGuidesAuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs/guides/ai': {
+      id: '/docs/guides/ai'
+      path: '/docs/guides/ai'
+      fullPath: '/docs/guides/ai'
+      preLoaderRoute: typeof DocsGuidesAiRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs/concepts/testing-philosophy': {
+      id: '/docs/concepts/testing-philosophy'
+      path: '/docs/concepts/testing-philosophy'
+      fullPath: '/docs/concepts/testing-philosophy'
+      preLoaderRoute: typeof DocsConceptsTestingPhilosophyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs/concepts/testing': {
+      id: '/docs/concepts/testing'
+      path: '/docs/concepts/testing'
+      fullPath: '/docs/concepts/testing'
+      preLoaderRoute: typeof DocsConceptsTestingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs/concepts/start': {
+      id: '/docs/concepts/start'
+      path: '/docs/concepts/start'
+      fullPath: '/docs/concepts/start'
+      preLoaderRoute: typeof DocsConceptsStartRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs/concepts/service-container': {
+      id: '/docs/concepts/service-container'
+      path: '/docs/concepts/service-container'
+      fullPath: '/docs/concepts/service-container'
+      preLoaderRoute: typeof DocsConceptsServiceContainerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs/concepts/schema': {
+      id: '/docs/concepts/schema'
+      path: '/docs/concepts/schema'
+      fullPath: '/docs/concepts/schema'
+      preLoaderRoute: typeof DocsConceptsSchemaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs/concepts/queue': {
+      id: '/docs/concepts/queue'
+      path: '/docs/concepts/queue'
+      fullPath: '/docs/concepts/queue'
+      preLoaderRoute: typeof DocsConceptsQueueRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs/concepts/orm': {
+      id: '/docs/concepts/orm'
+      path: '/docs/concepts/orm'
+      fullPath: '/docs/concepts/orm'
+      preLoaderRoute: typeof DocsConceptsOrmRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs/concepts/mcp': {
+      id: '/docs/concepts/mcp'
+      path: '/docs/concepts/mcp'
+      fullPath: '/docs/concepts/mcp'
+      preLoaderRoute: typeof DocsConceptsMcpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs/concepts/laravel-patterns': {
+      id: '/docs/concepts/laravel-patterns'
+      path: '/docs/concepts/laravel-patterns'
+      fullPath: '/docs/concepts/laravel-patterns'
+      preLoaderRoute: typeof DocsConceptsLaravelPatternsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs/concepts/edge-computing': {
+      id: '/docs/concepts/edge-computing'
+      path: '/docs/concepts/edge-computing'
+      fullPath: '/docs/concepts/edge-computing'
+      preLoaderRoute: typeof DocsConceptsEdgeComputingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs/concepts/core': {
+      id: '/docs/concepts/core'
+      path: '/docs/concepts/core'
+      fullPath: '/docs/concepts/core'
+      preLoaderRoute: typeof DocsConceptsCoreRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs/concepts/cloudflare': {
+      id: '/docs/concepts/cloudflare'
+      path: '/docs/concepts/cloudflare'
+      fullPath: '/docs/concepts/cloudflare'
+      preLoaderRoute: typeof DocsConceptsCloudflareRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs/concepts/cli': {
+      id: '/docs/concepts/cli'
+      path: '/docs/concepts/cli'
+      fullPath: '/docs/concepts/cli'
+      preLoaderRoute: typeof DocsConceptsCliRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs/concepts/billing': {
+      id: '/docs/concepts/billing'
+      path: '/docs/concepts/billing'
+      fullPath: '/docs/concepts/billing'
+      preLoaderRoute: typeof DocsConceptsBillingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs/concepts/auth': {
+      id: '/docs/concepts/auth'
+      path: '/docs/concepts/auth'
+      fullPath: '/docs/concepts/auth'
+      preLoaderRoute: typeof DocsConceptsAuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs/concepts/architecture': {
+      id: '/docs/concepts/architecture'
+      path: '/docs/concepts/architecture'
+      fullPath: '/docs/concepts/architecture'
+      preLoaderRoute: typeof DocsConceptsArchitectureRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs/concepts/ai': {
+      id: '/docs/concepts/ai'
+      path: '/docs/concepts/ai'
+      fullPath: '/docs/concepts/ai'
+      preLoaderRoute: typeof DocsConceptsAiRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -339,18 +1168,59 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DocsGettingStartedRoute: DocsGettingStartedRoute,
   DocsIndexRoute: DocsIndexRoute,
-  DocsPackagesAiRoute: DocsPackagesAiRoute,
-  DocsPackagesAuthRoute: DocsPackagesAuthRoute,
-  DocsPackagesBillingRoute: DocsPackagesBillingRoute,
-  DocsPackagesCliRoute: DocsPackagesCliRoute,
-  DocsPackagesCloudflareRoute: DocsPackagesCloudflareRoute,
-  DocsPackagesCoreRoute: DocsPackagesCoreRoute,
-  DocsPackagesMcpRoute: DocsPackagesMcpRoute,
-  DocsPackagesOrmRoute: DocsPackagesOrmRoute,
-  DocsPackagesQueueRoute: DocsPackagesQueueRoute,
-  DocsPackagesSchemaRoute: DocsPackagesSchemaRoute,
-  DocsPackagesStartRoute: DocsPackagesStartRoute,
-  DocsPackagesTestingRoute: DocsPackagesTestingRoute,
+  DocsConceptsAiRoute: DocsConceptsAiRoute,
+  DocsConceptsArchitectureRoute: DocsConceptsArchitectureRoute,
+  DocsConceptsAuthRoute: DocsConceptsAuthRoute,
+  DocsConceptsBillingRoute: DocsConceptsBillingRoute,
+  DocsConceptsCliRoute: DocsConceptsCliRoute,
+  DocsConceptsCloudflareRoute: DocsConceptsCloudflareRoute,
+  DocsConceptsCoreRoute: DocsConceptsCoreRoute,
+  DocsConceptsEdgeComputingRoute: DocsConceptsEdgeComputingRoute,
+  DocsConceptsLaravelPatternsRoute: DocsConceptsLaravelPatternsRoute,
+  DocsConceptsMcpRoute: DocsConceptsMcpRoute,
+  DocsConceptsOrmRoute: DocsConceptsOrmRoute,
+  DocsConceptsQueueRoute: DocsConceptsQueueRoute,
+  DocsConceptsSchemaRoute: DocsConceptsSchemaRoute,
+  DocsConceptsServiceContainerRoute: DocsConceptsServiceContainerRoute,
+  DocsConceptsStartRoute: DocsConceptsStartRoute,
+  DocsConceptsTestingRoute: DocsConceptsTestingRoute,
+  DocsConceptsTestingPhilosophyRoute: DocsConceptsTestingPhilosophyRoute,
+  DocsGuidesAiRoute: DocsGuidesAiRoute,
+  DocsGuidesAuthRoute: DocsGuidesAuthRoute,
+  DocsGuidesBillingRoute: DocsGuidesBillingRoute,
+  DocsGuidesCliRoute: DocsGuidesCliRoute,
+  DocsGuidesCloudflareRoute: DocsGuidesCloudflareRoute,
+  DocsGuidesCoreRoute: DocsGuidesCoreRoute,
+  DocsGuidesDeploymentRoute: DocsGuidesDeploymentRoute,
+  DocsGuidesEnvironmentRoute: DocsGuidesEnvironmentRoute,
+  DocsGuidesErrorHandlingRoute: DocsGuidesErrorHandlingRoute,
+  DocsGuidesMcpRoute: DocsGuidesMcpRoute,
+  DocsGuidesMigrationsRoute: DocsGuidesMigrationsRoute,
+  DocsGuidesOrmRoute: DocsGuidesOrmRoute,
+  DocsGuidesQueueRoute: DocsGuidesQueueRoute,
+  DocsGuidesSchemaRoute: DocsGuidesSchemaRoute,
+  DocsGuidesStartRoute: DocsGuidesStartRoute,
+  DocsGuidesTestingRoute: DocsGuidesTestingRoute,
+  DocsReferenceAiRoute: DocsReferenceAiRoute,
+  DocsReferenceAuthRoute: DocsReferenceAuthRoute,
+  DocsReferenceBillingRoute: DocsReferenceBillingRoute,
+  DocsReferenceCliRoute: DocsReferenceCliRoute,
+  DocsReferenceCloudflareRoute: DocsReferenceCloudflareRoute,
+  DocsReferenceCoreRoute: DocsReferenceCoreRoute,
+  DocsReferenceMcpRoute: DocsReferenceMcpRoute,
+  DocsReferenceOrmRoute: DocsReferenceOrmRoute,
+  DocsReferenceQueueRoute: DocsReferenceQueueRoute,
+  DocsReferenceSchemaRoute: DocsReferenceSchemaRoute,
+  DocsReferenceStartRoute: DocsReferenceStartRoute,
+  DocsReferenceTestingRoute: DocsReferenceTestingRoute,
+  DocsTutorialsBuildAChatAppRoute: DocsTutorialsBuildAChatAppRoute,
+  DocsTutorialsBuildASaasAppRoute: DocsTutorialsBuildASaasAppRoute,
+  DocsTutorialsBuildATaskApiRoute: DocsTutorialsBuildATaskApiRoute,
+  DocsTutorialsDeployToCloudflareRoute: DocsTutorialsDeployToCloudflareRoute,
+  DocsConceptsIndexRoute: DocsConceptsIndexRoute,
+  DocsGuidesIndexRoute: DocsGuidesIndexRoute,
+  DocsReferenceIndexRoute: DocsReferenceIndexRoute,
+  DocsTutorialsIndexRoute: DocsTutorialsIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
