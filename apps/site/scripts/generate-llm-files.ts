@@ -101,13 +101,31 @@ const llmsFullTxt = entries
   })
   .join('\n\n---\n\n')
 
-// sitemap.xml
+// sitemap.xml with priority tiers
+function sitemapPriority(section: Section): string {
+  const tiers: Record<Section, string> = {
+    tutorials: '0.8',
+    guides: '0.8',
+    reference: '0.7',
+    concepts: '0.6',
+  }
+  return tiers[section]
+}
+
 const sitemapEntries = entries.map(
-  (e) => `  <url><loc>${SITE_URL}/docs/${e.path}</loc></url>`,
+  (e) => `  <url>
+    <loc>${SITE_URL}/docs/${e.path}</loc>
+    <changefreq>weekly</changefreq>
+    <priority>${sitemapPriority(e.section)}</priority>
+  </url>`,
 )
 const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>${SITE_URL}/</loc></url>
+  <url>
+    <loc>${SITE_URL}/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
 ${sitemapEntries.join('\n')}
 </urlset>`
 

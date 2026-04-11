@@ -2,16 +2,12 @@ import { createFileRoute } from '@tanstack/react-router'
 import Content, { frontmatter } from '../../../../content/docs/concepts/billing.mdx'
 import { DocLayout } from '../../../components/doc-layout'
 import { mdxComponents } from '../../../lib/mdx-components'
+import { createDocHead } from '../../../lib/doc-head'
 import { MDXProvider } from '@mdx-js/react'
 
 export const Route = createFileRoute('/docs/concepts/billing')({
   component: Page,
-  head: () => ({
-    meta: [
-      { title: frontmatter.title },
-      { name: 'description', content: frontmatter.description },
-    ],
-  }),
+  head: () => createDocHead(frontmatter, 'docs/concepts/billing'),
 })
 
 function Page() {

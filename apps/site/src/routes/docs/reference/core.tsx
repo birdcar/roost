@@ -1,4 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { createDocHead } from '../../../lib/doc-head'
 import { MDXProvider } from '@mdx-js/react'
 import Content, { frontmatter } from '../../../../content/docs/reference/core.mdx'
 import { DocLayout } from '../../../components/doc-layout'
@@ -6,12 +7,7 @@ import { mdxComponents } from '../../../lib/mdx-components'
 
 export const Route = createFileRoute('/docs/reference/core')({
   component: Page,
-  head: () => ({
-    meta: [
-      { title: frontmatter.title },
-      { name: 'description', content: frontmatter.description },
-    ],
-  }),
+  head: () => createDocHead(frontmatter, 'docs/reference/core'),
 })
 
 function Page() {

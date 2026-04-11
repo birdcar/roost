@@ -1,6 +1,7 @@
 import { Link, useLocation } from '@tanstack/react-router';
 import { useState, useEffect, type ReactNode } from 'react';
 import { CopyMarkdownButton } from './copy-markdown-button';
+import { DocJsonLd } from './doc-json-ld';
 
 const sections = [
   {
@@ -300,6 +301,7 @@ export function DocLayout({
 
   return (
     <div className="docs-layout">
+      {isDocsPage && <DocJsonLd title={title} description={subtitle} url={`https://roost.dev${location.pathname}`} />}
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <main className="docs-content">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
