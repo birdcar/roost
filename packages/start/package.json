@@ -20,12 +20,12 @@
     "@tanstack/react-router": ">=1.120.0"
   },
   "devDependencies": {
-    "@tanstack/react-start": "^1.167.0",
-    "@tanstack/react-router": "^1.168.0",
-    "@cloudflare/workers-types": "^4.20250409.0",
-    "bun-types": "latest",
-    "typescript": "^5.8.0",
-    "react": "^19.0.0",
-    "@types/react": "^19.0.0"
+    "@tanstack/react-start": "catalog:",
+    "@tanstack/react-router": "catalog:",
+    "@cloudflare/workers-types": "catalog:",
+    "bun-types": "catalog:",
+    "typescript": "catalog:",
+    "react": "catalog:",
+    "@types/react": "catalog:"
   }
 }

@@ -1,7 +1,26 @@
 {
   "name": "roost",
   "private": true,
-  "workspaces": ["packages/*", "apps/*"],
+  "workspaces": {
+    "packages": ["packages/*", "apps/*"],
+    "catalog": {
+      "typescript": "^5.8.0",
+      "bun-types": "latest",
+      "@cloudflare/workers-types": "^4.20250409.0",
+      "react": "^19.0.0",
+      "react-dom": "^19.0.0",
+      "@types/react": "^19.0.0",
+      "@types/react-dom": "^19.0.0",
+      "@tanstack/react-start": "^1.167.0",
+      "@tanstack/react-router": "^1.168.0",
+      "vite": "^6.3.0",
+      "vite-tsconfig-paths": "^5.1.0",
+      "@vitejs/plugin-react": "^4.5.0",
+      "drizzle-orm": "^0.44.0",
+      "drizzle-kit": "^0.30.0",
+      "@faker-js/faker": "^9.0.0"
+    }
+  },
   "scripts": {
     "build": "bun run --filter '@roost/*' build",
     "test": "bun test",

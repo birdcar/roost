@@ -17,7 +17,7 @@
     "@roost/schema": "workspace:*"
   },
   "devDependencies": {
-    "bun-types": "latest",
-    "typescript": "^5.8.0"
+    "bun-types": "catalog:",
+    "typescript": "catalog:"
   }
 }
