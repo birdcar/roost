@@ -52,8 +52,8 @@ export function CodeParticles() {
       vx: (Math.random() - 0.5) * 0.3,
       vy: (Math.random() - 0.5) * 0.15 - 0.1,
       token: TOKENS[Math.floor(Math.random() * TOKENS.length)]!,
-      opacity: 0.06 + Math.random() * 0.08,
-      size: 11 + Math.random() * 4,
+      opacity: 0.12 + Math.random() * 0.12,
+      size: 12 + Math.random() * 5,
     }))
 
     const observer = new IntersectionObserver(
