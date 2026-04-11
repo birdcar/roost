@@ -244,6 +244,20 @@
         "typescript": "catalog:",
       },
     },
+    "packages/roost-skills": {
+      "name": "@roost/skills",
+      "version": "0.1.0",
+      "bin": {
+        "roost-new": "./dist/skills/roost-new.js",
+        "roost-make": "./dist/skills/roost-make.js",
+        "roost-docs": "./dist/skills/roost-docs.js",
+        "roost-conventions": "./dist/skills/roost-conventions.js",
+      },
+      "devDependencies": {
+        "bun-types": "catalog:",
+        "typescript": "catalog:",
+      },
+    },
     "packages/schema": {
       "name": "@roost/schema",
       "version": "0.1.0",
@@ -573,6 +587,8 @@
     "@roost/queue": ["@roost/queue@workspace:packages/queue"],
 
     "@roost/schema": ["@roost/schema@workspace:packages/schema"],
+
+    "@roost/skills": ["@roost/skills@workspace:packages/roost-skills"],
 
     "@roost/start": ["@roost/start@workspace:packages/start"],
 

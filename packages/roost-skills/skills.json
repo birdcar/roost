@@ -1,0 +1,41 @@
+{
+  "name": "roost",
+  "description": "Roost framework skills — scaffold projects, generate code, fetch docs",
+  "version": "0.1.0",
+  "skills": [
+    {
+      "name": "roost-new",
+      "description": "Scaffold a new Roost project on Cloudflare Workers",
+      "command": "roost-new",
+      "arguments": [
+        { "name": "name", "description": "Project name", "required": true },
+        { "name": "--with-ai", "description": "Include AI agent scaffolding", "required": false },
+        { "name": "--with-billing", "description": "Include billing scaffolding", "required": false },
+        { "name": "--with-queue", "description": "Include queue/jobs scaffolding", "required": false }
+      ]
+    },
+    {
+      "name": "roost-make",
+      "description": "Generate Roost code artifacts (model, agent, job, middleware, tool, controller, mcp-server)",
+      "command": "roost-make",
+      "arguments": [
+        { "name": "type", "description": "Artifact type", "required": true },
+        { "name": "name", "description": "Artifact name (PascalCase)", "required": true }
+      ]
+    },
+    {
+      "name": "roost-docs",
+      "description": "Fetch Roost documentation. Pass a topic to get specific content.",
+      "command": "roost-docs",
+      "arguments": [
+        { "name": "topic", "description": "Documentation topic (e.g. 'orm', 'migrations', 'auth')", "required": false }
+      ]
+    },
+    {
+      "name": "roost-conventions",
+      "description": "Get Roost file structure, naming conventions, and import patterns",
+      "command": "roost-conventions",
+      "arguments": []
+    }
+  ]
+}

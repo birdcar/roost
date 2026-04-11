@@ -1,0 +1,23 @@
+{
+  "name": "@roost/skills",
+  "version": "0.1.0",
+  "description": "Agent skills for building Roost applications",
+  "type": "module",
+  "main": "./dist/index.js",
+  "bin": {
+    "roost-new": "./dist/skills/roost-new.js",
+    "roost-make": "./dist/skills/roost-make.js",
+    "roost-docs": "./dist/skills/roost-docs.js",
+    "roost-conventions": "./dist/skills/roost-conventions.js"
+  },
+  "skills": "./skills.json",
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "bun run build"
+  },
+  "devDependencies": {
+    "typescript": "catalog:",
+    "bun-types": "catalog:"
+  }
+}
