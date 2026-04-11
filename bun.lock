@@ -61,6 +61,19 @@
         "@tanstack/react-start": ">=1.120.0",
       },
     },
+    "packages/billing": {
+      "name": "@roost/billing",
+      "version": "0.1.0",
+      "dependencies": {
+        "@roost/core": "workspace:*",
+        "@roost/orm": "workspace:*",
+      },
+      "devDependencies": {
+        "@cloudflare/workers-types": "catalog:",
+        "bun-types": "catalog:",
+        "typescript": "catalog:",
+      },
+    },
     "packages/cloudflare": {
       "name": "@roost/cloudflare",
       "version": "0.1.0",
@@ -401,6 +414,8 @@
     "@roost/ai": ["@roost/ai@workspace:packages/ai"],
 
     "@roost/auth": ["@roost/auth@workspace:packages/auth"],
+
+    "@roost/billing": ["@roost/billing@workspace:packages/billing"],
 
     "@roost/cloudflare": ["@roost/cloudflare@workspace:packages/cloudflare"],
 
