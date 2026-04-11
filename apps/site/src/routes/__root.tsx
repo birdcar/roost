@@ -11,7 +11,20 @@ export const Route = createRootRoute({
     ],
   }),
   component: RootLayout,
+  notFoundComponent: NotFound,
 });
+
+function NotFound() {
+  return (
+    <div style={{ padding: '4rem 2rem', textAlign: 'center' }}>
+      <h1 style={{ fontSize: '3rem', fontWeight: 800 }}>404</h1>
+      <p style={{ color: '#6b7280', marginTop: '0.5rem', fontSize: '1.1rem' }}>Page not found.</p>
+      <Link to="/" style={{ display: 'inline-block', marginTop: '1.5rem', padding: '0.5rem 1rem', background: '#000', color: '#fff', borderRadius: '6px', textDecoration: 'none' }}>
+        Back to Home
+      </Link>
+    </div>
+  );
+}
 
 function RootLayout({ children }: { children?: ReactNode }) {
   return (

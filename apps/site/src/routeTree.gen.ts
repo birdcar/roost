@@ -12,6 +12,18 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DocsIndexRouteImport } from './routes/docs/index'
 import { Route as DocsGettingStartedRouteImport } from './routes/docs/getting-started'
+import { Route as DocsPackagesTestingRouteImport } from './routes/docs/packages/testing'
+import { Route as DocsPackagesStartRouteImport } from './routes/docs/packages/start'
+import { Route as DocsPackagesSchemaRouteImport } from './routes/docs/packages/schema'
+import { Route as DocsPackagesQueueRouteImport } from './routes/docs/packages/queue'
+import { Route as DocsPackagesOrmRouteImport } from './routes/docs/packages/orm'
+import { Route as DocsPackagesMcpRouteImport } from './routes/docs/packages/mcp'
+import { Route as DocsPackagesCoreRouteImport } from './routes/docs/packages/core'
+import { Route as DocsPackagesCloudflareRouteImport } from './routes/docs/packages/cloudflare'
+import { Route as DocsPackagesCliRouteImport } from './routes/docs/packages/cli'
+import { Route as DocsPackagesBillingRouteImport } from './routes/docs/packages/billing'
+import { Route as DocsPackagesAuthRouteImport } from './routes/docs/packages/auth'
+import { Route as DocsPackagesAiRouteImport } from './routes/docs/packages/ai'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -28,35 +40,189 @@ const DocsGettingStartedRoute = DocsGettingStartedRouteImport.update({
   path: '/docs/getting-started',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DocsPackagesTestingRoute = DocsPackagesTestingRouteImport.update({
+  id: '/docs/packages/testing',
+  path: '/docs/packages/testing',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocsPackagesStartRoute = DocsPackagesStartRouteImport.update({
+  id: '/docs/packages/start',
+  path: '/docs/packages/start',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocsPackagesSchemaRoute = DocsPackagesSchemaRouteImport.update({
+  id: '/docs/packages/schema',
+  path: '/docs/packages/schema',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocsPackagesQueueRoute = DocsPackagesQueueRouteImport.update({
+  id: '/docs/packages/queue',
+  path: '/docs/packages/queue',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocsPackagesOrmRoute = DocsPackagesOrmRouteImport.update({
+  id: '/docs/packages/orm',
+  path: '/docs/packages/orm',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocsPackagesMcpRoute = DocsPackagesMcpRouteImport.update({
+  id: '/docs/packages/mcp',
+  path: '/docs/packages/mcp',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocsPackagesCoreRoute = DocsPackagesCoreRouteImport.update({
+  id: '/docs/packages/core',
+  path: '/docs/packages/core',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocsPackagesCloudflareRoute = DocsPackagesCloudflareRouteImport.update({
+  id: '/docs/packages/cloudflare',
+  path: '/docs/packages/cloudflare',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocsPackagesCliRoute = DocsPackagesCliRouteImport.update({
+  id: '/docs/packages/cli',
+  path: '/docs/packages/cli',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocsPackagesBillingRoute = DocsPackagesBillingRouteImport.update({
+  id: '/docs/packages/billing',
+  path: '/docs/packages/billing',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocsPackagesAuthRoute = DocsPackagesAuthRouteImport.update({
+  id: '/docs/packages/auth',
+  path: '/docs/packages/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocsPackagesAiRoute = DocsPackagesAiRouteImport.update({
+  id: '/docs/packages/ai',
+  path: '/docs/packages/ai',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/docs/getting-started': typeof DocsGettingStartedRoute
   '/docs/': typeof DocsIndexRoute
+  '/docs/packages/ai': typeof DocsPackagesAiRoute
+  '/docs/packages/auth': typeof DocsPackagesAuthRoute
+  '/docs/packages/billing': typeof DocsPackagesBillingRoute
+  '/docs/packages/cli': typeof DocsPackagesCliRoute
+  '/docs/packages/cloudflare': typeof DocsPackagesCloudflareRoute
+  '/docs/packages/core': typeof DocsPackagesCoreRoute
+  '/docs/packages/mcp': typeof DocsPackagesMcpRoute
+  '/docs/packages/orm': typeof DocsPackagesOrmRoute
+  '/docs/packages/queue': typeof DocsPackagesQueueRoute
+  '/docs/packages/schema': typeof DocsPackagesSchemaRoute
+  '/docs/packages/start': typeof DocsPackagesStartRoute
+  '/docs/packages/testing': typeof DocsPackagesTestingRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/docs/getting-started': typeof DocsGettingStartedRoute
   '/docs': typeof DocsIndexRoute
+  '/docs/packages/ai': typeof DocsPackagesAiRoute
+  '/docs/packages/auth': typeof DocsPackagesAuthRoute
+  '/docs/packages/billing': typeof DocsPackagesBillingRoute
+  '/docs/packages/cli': typeof DocsPackagesCliRoute
+  '/docs/packages/cloudflare': typeof DocsPackagesCloudflareRoute
+  '/docs/packages/core': typeof DocsPackagesCoreRoute
+  '/docs/packages/mcp': typeof DocsPackagesMcpRoute
+  '/docs/packages/orm': typeof DocsPackagesOrmRoute
+  '/docs/packages/queue': typeof DocsPackagesQueueRoute
+  '/docs/packages/schema': typeof DocsPackagesSchemaRoute
+  '/docs/packages/start': typeof DocsPackagesStartRoute
+  '/docs/packages/testing': typeof DocsPackagesTestingRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/docs/getting-started': typeof DocsGettingStartedRoute
   '/docs/': typeof DocsIndexRoute
+  '/docs/packages/ai': typeof DocsPackagesAiRoute
+  '/docs/packages/auth': typeof DocsPackagesAuthRoute
+  '/docs/packages/billing': typeof DocsPackagesBillingRoute
+  '/docs/packages/cli': typeof DocsPackagesCliRoute
+  '/docs/packages/cloudflare': typeof DocsPackagesCloudflareRoute
+  '/docs/packages/core': typeof DocsPackagesCoreRoute
+  '/docs/packages/mcp': typeof DocsPackagesMcpRoute
+  '/docs/packages/orm': typeof DocsPackagesOrmRoute
+  '/docs/packages/queue': typeof DocsPackagesQueueRoute
+  '/docs/packages/schema': typeof DocsPackagesSchemaRoute
+  '/docs/packages/start': typeof DocsPackagesStartRoute
+  '/docs/packages/testing': typeof DocsPackagesTestingRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/docs/getting-started' | '/docs/'
+  fullPaths:
+    | '/'
+    | '/docs/getting-started'
+    | '/docs/'
+    | '/docs/packages/ai'
+    | '/docs/packages/auth'
+    | '/docs/packages/billing'
+    | '/docs/packages/cli'
+    | '/docs/packages/cloudflare'
+    | '/docs/packages/core'
+    | '/docs/packages/mcp'
+    | '/docs/packages/orm'
+    | '/docs/packages/queue'
+    | '/docs/packages/schema'
+    | '/docs/packages/start'
+    | '/docs/packages/testing'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/docs/getting-started' | '/docs'
-  id: '__root__' | '/' | '/docs/getting-started' | '/docs/'
+  to:
+    | '/'
+    | '/docs/getting-started'
+    | '/docs'
+    | '/docs/packages/ai'
+    | '/docs/packages/auth'
+    | '/docs/packages/billing'
+    | '/docs/packages/cli'
+    | '/docs/packages/cloudflare'
+    | '/docs/packages/core'
+    | '/docs/packages/mcp'
+    | '/docs/packages/orm'
+    | '/docs/packages/queue'
+    | '/docs/packages/schema'
+    | '/docs/packages/start'
+    | '/docs/packages/testing'
+  id:
+    | '__root__'
+    | '/'
+    | '/docs/getting-started'
+    | '/docs/'
+    | '/docs/packages/ai'
+    | '/docs/packages/auth'
+    | '/docs/packages/billing'
+    | '/docs/packages/cli'
+    | '/docs/packages/cloudflare'
+    | '/docs/packages/core'
+    | '/docs/packages/mcp'
+    | '/docs/packages/orm'
+    | '/docs/packages/queue'
+    | '/docs/packages/schema'
+    | '/docs/packages/start'
+    | '/docs/packages/testing'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DocsGettingStartedRoute: typeof DocsGettingStartedRoute
   DocsIndexRoute: typeof DocsIndexRoute
+  DocsPackagesAiRoute: typeof DocsPackagesAiRoute
+  DocsPackagesAuthRoute: typeof DocsPackagesAuthRoute
+  DocsPackagesBillingRoute: typeof DocsPackagesBillingRoute
+  DocsPackagesCliRoute: typeof DocsPackagesCliRoute
+  DocsPackagesCloudflareRoute: typeof DocsPackagesCloudflareRoute
+  DocsPackagesCoreRoute: typeof DocsPackagesCoreRoute
+  DocsPackagesMcpRoute: typeof DocsPackagesMcpRoute
+  DocsPackagesOrmRoute: typeof DocsPackagesOrmRoute
+  DocsPackagesQueueRoute: typeof DocsPackagesQueueRoute
+  DocsPackagesSchemaRoute: typeof DocsPackagesSchemaRoute
+  DocsPackagesStartRoute: typeof DocsPackagesStartRoute
+  DocsPackagesTestingRoute: typeof DocsPackagesTestingRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -82,6 +248,90 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DocsGettingStartedRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/docs/packages/testing': {
+      id: '/docs/packages/testing'
+      path: '/docs/packages/testing'
+      fullPath: '/docs/packages/testing'
+      preLoaderRoute: typeof DocsPackagesTestingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs/packages/start': {
+      id: '/docs/packages/start'
+      path: '/docs/packages/start'
+      fullPath: '/docs/packages/start'
+      preLoaderRoute: typeof DocsPackagesStartRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs/packages/schema': {
+      id: '/docs/packages/schema'
+      path: '/docs/packages/schema'
+      fullPath: '/docs/packages/schema'
+      preLoaderRoute: typeof DocsPackagesSchemaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs/packages/queue': {
+      id: '/docs/packages/queue'
+      path: '/docs/packages/queue'
+      fullPath: '/docs/packages/queue'
+      preLoaderRoute: typeof DocsPackagesQueueRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs/packages/orm': {
+      id: '/docs/packages/orm'
+      path: '/docs/packages/orm'
+      fullPath: '/docs/packages/orm'
+      preLoaderRoute: typeof DocsPackagesOrmRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs/packages/mcp': {
+      id: '/docs/packages/mcp'
+      path: '/docs/packages/mcp'
+      fullPath: '/docs/packages/mcp'
+      preLoaderRoute: typeof DocsPackagesMcpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs/packages/core': {
+      id: '/docs/packages/core'
+      path: '/docs/packages/core'
+      fullPath: '/docs/packages/core'
+      preLoaderRoute: typeof DocsPackagesCoreRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs/packages/cloudflare': {
+      id: '/docs/packages/cloudflare'
+      path: '/docs/packages/cloudflare'
+      fullPath: '/docs/packages/cloudflare'
+      preLoaderRoute: typeof DocsPackagesCloudflareRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs/packages/cli': {
+      id: '/docs/packages/cli'
+      path: '/docs/packages/cli'
+      fullPath: '/docs/packages/cli'
+      preLoaderRoute: typeof DocsPackagesCliRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs/packages/billing': {
+      id: '/docs/packages/billing'
+      path: '/docs/packages/billing'
+      fullPath: '/docs/packages/billing'
+      preLoaderRoute: typeof DocsPackagesBillingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs/packages/auth': {
+      id: '/docs/packages/auth'
+      path: '/docs/packages/auth'
+      fullPath: '/docs/packages/auth'
+      preLoaderRoute: typeof DocsPackagesAuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs/packages/ai': {
+      id: '/docs/packages/ai'
+      path: '/docs/packages/ai'
+      fullPath: '/docs/packages/ai'
+      preLoaderRoute: typeof DocsPackagesAiRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -89,6 +339,18 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DocsGettingStartedRoute: DocsGettingStartedRoute,
   DocsIndexRoute: DocsIndexRoute,
+  DocsPackagesAiRoute: DocsPackagesAiRoute,
+  DocsPackagesAuthRoute: DocsPackagesAuthRoute,
+  DocsPackagesBillingRoute: DocsPackagesBillingRoute,
+  DocsPackagesCliRoute: DocsPackagesCliRoute,
+  DocsPackagesCloudflareRoute: DocsPackagesCloudflareRoute,
+  DocsPackagesCoreRoute: DocsPackagesCoreRoute,
+  DocsPackagesMcpRoute: DocsPackagesMcpRoute,
+  DocsPackagesOrmRoute: DocsPackagesOrmRoute,
+  DocsPackagesQueueRoute: DocsPackagesQueueRoute,
+  DocsPackagesSchemaRoute: DocsPackagesSchemaRoute,
+  DocsPackagesStartRoute: DocsPackagesStartRoute,
+  DocsPackagesTestingRoute: DocsPackagesTestingRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
