@@ -74,6 +74,17 @@
         "typescript": "catalog:",
       },
     },
+    "packages/cli": {
+      "name": "@roost/cli",
+      "version": "0.1.0",
+      "bin": {
+        "roost": "./src/index.ts",
+      },
+      "devDependencies": {
+        "bun-types": "catalog:",
+        "typescript": "catalog:",
+      },
+    },
     "packages/cloudflare": {
       "name": "@roost/cloudflare",
       "version": "0.1.0",
@@ -416,6 +427,8 @@
     "@roost/auth": ["@roost/auth@workspace:packages/auth"],
 
     "@roost/billing": ["@roost/billing@workspace:packages/billing"],
+
+    "@roost/cli": ["@roost/cli@workspace:packages/cli"],
 
     "@roost/cloudflare": ["@roost/cloudflare@workspace:packages/cloudflare"],
 
