@@ -1,0 +1,27 @@
+{
+  "name": "roost-example-todo",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@roost/core": "workspace:*",
+    "@roost/cloudflare": "workspace:*",
+    "@roost/start": "workspace:*",
+    "@roost/auth": "workspace:*",
+    "@roost/orm": "workspace:*",
+    "@tanstack/react-router": "catalog:",
+    "@tanstack/react-start": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:"
+  },
+  "devDependencies": {
+    "@roost/testing": "workspace:*",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "bun-types": "catalog:"
+  }
+}

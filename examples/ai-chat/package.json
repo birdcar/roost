@@ -1,0 +1,29 @@
+{
+  "name": "roost-example-ai-chat",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@roost/core": "workspace:*",
+    "@roost/cloudflare": "workspace:*",
+    "@roost/start": "workspace:*",
+    "@roost/auth": "workspace:*",
+    "@roost/ai": "workspace:*",
+    "@roost/mcp": "workspace:*",
+    "@roost/schema": "workspace:*",
+    "@tanstack/react-router": "catalog:",
+    "@tanstack/react-start": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:"
+  },
+  "devDependencies": {
+    "@roost/testing": "workspace:*",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "bun-types": "catalog:"
+  }
+}
