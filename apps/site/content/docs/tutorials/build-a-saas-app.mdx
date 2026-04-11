@@ -79,34 +79,34 @@ once your credentials are in `.dev.vars`.
 ## Step 4: Create the Workspace Model
 
 SaaS apps typically tie billing and data ownership to an organization (workspace).
-Generate a `Workspace` model with its migration:
+Generate a `Workspace` model:
 
 ```terminal title="terminal"
 roost make:model Workspace
 ```
 
-Open the generated migration in `database/migrations/` and define the
-schema. Each workspace belongs to a WorkOS organization:
+This creates `src/models/workspace.ts` with a stub. Open it and replace the
+placeholder columns with the schema your SaaS app needs. Each workspace belongs
+to a WorkOS organization:
 
-```ts title="database/migrations/YYYYMMDDHHMMSS_create_workspaces_table.ts"
-import { Migration } from '@roost/orm';
+```ts title="src/models/workspace.ts"
+import { Model } from '@roost/orm';
+import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
 
-export default class CreateWorkspacesTable extends Migration {
-  async up(): Promise<void> {
-    await this.schema.createTable('workspaces', (table) => {
-      table.id();
-      table.string('name');
-      table.string('organization_id').unique();
-      table.string('stripe_customer_id').nullable();
-      table.string('subscription_id').nullable();
-      table.string('subscription_status').default('inactive');
-      table.timestamps();
-    });
-  }
+export const workspaces = sqliteTable('workspaces', {
+  id:                  integer('id').primaryKey({ autoIncrement: true }),
+  name:                text('name').notNull(),
+  organization_id:     text('organization_id').notNull().unique(),
+  stripe_customer_id:  text('stripe_customer_id'),
+  subscription_id:     text('subscription_id'),
+  subscription_status: text('subscription_status').notNull().default('inactive'),
+  created_at:          text('created_at'),
+  updated_at:          text('updated_at'),
+});
 
-  async down(): Promise<void> {
-    await this.schema.dropTable('workspaces');
-  }
+export class Workspace extends Model {
+  static tableName = 'workspaces';
+  static _table = workspaces;
 }
 ```
 
@@ -116,19 +116,34 @@ Run the migration:
 roost migrate
 ```
 
-**You should see:** Migration output confirming the `workspaces` table was created. The model file at `src/models/Workspace.ts` is ready to extend.
+**You should see:** Output from `drizzle-kit push` confirming the `workspaces` table was created. The model file at `src/models/workspace.ts` is ready to use.
 
 ## Step 5: Create a Protected Dashboard Route
 
-Create the dashboard route. Applying `AuthMiddleware` redirects
-unauthenticated requests to `/auth/login` before the component renders.
+`AuthMiddleware` is a Roost middleware registered on the `Application` instance.
+Register it globally in your app entry point so it runs on every request before
+route handlers execute:
+
+```ts title="src/app.ts"
+import { Application } from '@roost/core';
+import { AuthServiceProvider, AuthMiddleware } from '@roost/auth';
+import { OrmServiceProvider } from '@roost/orm';
+
+export function createApp(env: Record<string, unknown>) {
+  return Application.create(env)
+    .register(OrmServiceProvider)
+    .register(AuthServiceProvider)
+    .useMiddleware(new AuthMiddleware());
+}
+```
+
+Then create the dashboard route — it renders only for authenticated users because
+`AuthMiddleware` redirects to `/auth/login` before the handler runs:
 
 ```tsx title="src/routes/dashboard.tsx"
 import { createFileRoute } from '@tanstack/react-router';
-import { AuthMiddleware } from '@roost/auth';
 
 export const Route = createFileRoute('/dashboard')({
-  middleware: [new AuthMiddleware()],
   component: DashboardPage,
 });
 
@@ -145,19 +160,34 @@ function DashboardPage() {
 
 **You should see:** Visiting `/dashboard` while signed out redirects you to `/auth/login`. After signing in, the dashboard renders.
 
-## Step 6: Add BillingMiddleware to Gate Premium Features
+## Step 6: Add SubscribedMiddleware to Gate Premium Features
 
-Create a route for premium content. `SubscribedMiddleware` checks the
-current user's workspace subscription status and redirects to `/billing/checkout`
-when they don't have an active subscription.
+`SubscribedMiddleware` from `@roost/billing` redirects to `/billing/checkout`
+when the current user's workspace does not have an active subscription. Add it
+after `AuthMiddleware` in the pipeline so auth is checked first:
+
+```ts title="src/app.ts (updated)"
+import { Application } from '@roost/core';
+import { AuthServiceProvider, AuthMiddleware } from '@roost/auth';
+import { BillingServiceProvider, SubscribedMiddleware } from '@roost/billing';
+import { OrmServiceProvider } from '@roost/orm';
+
+export function createApp(env: Record<string, unknown>) {
+  return Application.create(env)
+    .register(OrmServiceProvider)
+    .register(AuthServiceProvider)
+    .register(BillingServiceProvider)
+    .useMiddleware(new AuthMiddleware())
+    .useMiddleware(new SubscribedMiddleware());
+}
+```
+
+Create the premium route — it renders only for subscribed users:
 
 ```tsx title="src/routes/features/premium.tsx"
 import { createFileRoute } from '@tanstack/react-router';
-import { AuthMiddleware } from '@roost/auth';
-import { SubscribedMiddleware } from '@roost/billing';
 
 export const Route = createFileRoute('/features/premium')({
-  middleware: [new AuthMiddleware(), new SubscribedMiddleware()],
   component: PremiumPage,
 });
 
@@ -234,8 +264,8 @@ signature before you process the event.
 ```ts title="src/routes/billing/webhook.ts"
 import { createServerFileRoute } from '@tanstack/react-start/server';
 import { verifyStripeWebhook, WebhookVerificationError } from '@roost/billing';
-import { Workspace } from '../../models/Workspace';
-import { SendWelcomeEmail } from '../../jobs/SendWelcomeEmail';
+import { Workspace } from '../../models/workspace';
+import { SendWelcomeEmail } from '../../jobs/send-welcome-email';
 
 export const ServerRoute = createServerFileRoute('/billing/webhook').methods({
   POST: async ({ request, context }) => {
@@ -259,12 +289,12 @@ export const ServerRoute = createServerFileRoute('/billing/webhook').methods({
         metadata: Record<string, string>;
       };
 
-      await Workspace.query()
-        .where('stripe_customer_id', subscription.customer)
-        .update({
-          subscription_id: subscription.id,
-          subscription_status: subscription.status,
-        });
+      const workspace = await Workspace.where('stripe_customer_id', subscription.customer).first();
+      if (workspace) {
+        workspace.attributes.subscription_id = subscription.id;
+        workspace.attributes.subscription_status = subscription.status;
+        await workspace.save();
+      }
 
       const organizationId = subscription.metadata['organization_id'] ?? '';
       await SendWelcomeEmail.dispatch({ organizationId });
@@ -298,7 +328,7 @@ roost make:job SendWelcomeEmail
 
 Fill in the generated file:
 
-```ts title="src/jobs/SendWelcomeEmail.ts"
+```ts title="src/jobs/send-welcome-email.ts"
 import { Job, Queue } from '@roost/queue';
 
 interface Payload {
@@ -322,7 +352,7 @@ export class SendWelcomeEmail extends Job<Payload> {
 }
 ```
 
-**You should see:** The file at `src/jobs/SendWelcomeEmail.ts` is in place. TypeScript will error if `handle()` is missing — the abstract method contract is enforced at compile time.
+**You should see:** The file at `src/jobs/send-welcome-email.ts` is in place. TypeScript will error if `handle()` is missing — the abstract method contract is enforced at compile time.
 
 ## Step 10: Dispatch the Job from the Webhook Handler
 

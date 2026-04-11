@@ -142,24 +142,38 @@ Create an error response.
 
 Serialize the response to MCP protocol JSON format.
 
+## createMcpRequest
+
+#### `createMcpRequest(args: Record<string, unknown>): McpRequest`
+
+Create an `McpRequest` from a plain arguments object. Used internally by
+`McpServer` when routing tool calls and prompt invocations. Import directly
+when testing tools or prompts in isolation without a full server.
+
 ## Types
 
 ```ts
-interface ToolDefinition {
+interface McpToolDefinition {
   name: string;
   description: string;
   inputSchema: JsonSchemaOutput;
 }
 
-interface ResourceDefinition {
+interface McpResourceDefinition {
   uri: string;
   description: string;
   mimeType: string;
 }
 
-interface PromptDefinition {
+interface McpPromptDefinition {
   name: string;
   description: string;
   arguments: JsonSchemaOutput;
+}
+
+interface PromptArgument {
+  name: string;
+  description?: string;
+  required?: boolean;
 }
 ```

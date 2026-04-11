@@ -105,13 +105,16 @@ Register the webhook endpoint URL in the Stripe dashboard under Developers → W
 
 ## How to gate routes by subscription status
 
-Add `SubscriptionMiddleware` to routes that require an active subscription. Pass the allowed statuses as arguments.
+Add `SubscribedMiddleware` or `OnTrialMiddleware` to routes that require an active subscription or trial.
 
 ```ts
-import { SubscriptionMiddleware } from '@roost/billing';
+import { SubscribedMiddleware, OnTrialMiddleware } from '@roost/billing';
 
-// Allow both active subscriptions and trials
-app.useMiddleware(SubscriptionMiddleware, ['active', 'trialing']);
+// Require an active subscription
+app.useMiddleware(SubscribedMiddleware);
+
+// Or require an active trial
+app.useMiddleware(OnTrialMiddleware);
 ```
 
 Users without a matching subscription receive a `402 Payment Required` response. To redirect instead, wrap the check in a custom middleware:

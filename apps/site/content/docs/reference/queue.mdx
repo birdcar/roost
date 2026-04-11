@@ -106,9 +106,25 @@ Calls `onSuccess()` on success, `onFailure()` on final failure.
 
 Register a job class so the consumer can deserialize and route messages to it.
 
+## Dispatcher API
+
+Sends serialized job messages to the configured Cloudflare Queue binding.
+Used internally by `Job.dispatch()` and `Job.dispatchAfter()`.
+Resolve from the container when you need to dispatch jobs outside of a `Job` class context.
+
 ## Decorators
 
 Class decorators applied to `Job` subclasses.
+
+#### `@Queue(name: string)`
+
+Specify the queue binding name this job should be dispatched to. Overrides the
+default queue configured in the service provider.
+
+#### `@Delay(seconds: number)`
+
+Default delay in seconds before the job is first executed. Can be overridden
+per-dispatch by calling `Job.dispatchAfter(seconds, payload)` directly.
 
 #### `@MaxRetries(count: number)`
 
@@ -123,6 +139,16 @@ Retry backoff strategy. `'exponential'` doubles the delay on each attempt.
 
 Base delay in seconds before the first retry. For exponential backoff, subsequent
 delays are multiplied by 2 on each attempt.
+
+#### `@JobTimeout(seconds: number)`
+
+Maximum execution time in seconds for a single `handle()` invocation before
+it is considered failed.
+
+#### `getJobConfig(JobClass: typeof Job): JobConfig`
+
+Read the merged job configuration from a job class's decorators. Useful for
+inspecting or testing job configuration.
 
 ## Types
 

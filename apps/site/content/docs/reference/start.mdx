@@ -73,11 +73,45 @@ const getUser = roostFnWithInput(
 );
 ```
 
+## Context Utilities
+
+#### `bootApp(createApp: () => Application): Application`
+
+Boot the Roost application singleton. Calls `createApp` once and caches the
+result. Subsequent calls return the cached instance. Used by `createRoostMiddleware`
+internally; call directly when you need the app outside of a middleware context.
+
+#### `getApp(): Application`
+
+Retrieve the cached application instance. Throws if `bootApp()` has not been
+called yet.
+
+#### `createRoostContext(app: Application): RoostServerContext`
+
+Create a per-request scoped context from the application. Returns a
+`RoostServerContext` with a scoped container. Called once per request by
+`createRoostMiddleware`.
+
+#### `resetAppCache(): void`
+
+Clear the cached application instance. Use in tests to ensure each test suite
+starts with a fresh application.
+
+## StartServiceProvider
+
+Service provider that registers `@roost/start` integrations in the Roost
+container. Register this provider when using `bootApp` directly to ensure
+TanStack Start bindings are available.
+
 ## Types
 
 ```ts
-interface RoostContext {
+interface RoostServerContext {
   container: RoostContainer;
   app: Application;
+}
+
+interface RoostMiddlewareContext {
+  roost: RoostServerContext;
 }
 ```

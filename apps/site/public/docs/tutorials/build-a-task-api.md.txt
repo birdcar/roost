@@ -43,17 +43,17 @@ bun install
 
 ## Step 2: Create the Task model
 
-Generate a model named `Task`. The CLI creates both a model class
-at `src/models/Task.ts` and a timestamped migration file inside `database/migrations/`.
+Generate a model named `Task`:
 
 ```terminal title="terminal"
 roost make:model Task
 ```
 
-Open the generated migration and replace the placeholder column definitions
-with the schema for our task:
+This creates `src/models/task.ts` with a stub. Open it and replace the placeholder
+columns with the schema for our task:
 
-```ts title="database/migrations/XXXX_create_tasks_table.ts"
+```ts title="src/models/task.ts"
+import { Model } from '@roost/orm';
 import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
 
 export const tasks = sqliteTable('tasks', {
@@ -67,13 +67,6 @@ export const tasks = sqliteTable('tasks', {
   created_at:  text('created_at'),
   updated_at:  text('updated_at'),
 });
-```
-
-Now open `src/models/Task.ts` and point the model at the table you just defined:
-
-```ts title="src/models/Task.ts"
-import { Model } from '@roost/orm';
-import { tasks } from '../../database/migrations/XXXX_create_tasks_table';
 
 export class Task extends Model {
   static tableName = 'tasks';
@@ -81,7 +74,7 @@ export class Task extends Model {
 }
 ```
 
-Apply the migration to your local D1 database:
+Push the schema to your local D1 database:
 
 ```terminal title="terminal"
 roost migrate
@@ -89,7 +82,7 @@ roost migrate
 
 <Callout type="tip">
   <p>
-    You should see <code>Migrations applied successfully</code>. If you open
+    You should see <code>drizzle-kit push</code> output confirming the schema was applied. If you open
     Wrangler's local D1 studio (<code>bunx wrangler d1 execute task-api --local
     --command "SELECT name FROM sqlite_master WHERE type='table';"</code>) you
     will see the <code>tasks</code> table listed.
@@ -102,7 +95,7 @@ Create the index route. It fetches all tasks from the database and returns them 
 
 ```ts title="src/routes/api/tasks/index.ts"
 import { createAPIFileRoute } from '@tanstack/start/api';
-import { Task } from '../../../models/Task';
+import { Task } from '../../../models/task';
 
 export const APIRoute = createAPIFileRoute('/api/tasks')({
   GET: async () => {
@@ -128,7 +121,7 @@ body, validate the required fields, and persist the new task.
 ```ts title="src/routes/api/tasks/index.ts"
 import { createAPIFileRoute } from '@tanstack/start/api';
 import { z } from 'zod';
-import { Task } from '../../../models/Task';
+import { Task } from '../../../models/task';
 
 const createTaskSchema = z.object({
   title:       z.string().min(1),
@@ -178,7 +171,7 @@ filename brackets for path parameters.
 ```ts title="src/routes/api/tasks/$id.ts"
 import { createAPIFileRoute } from '@tanstack/start/api';
 import { z } from 'zod';
-import { Task } from '../../../models/Task';
+import { Task } from '../../../models/task';
 
 const updateTaskSchema = z.object({
   title:       z.string().min(1).optional(),
@@ -228,7 +221,7 @@ Add a `DELETE` handler to the same `$id.ts` file.
 ```ts title="src/routes/api/tasks/$id.ts (updated)"
 import { createAPIFileRoute } from '@tanstack/start/api';
 import { z } from 'zod';
-import { Task } from '../../../models/Task';
+import { Task } from '../../../models/task';
 
 const updateTaskSchema = z.object({
   title:       z.string().min(1).optional(),
@@ -423,18 +416,26 @@ bun test
 
 ## Step 10: Add User hasMany Tasks relationship
 
-Add a `user_id` foreign key column to the migration and expose
+Add a `user_id` foreign key column to `src/models/task.ts` and expose
 the relationship on the `Task` model using `HasManyRelation` (declared on the parent) and
 `BelongsToRelation` (declared on the child).
 
-First, add the column to your migration:
+First, add the column to your model schema in `src/models/task.ts` — the updated
+model file is shown in full in the snippet below. Then re-push the schema:
 
-```ts title="database/migrations/XXXX_create_tasks_table.ts (updated)"
+```terminal title="terminal"
+roost migrate
+```
+
+Now declare the relationship on the `Task` model using `BelongsToRelation`, and add the inverse `HasManyRelation` to the `User` model:
+
+```ts title="src/models/task.ts (updated)"
+import { Model, BelongsToRelation } from '@roost/orm';
 import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
 
 export const tasks = sqliteTable('tasks', {
   id:          integer('id').primaryKey({ autoIncrement: true }),
-  user_id:     integer('user_id'),            // foreign key — nullable for now
+  user_id:     integer('user_id'),
   title:       text('title').notNull(),
   description: text('description'),
   status:      text('status', { enum: ['pending', 'in_progress', 'done'] })
@@ -444,19 +445,6 @@ export const tasks = sqliteTable('tasks', {
   created_at:  text('created_at'),
   updated_at:  text('updated_at'),
 });
-```
-
-Re-run migrations to apply the change:
-
-```terminal title="terminal"
-roost migrate
-```
-
-Now declare the relationship on the `Task` model using `BelongsToRelation`, and add the inverse `HasManyRelation` to the `User` model:
-
-```ts title="src/models/Task.ts (updated)"
-import { Model, BelongsToRelation } from '@roost/orm';
-import { tasks } from '../../database/migrations/XXXX_create_tasks_table';
 
 export class Task extends Model {
   static tableName = 'tasks';
@@ -464,16 +452,22 @@ export class Task extends Model {
 
   // Lazy import avoids circular-dependency issues at module load time.
   static user() {
-    const { User } = require('./User');
+    const { User } = require('./user');
     return new BelongsToRelation(User, 'user_id');
   }
 }
 ```
 
-```ts title="src/models/User.ts (updated)"
+```ts title="src/models/user.ts (updated)"
 import { Model, HasManyRelation } from '@roost/orm';
-import { users } from '../../database/migrations/XXXX_create_users_table';
-import { Task } from './Task';
+import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
+import { Task } from './task';
+
+export const users = sqliteTable('users', {
+  id:         integer('id').primaryKey({ autoIncrement: true }),
+  created_at: text('created_at'),
+  updated_at: text('updated_at'),
+});
 
 export class User extends Model {
   static tableName = 'users';
@@ -501,15 +495,30 @@ const tasks = await User.tasks().load(user);
 
 ## Step 11: Protect the API with AuthMiddleware
 
-Import `AuthMiddleware` from `@roost/auth` and apply
-it to both route files. Unauthenticated requests will receive a
-`401 Unauthorized` response before they reach your handler.
+`AuthMiddleware` is registered on the Roost `Application` instance and runs
+before every request. Add it in your app entry point so all `/api/tasks`
+requests require authentication — unauthenticated requests receive a
+`302` redirect to `/auth/login`.
 
-```ts title="src/routes/api/tasks/index.ts (add middleware)"
+```ts title="src/app.ts"
+import { Application } from '@roost/core';
+import { AuthServiceProvider, AuthMiddleware } from '@roost/auth';
+import { OrmServiceProvider } from '@roost/orm';
+
+export function createApp(env: Record<string, unknown>) {
+  return Application.create(env)
+    .register(OrmServiceProvider)
+    .register(AuthServiceProvider)
+    .useMiddleware(new AuthMiddleware());
+}
+```
+
+The route file itself needs no middleware import:
+
+```ts title="src/routes/api/tasks/index.ts (with auth applied globally)"
 import { createAPIFileRoute } from '@tanstack/start/api';
 import { z } from 'zod';
-import { AuthMiddleware } from '@roost/auth';
-import { Task } from '../../../models/Task';
+import { Task } from '../../../models/task';
 
 const createTaskSchema = z.object({
   title:       z.string().min(1),
@@ -519,8 +528,6 @@ const createTaskSchema = z.object({
 });
 
 export const APIRoute = createAPIFileRoute('/api/tasks')({
-  middleware: [AuthMiddleware],
-
   GET: async ({ request }) => {
     const url    = new URL(request.url);
     const status = url.searchParams.get('status');
@@ -578,7 +585,7 @@ it('creates a task as an authenticated user', async () => {
 
 You now have a fully functional, tested REST API with:
 
-- A `Task` model backed by a D1 SQLite migration
+- A `Task` model backed by a D1 SQLite schema (pushed with `roost migrate`)
 - Full CRUD — GET, POST, PUT, DELETE — with 422 and 404 error handling
 - QueryBuilder-powered filtering (`where`) and sorting (`orderBy`)
 - Zod validation on every write endpoint

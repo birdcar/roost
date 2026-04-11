@@ -77,24 +77,23 @@ Generate a model and its migration:
 roost make:model Post
 ```
 
-This creates two files: `src/models/Post.ts` and a timestamped migration in `database/migrations/`. Edit the migration to define your schema:
+This creates `src/models/post.ts`. Edit it to define your schema columns using Drizzle's SQLite core helpers:
 
-```database/migrations/xxxx_create_posts_table.ts
-import { Migration } from '@roost/orm';
+```src/models/post.ts
+import { Model } from '@roost/orm';
+import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
 
-export default class CreatePostsTable extends Migration {
-  async up() {
-    this.schema.create('posts', (table) => {
-      table.id();
-      table.string('title');
-      table.text('body');
-      table.timestamps();
-    });
-  }
+export const posts = sqliteTable('posts', {
+  id:         integer('id').primaryKey({ autoIncrement: true }),
+  title:      text('title').notNull(),
+  body:       text('body').notNull(),
+  created_at: text('created_at'),
+  updated_at: text('updated_at'),
+});
 
-  async down() {
-    this.schema.drop('posts');
-  }
+export class Post extends Model {
+  static tableName = 'posts';
+  static _table = posts;
 }
 ```
 
@@ -112,11 +111,11 @@ Update your hello route to read from the database:
 
 ```src/routes/hello.tsx
 import { createFileRoute } from '@tanstack/react-router';
-import { createServerFn } from '@tanstack/start';
-import { Post } from '../models/Post';
+import { createServerFn } from '@tanstack/react-start';
+import { Post } from '../models/post';
 
 const getPosts = createServerFn({ method: 'GET' }).handler(async () => {
-  return Post.query().orderBy('created_at', 'desc').all();
+  return Post.where('id', '>', 0).orderBy('created_at', 'desc').all();
 });
 
 export const Route = createFileRoute('/hello')({

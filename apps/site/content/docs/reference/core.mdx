@@ -34,14 +34,10 @@ for the token.
 Returns `true` if a binding exists for the token. Searches parent containers
 in the scope chain.
 
-#### `scoped(): RoostContainer`
+#### `scoped(): Container`
 
 Create a child container that inherits all bindings from the parent but maintains its
 own singleton registry. Used for request-level isolation.
-
-#### `flush(): void`
-
-Remove all bindings and resolved singleton instances from the container.
 
 ## ConfigManager API
 
@@ -88,12 +84,12 @@ Add middleware to the pipeline. Supports plain functions and class-based middlew
 Additional string arguments are passed to class middleware constructors.
 Returns `this` for chaining.
 
-#### `handle(request: Request, handler: Handler): Promise<Response>`
+#### `handle(request: Request, destination: Handler): Promise<Response>`
 
 Run the request through all registered middleware in registration order, then call the
-final `handler`.
+final `destination` handler.
 
-#### `withContainer(container: RoostContainer): this`
+#### `withContainer(container: Container): this`
 
 Associate a container with the pipeline. Required for class-based middleware that needs
 dependency injection.
@@ -146,21 +142,25 @@ so all providers have the opportunity to register before any boots.
 Optional. Runs after all providers have called `register()`. Safe to resolve
 dependencies registered by other providers here.
 
-#### `container: RoostContainer`
+#### `app: Application`
 
-The application container. Available in both `register()` and `boot()`.
+The application instance. Available in both `register()` and `boot()`. Access the container via `this.app.container`.
 
 ## Types
 
 ```ts
-type Token<T> = abstract new (...args: any[]) => T | symbol | string;
-type Factory<T> = (container: RoostContainer) => T;
+type Token<T = unknown> = (abstract new (...args: any[]) => T) | string | symbol;
+type Factory<T> = (container: Container) => T;
 type Handler = (request: Request) => Promise<Response>;
-type Middleware = (request: Request, next: Handler) => Promise<Response>;
-type MiddlewareClass = new (...args: string[]) => { handle: Middleware };
+interface Middleware {
+  handle(request: Request, next: Handler, ...args: string[]): Promise<Response>;
+}
+type MiddlewareClass = new (...args: any[]) => Middleware;
 ```
 
 ## Errors
+
+The following error classes are thrown at runtime but are not exported from `@roost/core`. Catch them by name or use `instanceof` checks after importing the concrete class from its internal module path (not recommended for production code — prefer guarding with defaults or `has()` checks instead).
 
 #### `BindingNotFoundError`
 

@@ -37,6 +37,23 @@ Registers `SessionManager` and `WorkOSClient` in the container.
 Also registers the `/auth/login`, `/auth/callback`, and
 `/auth/logout` routes on the application.
 
+## WorkOS Clients
+
+#### `RoostWorkOSClient`
+
+The real WorkOS client implementation. Wraps the WorkOS SDK and resolves credentials
+from `WORKOS_API_KEY` and `WORKOS_CLIENT_ID` environment variables.
+Registered automatically by `AuthServiceProvider`.
+
+#### `FakeWorkOSClient`
+
+In-memory WorkOS client for use in tests. Returns synthetic users and tokens
+without making HTTP calls to WorkOS.
+
+#### `WorkOSClientToken`
+
+The DI container token used to resolve the active `WorkOSClient` implementation.
+
 ## SessionManager API
 
 Manages session creation, validation, and destruction using Cloudflare KV storage
@@ -45,6 +62,27 @@ with a sliding TTL.
 #### `constructor(kv: KVNamespace, secret: string)`
 
 Construct with a KV namespace for session storage and a secret for signing session tokens.
+
+## KVSessionStore
+
+Low-level session store that reads and writes session data to Cloudflare KV. Used
+internally by `SessionManager`. Resolve from the container when you need direct
+KV session access without going through `SessionManager`.
+
+## Session Utilities
+
+#### `parseCookie(cookieHeader: string): Record<string, string>`
+
+Parse a `Cookie` request header string into a key-value record.
+
+#### `buildSetCookie(name: string, value: string, options?: CookieOptions): string`
+
+Build a `Set-Cookie` header value string.
+
+#### `parseJwtExpiry(token: string): number | null`
+
+Extract the expiration timestamp from a JWT without verifying its signature.
+Returns the `exp` claim as a Unix timestamp, or `null` if absent.
 
 #### `async resolveUser(request: Request): Promise<RoostUser | null>`
 
@@ -78,6 +116,23 @@ creates a KV session, and redirects to `return_to` or `/`.
 #### `GET /auth/logout`
 
 Destroys the current session and redirects to `/`.
+
+## Route Handler Functions
+
+These are the underlying handler functions used by the built-in routes. Import them
+directly when you need to mount auth routes in a custom location.
+
+#### `handleCallback(request: Request, sessionManager: SessionManager, workosClient: WorkOSClient, redirectUrl: string): Promise<Response>`
+
+Handle the WorkOS OAuth callback. Exchanges the code for a session and redirects.
+
+#### `handleLogout(request: Request, sessionManager: SessionManager, redirectTo?: string): Promise<Response>`
+
+Destroy the current session and redirect. Defaults to redirecting to `/auth/login`.
+
+#### `createLoginHandler(workosClient: WorkOSClient, redirectUrl: string): (request: Request) => Promise<Response>`
+
+Create a login route handler that redirects to the WorkOS authorization URL.
 
 ## Middleware
 

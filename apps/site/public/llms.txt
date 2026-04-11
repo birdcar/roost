@@ -30,7 +30,7 @@
 - [Deployment](https://roost.dev/docs/guides/deployment.md): Task-oriented instructions for deploying Roost applications to Cloudflare Workers.
 - [@roost/ai Guides](https://roost.dev/docs/guides/ai.md): Task-oriented instructions for agents, tools, streaming, and testing. Powered by Cloudflare Workers AI — no API keys required.
 - [@roost/billing Guides](https://roost.dev/docs/guides/billing.md): Task-oriented instructions for Stripe integration, subscriptions, webhooks, and metered billing.
-- [@roost/orm Guides](https://roost.dev/docs/guides/orm.md): Task-oriented instructions for models, migrations, querying, relationships, and testing.
+- [@roost/orm Guides](https://roost.dev/docs/guides/orm.md): Task-oriented instructions for models, querying, relationships, factories, and testing.
 - [@roost/schema Guides](https://roost.dev/docs/guides/schema.md): Task-oriented instructions for defining tool input schemas, optional fields, nested objects, and descriptions.
 - [@roost/mcp Guides](https://roost.dev/docs/guides/mcp.md): Task-oriented instructions for building MCP servers with tools, resources, and prompts.
 
@@ -46,7 +46,7 @@
 - [@roost/core](https://roost.dev/docs/reference/core.md): Dependency injection container, configuration management, middleware pipeline, application lifecycle, and service provider base class.
 - [@roost/ai](https://roost.dev/docs/reference/ai.md): Class-based AI agents with typed tools, conversation memory, and streaming. Powered exclusively by Cloudflare Workers AI — no API keys required.
 - [@roost/billing](https://roost.dev/docs/reference/billing.md): Abstract billing provider interface with a Stripe adapter. Implemented using only fetch for Cloudflare Worker compatibility — no Node.js SDK.
-- [@roost/orm](https://roost.dev/docs/reference/orm.md): Laravel-inspired ORM built on Drizzle for D1 databases. Model classes, query builder, relationships, lifecycle hooks, migrations, factories, and seeders.
+- [@roost/orm](https://roost.dev/docs/reference/orm.md): Laravel-inspired ORM built on Drizzle for D1 databases. Model classes, query builder, relationships, lifecycle hooks, factories.
 - [@roost/schema](https://roost.dev/docs/reference/schema.md): Fluent JSON Schema builder with zero runtime dependencies. Used by @roost/ai and @roost/mcp to define tool and prompt parameters.
 - [@roost/mcp](https://roost.dev/docs/reference/mcp.md): Model Context Protocol server implementation. Expose application capabilities as tools, resources, and prompts to MCP-compatible AI clients.
 

@@ -1,6 +1,6 @@
 ---
 title: "@roost/orm"
-description: Laravel-inspired ORM built on Drizzle for D1 databases. Model classes, query builder, relationships, lifecycle hooks, migrations, factories, and seeders.
+description: Laravel-inspired ORM built on Drizzle for D1 databases. Model classes, query builder, relationships, lifecycle hooks, factories.
 ---
 
 ## Installation
@@ -17,9 +17,11 @@ accessible via the `attributes` property.
 
 ### Static Configuration Properties
 
-#### `static tableName: string`
+#### `static tableName: string | null`
 
-The database table name. Required.
+The database table name. Defaults to `null`, which causes the ORM to derive the
+table name from the class name via `toTableName` (e.g. `PostComment` → `post_comments`).
+Set explicitly to override.
 
 #### `static primaryKey: string`
 
@@ -33,8 +35,7 @@ When `true`, automatically writes `created_at` on insert and
 #### `static softDeletes: boolean`
 
 When `true`, `delete()` sets `deleted_at` instead of
-removing the row. All queries automatically exclude soft-deleted records.
-Defaults to `false`.
+removing the row. Defaults to `false`.
 
 ### Static Query Methods
 
@@ -48,7 +49,7 @@ Find a record by primary key. Throws `ModelNotFoundError` if not found.
 
 #### `static async all(): Promise<T[]>`
 
-Retrieve all records from the table. Returns a `QueryBuilder` for chaining.
+Retrieve all records from the table.
 
 #### `static async create(attributes: Record<string, unknown>): Promise<T>`
 
@@ -59,15 +60,19 @@ Insert a new record and return the created model instance. Fires `creating` and 
 
 Begin a query with a WHERE constraint. Returns a `QueryBuilder`.
 
-#### `static on(event: LifecycleEvent, callback: (model: T) => boolean | void): void`
+#### `static whereIn(column: string, values: unknown[]): QueryBuilder<T>`
+
+Begin a query with a WHERE IN constraint. Returns a `QueryBuilder`.
+
+#### `static on(event: HookName, callback: HookFn): void`
 
 Register a lifecycle hook callback. Return `false` from a pre-event hook to abort the operation.
 
 ### Instance Methods
 
-#### `async save(): Promise<void>`
+#### `async save(): Promise<this>`
 
-Persist changes to `this.attributes`. Fires `updating` and `updated` hooks.
+Persist changes to `this.attributes`. Fires `updating` and `updated` hooks. Returns the instance.
 
 #### `async delete(): Promise<void>`
 
@@ -89,7 +94,7 @@ Add an AND WHERE clause. Supported operators: `=`, `!=`, `>`, `<`, `>=`, `<=`, `
 
 #### `orWhere(column: string, value: unknown): this`
 
-Add an OR WHERE clause.
+Add an OR WHERE clause (equality only).
 
 #### `whereIn(column: string, values: unknown[]): this`
 
@@ -103,9 +108,9 @@ Add a WHERE IS NULL clause.
 
 Add a WHERE IS NOT NULL clause.
 
-#### `orderBy(column: string, direction: 'asc' | 'desc'): this`
+#### `orderBy(column: string, direction?: 'asc' | 'desc'): this`
 
-Add an ORDER BY clause. Chainable for multiple sort columns.
+Add an ORDER BY clause. Direction defaults to `'asc'`. Chainable for multiple sort columns.
 
 #### `limit(n: number): this`
 
@@ -114,6 +119,10 @@ Limit the number of results.
 #### `offset(n: number): this`
 
 Skip the first `n` results.
+
+#### `with(...relations: string[]): this`
+
+Eager-load named relations when results are fetched.
 
 #### `first(): Promise<T | null>`
 
@@ -139,27 +148,42 @@ and `lastPage`.
 
 ## Relationships
 
-Define relationships as static calls during class definition. All relationships are lazy-loaded:
-call the method on an instance to fetch the related records.
+Define relationships by instantiating the relation classes. Call `load(parent)` on an
+instance to fetch related records, or `loadMany(parents)` to batch-load for a collection.
 
-#### `static hasOne(RelatedModel: typeof Model, foreignKey: string, localKey: string): void`
+#### `new HasOneRelation(RelatedModel, foreignKey, localKey?)`
 
-One-to-one ownership: this model has one related record. Adds an instance method named
-after the related model (camelCased) that returns `Promise<RelatedModel | null>`.
+One-to-one ownership: this model has one related record. `localKey` defaults to `'id'`.
+`load()` returns `Promise<RelatedModel | null>`.
 
-#### `static hasMany(RelatedModel: typeof Model, foreignKey: string, localKey: string): void`
+#### `new HasManyRelation(RelatedModel, foreignKey, localKey?)`
 
-One-to-many ownership. Adds an instance method that returns `Promise<RelatedModel[]>`.
+One-to-many ownership. `localKey` defaults to `'id'`.
+`load()` returns `Promise<RelatedModel[]>`.
 
-#### `static belongsTo(RelatedModel: typeof Model, foreignKey: string, ownerKey: string): void`
+#### `new BelongsToRelation(RelatedModel, foreignKey, localKey?)`
 
-Inverse of `hasOne` or `hasMany`. Adds an instance method that
-returns `Promise<RelatedModel | null>`.
+Inverse of `HasOneRelation` or `HasManyRelation`. `localKey` defaults to `'id'`.
+`load()` returns `Promise<RelatedModel | null>`.
 
-#### `static belongsToMany(RelatedModel: typeof Model, pivotTable: string, foreignKey: string, localKey: string, relatedKey: string, relatedModelKey: string): void`
+```ts
+import { Model, HasManyRelation, BelongsToRelation } from '@roost/orm';
+import { Post } from './Post';
 
-Many-to-many via a pivot table. Adds an instance method that returns
-`Promise<RelatedModel[]>`.
+export class User extends Model {
+  static tableName = 'users';
+  static posts = new HasManyRelation(Post, 'author_id', 'id');
+}
+
+export class Post extends Model {
+  static tableName = 'posts';
+  static user = new BelongsToRelation(User, 'author_id', 'id');
+}
+
+// Usage
+const post = await Post.findOrFail(1);
+const author = await Post.user.load(post); // User | null
+```
 
 ## Lifecycle Hooks
 
@@ -180,30 +204,68 @@ Model.on('deleted', (instance) => { ... });
 ## Factory API
 
 `Factory` generates model instances with fake data for seeding and testing.
+Extend it and implement the `definition()` method.
 
-#### `abstract define(): Record<string, unknown>`
+#### `abstract definition(): Record<string, unknown>`
 
-Return the default attribute map. Called once per instance.
+Return the default attribute map. Called once per generated instance.
 
-#### `async create(overrides?: Record<string, unknown>): Promise<T>`
+#### `count(n: number): this`
 
-Create and persist a model instance. Merges `overrides` over the defined defaults.
+Set the number of instances to generate. Chainable.
 
-#### `make(overrides?: Record<string, unknown>): T`
+#### `state(modifier: (attrs) => attrs): this`
 
-Build an unsaved model instance without persisting.
+Apply an attribute override to each generated instance. Chainable for multiple states.
 
-## Seeder API
+#### `async make(): Promise<T[]>`
 
-#### `abstract async run(): Promise<void>`
+Build unsaved model instances without persisting.
 
-Implement to seed the database. Called by `roost db:seed`.
+#### `async makeOne(): Promise<T>`
+
+Build a single unsaved model instance.
+
+#### `async create(): Promise<T[]>`
+
+Create and persist model instances.
+
+#### `async createOne(): Promise<T>`
+
+Create and persist a single model instance.
+
+```ts
+import { Factory } from '@roost/orm';
+import { Post } from '../../src/models/Post';
+
+class PostFactory extends Factory<typeof Post> {
+  definition() {
+    return {
+      title: 'Test Post ' + Math.random().toString(36).slice(2),
+      slug: 'test-post-' + Math.random().toString(36).slice(2),
+      body: 'Lorem ipsum dolor sit amet.',
+      author_id: 1,
+      status: 'published',
+    };
+  }
+}
+
+const factory = new PostFactory(Post);
+
+// Create 3 draft posts
+const drafts = await factory.count(3).state((a) => ({ ...a, status: 'draft' })).create();
+
+// Create one
+const post = await factory.createOne();
+```
 
 ## Types
 
 ```ts
 type Operator = '=' | '!=' | '>' | '<' | '>=' | '<=' | 'like';
-type LifecycleEvent = 'creating' | 'created' | 'updating' | 'updated' | 'deleting' | 'deleted';
+type HookName = 'creating' | 'created' | 'updating' | 'updated' | 'deleting' | 'deleted';
+type HookFn = (model: any) => boolean | void | Promise<boolean | void>;
+type ModelAttributes = Record<string, unknown>;
 
 interface PaginationResult<T> {
   data: T[];
@@ -216,6 +278,14 @@ interface PaginationResult<T> {
 
 ## Errors
 
+#### `OrmNotBootedError`
+
+Thrown when a query is executed before the ORM is booted (i.e. before `app.boot()` is called).
+
 #### `ModelNotFoundError`
 
 Thrown by `findOrFail()` and `firstOrFail()` when no record matches.
+
+#### `InvalidRelationError`
+
+Thrown when a relation name that is not defined on the model is accessed.

@@ -94,23 +94,11 @@ Generate a job class at `src/jobs/<Name>.ts`.
 
 Generate a middleware class at `src/middleware/<Name>.ts`.
 
-#### `roost make:migration <name>`
-
-Generate a blank migration file in `database/migrations/`.
-
 ## Database Commands
 
 #### `roost migrate`
 
 Run all pending migration files against the configured D1 database.
-
-#### `roost migrate:rollback`
-
-Rollback the most recently applied migration batch.
-
-#### `roost migrate:reset`
-
-Rollback all migrations and re-run them from scratch.
 
 #### `roost migrate:generate`
 
@@ -123,9 +111,9 @@ Run all seeder classes in `database/seeders/`.
 
 ## Development Commands
 
-#### `roost dev [--port <n>]`
+#### `roost dev`
 
-Start the development server with hot module reload. Default port is `8787`.
+Start the development server with hot module reload.
 
 #### `roost build`
 

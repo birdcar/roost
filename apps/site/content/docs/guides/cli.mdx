@@ -55,26 +55,17 @@ roost make:mcp-server AppServer
 
 # Middleware
 roost make:middleware RateLimit
-
-# Standalone migration (without model)
-roost make:migration add_published_at_to_posts
 ```
 
-Generator names are used as class names directly. Use PascalCase for classes (`PostController`), snake_case for migrations (`add_status_to_posts`).
+Generator names are used as class names directly. Use PascalCase for classes (`PostController`).
 
-## How to run and rollback migrations
+## How to run migrations
 
-Run all pending migrations with `roost migrate`. Roll back the last batch with `roost migrate:rollback`.
+Run all pending migrations with `roost migrate`.
 
 ```sh terminal
 # Run pending migrations
 roost migrate
-
-# Roll back the most recent batch
-roost migrate:rollback
-
-# Roll back all migrations and re-run from scratch (destructive)
-roost migrate:reset
 
 # Generate migration files from Drizzle schema changes
 roost migrate:generate

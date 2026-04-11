@@ -16,42 +16,6 @@ export class Post extends Model {
 
 Access attributes via the `attributes` proxy: `post.attributes.title`. Do not add TypeScript instance properties — the proxy handles attribute access dynamically.
 
-## How to write and run migrations
-
-Create a migration file in `database/migrations/` using `roost make:migration`, then run it with `roost migrate`.
-
-```sh terminal
-roost make:migration create_posts_table
-roost migrate
-```
-
-```ts database/migrations/0001_create_posts_table.ts
-import { Migration } from '@roost/orm';
-
-export default class CreatePostsTable extends Migration {
-  async up(): Promise<void> {
-    await this.db.run(`
-      CREATE TABLE posts (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        title TEXT NOT NULL,
-        slug TEXT NOT NULL UNIQUE,
-        body TEXT NOT NULL,
-        author_id INTEGER NOT NULL,
-        published_at TEXT,
-        created_at TEXT NOT NULL DEFAULT (datetime('now')),
-        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
-      )
-    `);
-  }
-
-  async down(): Promise<void> {
-    await this.db.run('DROP TABLE IF EXISTS posts');
-  }
-}
-```
-
-See [the migrations guide](/docs/guides/migrations) for the full column reference and rollback patterns.
-
 ## How to query with the QueryBuilder
 
 Chain query methods on model static calls. All queries are lazy — execute with `.all()`, `.first()`, or `.count()`.
@@ -94,43 +58,43 @@ const total = await Post.where('author_id', userId).count();
 
 ## How to define relationships between models
 
-Declare relationships as static method calls. They are lazy-loaded — call the method on an instance to fetch related records.
+Declare relationships as static properties using the relation classes. Call `load(instance)` on
+the relation to fetch related records for a single model, or `loadMany(instances)` to batch-load
+for a collection.
 
 ```ts src/models/User.ts
-import { Model } from '@roost/orm';
+import { Model, HasManyRelation, HasOneRelation } from '@roost/orm';
 import { Post } from './Post';
 import { Profile } from './Profile';
-import { Role } from './Role';
 
 export class User extends Model {
   static tableName = 'users';
 
   // One user has many posts
-  static hasMany(Post, 'author_id', 'id');
+  static posts = new HasManyRelation(Post, 'author_id', 'id');
 
   // One user has one profile
-  static hasOne(Profile, 'user_id', 'id');
-
-  // User belongs to many roles via pivot table
-  static belongsToMany(Role, 'user_roles', 'user_id', 'id', 'role_id', 'id');
+  static profile = new HasOneRelation(Profile, 'user_id', 'id');
 }
 ```
 
 ```ts src/models/Post.ts
-import { Model } from '@roost/orm';
+import { Model, BelongsToRelation } from '@roost/orm';
 import { User } from './User';
 
 export class Post extends Model {
   static tableName = 'posts';
 
   // Each post belongs to one user
-  static belongsTo(User, 'author_id', 'id');
+  static author = new BelongsToRelation(User, 'author_id', 'id');
 }
 
 // Usage
 const post = await Post.findOrFail(1);
-const author = await post.author(); // User instance
-const posts = await (await User.findOrFail(1)).posts(); // Post[]
+const author = await Post.author.load(post); // User | null
+
+const user = await User.findOrFail(1);
+const posts = await User.posts.load(user); // Post[]
 ```
 
 ## How to use lifecycle hooks
@@ -167,49 +131,36 @@ Post.on('updated', (post) => {
 });
 ```
 
-## How to seed the database
-
-Create seeder files in `database/seeders/` and run them with `roost db:seed`.
-
-```ts database/seeders/UserSeeder.ts
-import { Seeder } from '@roost/orm';
-import { User } from '../../src/models/User';
-
-export default class UserSeeder extends Seeder {
-  async run(): Promise<void> {
-    await User.create({ name: 'Alice Admin', email: 'alice@example.com', role: 'admin' });
-    await User.create({ name: 'Bob User', email: 'bob@example.com', role: 'user' });
-  }
-}
-```
-
-```sh terminal
-roost db:seed
-```
-
 ## How to use factories in tests
 
-Define a factory for a model and use it in tests to create records without specifying every attribute.
+Extend `Factory`, implement the `definition()` method, and use `.count()` / `.state()` to
+customise what gets created.
 
 ```ts database/factories/PostFactory.ts
 import { Factory } from '@roost/orm';
 import { Post } from '../../src/models/Post';
 
-export const PostFactory = new Factory(Post, () => ({
-  title: 'Test Post ' + Math.random().toString(36).slice(2),
-  slug: 'test-post-' + Math.random().toString(36).slice(2),
-  body: 'Lorem ipsum dolor sit amet.',
-  author_id: 1,
-  status: 'published',
-}));
+export class PostFactory extends Factory<typeof Post> {
+  definition() {
+    return {
+      title: 'Test Post ' + Math.random().toString(36).slice(2),
+      slug: 'test-post-' + Math.random().toString(36).slice(2),
+      body: 'Lorem ipsum dolor sit amet.',
+      author_id: 1,
+      status: 'published',
+    };
+  }
+}
 ```
 
 ```ts tests/posts.test.ts
 import { PostFactory } from '../database/factories/PostFactory';
 
+const factory = new PostFactory(Post);
+
 it('lists published posts', async () => {
-  await PostFactory.create({ status: 'published' });
-  await PostFactory.create({ status: 'draft' });
+  await factory.createOne();
+  await factory.state((a) => ({ ...a, status: 'draft' })).createOne();
 
   const published = await Post.where('status', 'published').all();
   expect(published.length).toBe(1);
@@ -243,3 +194,14 @@ return Response.json({
   },
 });
 ```
+
+## How to write and run migrations
+
+Create a migration file in `database/migrations/` using `roost make:migration`, then run it with `roost migrate`.
+
+```sh terminal
+roost make:migration create_posts_table
+roost migrate
+```
+
+Migrations are raw SQL files executed against D1. See [the migrations guide](/docs/guides/migrations) for the full column reference and rollback patterns.

@@ -93,8 +93,7 @@ you, but it's worth understanding what's there.
 }
 ```
 
-You should see bindings for `DB` (D1 database), `KV` (key-value store), and `AI` (Workers AI). The `database_id` and KV `id` fields are filled in automatically when you run `roost new`. If
-they're still placeholder values, run `roost provision` to create the resources and populate the file.
+You should see bindings for `DB` (D1 database), `KV` (key-value store), and `AI` (Workers AI). The `database_id` and KV `id` fields need to be filled in with real resource IDs before deploying. Create a D1 database with `bunx wrangler d1 create my-app-db` and a KV namespace with `bunx wrangler kv namespace create KV`, then paste the returned IDs into `wrangler.jsonc`.
 
 ## Step 3: Sign up for Cloudflare
 
@@ -134,17 +133,11 @@ Run the deploy command from your project root:
 roost deploy
 ```
 
-Roost builds your app, runs database migrations against your production D1 instance, and
-publishes the Worker. The output looks like this:
+Roost builds your app with Vite and publishes it to Cloudflare Workers via Wrangler. The output looks like this:
 
 ```text title="terminal output"
 Building application...
-  ✓ TypeScript compiled
   ✓ Vite bundle complete (142 kB)
-
-Running migrations...
-  ✓ 0001_create_users applied
-  ✓ 0002_create_posts applied
 
 Deploying to Cloudflare Workers...
   ✓ Uploaded my-app (2.3 sec)
@@ -152,6 +145,14 @@ Deploying to Cloudflare Workers...
 
 https://my-app.your-subdomain.workers.dev
 ```
+
+<Callout type="tip">
+  <p>
+    <code>roost deploy</code> does not run migrations. To apply your schema to the production D1
+    database, run <code>bunx wrangler d1 execute my-app-db --remote --file schema.sql</code> or
+    use <code>bunx drizzle-kit push</code> pointed at your production environment before or after deploying.
+  </p>
+</Callout>
 
 You should see a `workers.dev` URL printed at the end of the output. Copy it — you'll use it in the next step.
 
@@ -248,17 +249,17 @@ bun install
 
 ## Step 2: Create the Task model
 
-Generate a model named `Task`. The CLI creates both a model class
-at `src/models/Task.ts` and a timestamped migration file inside `database/migrations/`.
+Generate a model named `Task`:
 
 ```terminal title="terminal"
 roost make:model Task
 ```
 
-Open the generated migration and replace the placeholder column definitions
-with the schema for our task:
+This creates `src/models/task.ts` with a stub. Open it and replace the placeholder
+columns with the schema for our task:
 
-```ts title="database/migrations/XXXX_create_tasks_table.ts"
+```ts title="src/models/task.ts"
+import { Model } from '@roost/orm';
 import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
 
 export const tasks = sqliteTable('tasks', {
@@ -272,13 +273,6 @@ export const tasks = sqliteTable('tasks', {
   created_at:  text('created_at'),
   updated_at:  text('updated_at'),
 });
-```
-
-Now open `src/models/Task.ts` and point the model at the table you just defined:
-
-```ts title="src/models/Task.ts"
-import { Model } from '@roost/orm';
-import { tasks } from '../../database/migrations/XXXX_create_tasks_table';
 
 export class Task extends Model {
   static tableName = 'tasks';
@@ -286,7 +280,7 @@ export class Task extends Model {
 }
 ```
 
-Apply the migration to your local D1 database:
+Push the schema to your local D1 database:
 
 ```terminal title="terminal"
 roost migrate
@@ -294,7 +288,7 @@ roost migrate
 
 <Callout type="tip">
   <p>
-    You should see <code>Migrations applied successfully</code>. If you open
+    You should see <code>drizzle-kit push</code> output confirming the schema was applied. If you open
     Wrangler's local D1 studio (<code>bunx wrangler d1 execute task-api --local
     --command "SELECT name FROM sqlite_master WHERE type='table';"</code>) you
     will see the <code>tasks</code> table listed.
@@ -307,7 +301,7 @@ Create the index route. It fetches all tasks from the database and returns them 
 
 ```ts title="src/routes/api/tasks/index.ts"
 import { createAPIFileRoute } from '@tanstack/start/api';
-import { Task } from '../../../models/Task';
+import { Task } from '../../../models/task';
 
 export const APIRoute = createAPIFileRoute('/api/tasks')({
   GET: async () => {
@@ -333,7 +327,7 @@ body, validate the required fields, and persist the new task.
 ```ts title="src/routes/api/tasks/index.ts"
 import { createAPIFileRoute } from '@tanstack/start/api';
 import { z } from 'zod';
-import { Task } from '../../../models/Task';
+import { Task } from '../../../models/task';
 
 const createTaskSchema = z.object({
   title:       z.string().min(1),
@@ -383,7 +377,7 @@ filename brackets for path parameters.
 ```ts title="src/routes/api/tasks/$id.ts"
 import { createAPIFileRoute } from '@tanstack/start/api';
 import { z } from 'zod';
-import { Task } from '../../../models/Task';
+import { Task } from '../../../models/task';
 
 const updateTaskSchema = z.object({
   title:       z.string().min(1).optional(),
@@ -433,7 +427,7 @@ Add a `DELETE` handler to the same `$id.ts` file.
 ```ts title="src/routes/api/tasks/$id.ts (updated)"
 import { createAPIFileRoute } from '@tanstack/start/api';
 import { z } from 'zod';
-import { Task } from '../../../models/Task';
+import { Task } from '../../../models/task';
 
 const updateTaskSchema = z.object({
   title:       z.string().min(1).optional(),
@@ -628,18 +622,26 @@ bun test
 
 ## Step 10: Add User hasMany Tasks relationship
 
-Add a `user_id` foreign key column to the migration and expose
+Add a `user_id` foreign key column to `src/models/task.ts` and expose
 the relationship on the `Task` model using `HasManyRelation` (declared on the parent) and
 `BelongsToRelation` (declared on the child).
 
-First, add the column to your migration:
+First, add the column to your model schema in `src/models/task.ts` — the updated
+model file is shown in full in the snippet below. Then re-push the schema:
 
-```ts title="database/migrations/XXXX_create_tasks_table.ts (updated)"
+```terminal title="terminal"
+roost migrate
+```
+
+Now declare the relationship on the `Task` model using `BelongsToRelation`, and add the inverse `HasManyRelation` to the `User` model:
+
+```ts title="src/models/task.ts (updated)"
+import { Model, BelongsToRelation } from '@roost/orm';
 import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
 
 export const tasks = sqliteTable('tasks', {
   id:          integer('id').primaryKey({ autoIncrement: true }),
-  user_id:     integer('user_id'),            // foreign key — nullable for now
+  user_id:     integer('user_id'),
   title:       text('title').notNull(),
   description: text('description'),
   status:      text('status', { enum: ['pending', 'in_progress', 'done'] })
@@ -649,19 +651,6 @@ export const tasks = sqliteTable('tasks', {
   created_at:  text('created_at'),
   updated_at:  text('updated_at'),
 });
-```
-
-Re-run migrations to apply the change:
-
-```terminal title="terminal"
-roost migrate
-```
-
-Now declare the relationship on the `Task` model using `BelongsToRelation`, and add the inverse `HasManyRelation` to the `User` model:
-
-```ts title="src/models/Task.ts (updated)"
-import { Model, BelongsToRelation } from '@roost/orm';
-import { tasks } from '../../database/migrations/XXXX_create_tasks_table';
 
 export class Task extends Model {
   static tableName = 'tasks';
@@ -669,16 +658,22 @@ export class Task extends Model {
 
   // Lazy import avoids circular-dependency issues at module load time.
   static user() {
-    const { User } = require('./User');
+    const { User } = require('./user');
     return new BelongsToRelation(User, 'user_id');
   }
 }
 ```
 
-```ts title="src/models/User.ts (updated)"
+```ts title="src/models/user.ts (updated)"
 import { Model, HasManyRelation } from '@roost/orm';
-import { users } from '../../database/migrations/XXXX_create_users_table';
-import { Task } from './Task';
+import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
+import { Task } from './task';
+
+export const users = sqliteTable('users', {
+  id:         integer('id').primaryKey({ autoIncrement: true }),
+  created_at: text('created_at'),
+  updated_at: text('updated_at'),
+});
 
 export class User extends Model {
   static tableName = 'users';
@@ -706,15 +701,30 @@ const tasks = await User.tasks().load(user);
 
 ## Step 11: Protect the API with AuthMiddleware
 
-Import `AuthMiddleware` from `@roost/auth` and apply
-it to both route files. Unauthenticated requests will receive a
-`401 Unauthorized` response before they reach your handler.
+`AuthMiddleware` is registered on the Roost `Application` instance and runs
+before every request. Add it in your app entry point so all `/api/tasks`
+requests require authentication — unauthenticated requests receive a
+`302` redirect to `/auth/login`.
 
-```ts title="src/routes/api/tasks/index.ts (add middleware)"
+```ts title="src/app.ts"
+import { Application } from '@roost/core';
+import { AuthServiceProvider, AuthMiddleware } from '@roost/auth';
+import { OrmServiceProvider } from '@roost/orm';
+
+export function createApp(env: Record<string, unknown>) {
+  return Application.create(env)
+    .register(OrmServiceProvider)
+    .register(AuthServiceProvider)
+    .useMiddleware(new AuthMiddleware());
+}
+```
+
+The route file itself needs no middleware import:
+
+```ts title="src/routes/api/tasks/index.ts (with auth applied globally)"
 import { createAPIFileRoute } from '@tanstack/start/api';
 import { z } from 'zod';
-import { AuthMiddleware } from '@roost/auth';
-import { Task } from '../../../models/Task';
+import { Task } from '../../../models/task';
 
 const createTaskSchema = z.object({
   title:       z.string().min(1),
@@ -724,8 +734,6 @@ const createTaskSchema = z.object({
 });
 
 export const APIRoute = createAPIFileRoute('/api/tasks')({
-  middleware: [AuthMiddleware],
-
   GET: async ({ request }) => {
     const url    = new URL(request.url);
     const status = url.searchParams.get('status');
@@ -783,7 +791,7 @@ it('creates a task as an authenticated user', async () => {
 
 You now have a fully functional, tested REST API with:
 
-- A `Task` model backed by a D1 SQLite migration
+- A `Task` model backed by a D1 SQLite schema (pushed with `roost migrate`)
 - Full CRUD — GET, POST, PUT, DELETE — with 422 and 404 error handling
 - QueryBuilder-powered filtering (`where`) and sorting (`orderBy`)
 - Zod validation on every write endpoint
@@ -881,34 +889,34 @@ once your credentials are in `.dev.vars`.
 ## Step 4: Create the Workspace Model
 
 SaaS apps typically tie billing and data ownership to an organization (workspace).
-Generate a `Workspace` model with its migration:
+Generate a `Workspace` model:
 
 ```terminal title="terminal"
 roost make:model Workspace
 ```
 
-Open the generated migration in `database/migrations/` and define the
-schema. Each workspace belongs to a WorkOS organization:
+This creates `src/models/workspace.ts` with a stub. Open it and replace the
+placeholder columns with the schema your SaaS app needs. Each workspace belongs
+to a WorkOS organization:
 
-```ts title="database/migrations/YYYYMMDDHHMMSS_create_workspaces_table.ts"
-import { Migration } from '@roost/orm';
+```ts title="src/models/workspace.ts"
+import { Model } from '@roost/orm';
+import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
 
-export default class CreateWorkspacesTable extends Migration {
-  async up(): Promise<void> {
-    await this.schema.createTable('workspaces', (table) => {
-      table.id();
-      table.string('name');
-      table.string('organization_id').unique();
-      table.string('stripe_customer_id').nullable();
-      table.string('subscription_id').nullable();
-      table.string('subscription_status').default('inactive');
-      table.timestamps();
-    });
-  }
+export const workspaces = sqliteTable('workspaces', {
+  id:                  integer('id').primaryKey({ autoIncrement: true }),
+  name:                text('name').notNull(),
+  organization_id:     text('organization_id').notNull().unique(),
+  stripe_customer_id:  text('stripe_customer_id'),
+  subscription_id:     text('subscription_id'),
+  subscription_status: text('subscription_status').notNull().default('inactive'),
+  created_at:          text('created_at'),
+  updated_at:          text('updated_at'),
+});
 
-  async down(): Promise<void> {
-    await this.schema.dropTable('workspaces');
-  }
+export class Workspace extends Model {
+  static tableName = 'workspaces';
+  static _table = workspaces;
 }
 ```
 
@@ -918,19 +926,34 @@ Run the migration:
 roost migrate
 ```
 
-**You should see:** Migration output confirming the `workspaces` table was created. The model file at `src/models/Workspace.ts` is ready to extend.
+**You should see:** Output from `drizzle-kit push` confirming the `workspaces` table was created. The model file at `src/models/workspace.ts` is ready to use.
 
 ## Step 5: Create a Protected Dashboard Route
 
-Create the dashboard route. Applying `AuthMiddleware` redirects
-unauthenticated requests to `/auth/login` before the component renders.
+`AuthMiddleware` is a Roost middleware registered on the `Application` instance.
+Register it globally in your app entry point so it runs on every request before
+route handlers execute:
+
+```ts title="src/app.ts"
+import { Application } from '@roost/core';
+import { AuthServiceProvider, AuthMiddleware } from '@roost/auth';
+import { OrmServiceProvider } from '@roost/orm';
+
+export function createApp(env: Record<string, unknown>) {
+  return Application.create(env)
+    .register(OrmServiceProvider)
+    .register(AuthServiceProvider)
+    .useMiddleware(new AuthMiddleware());
+}
+```
+
+Then create the dashboard route — it renders only for authenticated users because
+`AuthMiddleware` redirects to `/auth/login` before the handler runs:
 
 ```tsx title="src/routes/dashboard.tsx"
 import { createFileRoute } from '@tanstack/react-router';
-import { AuthMiddleware } from '@roost/auth';
 
 export const Route = createFileRoute('/dashboard')({
-  middleware: [new AuthMiddleware()],
   component: DashboardPage,
 });
 
@@ -947,19 +970,34 @@ function DashboardPage() {
 
 **You should see:** Visiting `/dashboard` while signed out redirects you to `/auth/login`. After signing in, the dashboard renders.
 
-## Step 6: Add BillingMiddleware to Gate Premium Features
+## Step 6: Add SubscribedMiddleware to Gate Premium Features
 
-Create a route for premium content. `SubscribedMiddleware` checks the
-current user's workspace subscription status and redirects to `/billing/checkout`
-when they don't have an active subscription.
+`SubscribedMiddleware` from `@roost/billing` redirects to `/billing/checkout`
+when the current user's workspace does not have an active subscription. Add it
+after `AuthMiddleware` in the pipeline so auth is checked first:
+
+```ts title="src/app.ts (updated)"
+import { Application } from '@roost/core';
+import { AuthServiceProvider, AuthMiddleware } from '@roost/auth';
+import { BillingServiceProvider, SubscribedMiddleware } from '@roost/billing';
+import { OrmServiceProvider } from '@roost/orm';
+
+export function createApp(env: Record<string, unknown>) {
+  return Application.create(env)
+    .register(OrmServiceProvider)
+    .register(AuthServiceProvider)
+    .register(BillingServiceProvider)
+    .useMiddleware(new AuthMiddleware())
+    .useMiddleware(new SubscribedMiddleware());
+}
+```
+
+Create the premium route — it renders only for subscribed users:
 
 ```tsx title="src/routes/features/premium.tsx"
 import { createFileRoute } from '@tanstack/react-router';
-import { AuthMiddleware } from '@roost/auth';
-import { SubscribedMiddleware } from '@roost/billing';
 
 export const Route = createFileRoute('/features/premium')({
-  middleware: [new AuthMiddleware(), new SubscribedMiddleware()],
   component: PremiumPage,
 });
 
@@ -1036,8 +1074,8 @@ signature before you process the event.
 ```ts title="src/routes/billing/webhook.ts"
 import { createServerFileRoute } from '@tanstack/react-start/server';
 import { verifyStripeWebhook, WebhookVerificationError } from '@roost/billing';
-import { Workspace } from '../../models/Workspace';
-import { SendWelcomeEmail } from '../../jobs/SendWelcomeEmail';
+import { Workspace } from '../../models/workspace';
+import { SendWelcomeEmail } from '../../jobs/send-welcome-email';
 
 export const ServerRoute = createServerFileRoute('/billing/webhook').methods({
   POST: async ({ request, context }) => {
@@ -1061,12 +1099,12 @@ export const ServerRoute = createServerFileRoute('/billing/webhook').methods({
         metadata: Record<string, string>;
       };
 
-      await Workspace.query()
-        .where('stripe_customer_id', subscription.customer)
-        .update({
-          subscription_id: subscription.id,
-          subscription_status: subscription.status,
-        });
+      const workspace = await Workspace.where('stripe_customer_id', subscription.customer).first();
+      if (workspace) {
+        workspace.attributes.subscription_id = subscription.id;
+        workspace.attributes.subscription_status = subscription.status;
+        await workspace.save();
+      }
 
       const organizationId = subscription.metadata['organization_id'] ?? '';
       await SendWelcomeEmail.dispatch({ organizationId });
@@ -1100,7 +1138,7 @@ roost make:job SendWelcomeEmail
 
 Fill in the generated file:
 
-```ts title="src/jobs/SendWelcomeEmail.ts"
+```ts title="src/jobs/send-welcome-email.ts"
 import { Job, Queue } from '@roost/queue';
 
 interface Payload {
@@ -1124,7 +1162,7 @@ export class SendWelcomeEmail extends Job<Payload> {
 }
 ```
 
-**You should see:** The file at `src/jobs/SendWelcomeEmail.ts` is in place. TypeScript will error if `handle()` is missing — the abstract method contract is enforced at compile time.
+**You should see:** The file at `src/jobs/send-welcome-email.ts` is in place. TypeScript will error if `handle()` is missing — the abstract method contract is enforced at compile time.
 
 ## Step 10: Dispatch the Job from the Webhook Handler
 
@@ -1251,32 +1289,30 @@ No API keys are needed. Cloudflare Workers AI is available to any Workers accoun
 
 ## Step 2: Create a ChatMessage Model — Persist Conversation History
 
-Run the model generator to create a `ChatMessage` model and its migration file:
+Run the model generator to create a `ChatMessage` model file:
 
 ```terminal title="terminal"
 roost make:model ChatMessage
 ```
 
-This creates two files: `src/models/ChatMessage.ts` and a timestamped migration
-in `database/migrations/`. Open the migration and add the columns your chat app
-needs:
+This creates `src/models/chat-message.ts` with a stub. Open it and replace the
+placeholder columns with the schema your chat app needs:
 
-```ts title="database/migrations/XXXX_create_chat_messages_table.ts"
-import { Migration } from '@roost/orm';
+```ts title="src/models/chat-message.ts"
+import { Model } from '@roost/orm';
+import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
 
-export default class CreateChatMessagesTable extends Migration {
-  async up() {
-    await this.schema.createTable('chat_messages', (table) => {
-      table.id();
-      table.string('role');       // 'user' or 'assistant'
-      table.text('content');      // the message body
-      table.timestamps();         // created_at, updated_at
-    });
-  }
+export const chatMessages = sqliteTable('chat_messages', {
+  id:         integer('id').primaryKey({ autoIncrement: true }),
+  role:       text('role').notNull(),     // 'user' or 'assistant'
+  content:    text('content').notNull(),  // the message body
+  created_at: text('created_at'),
+  updated_at: text('updated_at'),
+});
 
-  async down() {
-    await this.schema.dropTable('chat_messages');
-  }
+export class ChatMessage extends Model {
+  static tableName = 'chat_messages';
+  static _table = chatMessages;
 }
 ```
 
@@ -1286,8 +1322,7 @@ Now run the migration to create the table in your local D1 database:
 roost migrate
 ```
 
-**You should see** output confirming the migration ran successfully, e.g.
-`Migrated: XXXX_create_chat_messages_table`. The
+**You should see** output from `drizzle-kit push` confirming the schema was applied. The
 `chat_messages` table now exists in your D1 database.
 
 ## Step 3: Create a ChatAssistant Agent — Define the AI's Behaviour
@@ -1298,11 +1333,11 @@ Run the agent generator, then open the generated file and give the agent its ins
 roost make:agent ChatAssistant
 ```
 
-```ts title="src/agents/ChatAssistant.ts"
+```ts title="src/agents/chat-assistant.ts"
 import { Agent, Model } from '@roost/ai';
 import type { HasTools } from '@roost/ai';
 import type { Tool } from '@roost/ai';
-import { SummarizeTool } from './tools/SummarizeTool';
+import { SummarizeTool } from './tools/summarize-tool';
 
 @Model('@cf/meta/llama-3.1-70b-instruct')
 export class ChatAssistant extends Agent implements HasTools {
@@ -1343,10 +1378,10 @@ about.
 roost make:tool SummarizeTool
 ```
 
-```ts title="src/agents/tools/SummarizeTool.ts"
+```ts title="src/agents/tools/summarize-tool.ts"
 import { type Tool, type ToolRequest } from '@roost/ai';
 import { schema } from '@roost/schema';
-import { ChatMessage } from '../../models/ChatMessage';
+import { ChatMessage } from '../../models/chat-message';
 
 export class SummarizeTool implements Tool {
   description(): string {
@@ -1477,9 +1512,9 @@ binding, and all other bindings. Create a server function that saves the user's 
 calls the agent, and saves the assistant's reply:
 
 ```ts title="src/server/chat.ts"
-import { createServerFn } from '@roost/start';
-import { ChatAssistant } from '../agents/ChatAssistant';
-import { ChatMessage } from '../models/ChatMessage';
+import { createServerFn } from '@tanstack/react-start';
+import { ChatAssistant } from '../agents/chat-assistant';
+import { ChatMessage } from '../models/chat-message';
 
 export const sendMessage = createServerFn({
   method: 'POST',
@@ -1540,9 +1575,9 @@ they arrive using `agent.stream()`. Update the server function to return a
 streaming response, then update the page to consume the event stream:
 
 ```ts title="src/server/chatStream.ts"
-import { createServerFn } from '@roost/start';
-import { ChatAssistant } from '../agents/ChatAssistant';
-import { ChatMessage } from '../models/ChatMessage';
+import { createServerFn } from '@tanstack/react-start';
+import { ChatAssistant } from '../agents/chat-assistant';
+import { ChatMessage } from '../models/chat-message';
 
 export const streamMessage = createServerFn({
   method: 'POST',
@@ -1776,24 +1811,23 @@ Generate a model and its migration:
 roost make:model Post
 ```
 
-This creates two files: `src/models/Post.ts` and a timestamped migration in `database/migrations/`. Edit the migration to define your schema:
+This creates `src/models/post.ts`. Edit it to define your schema columns using Drizzle's SQLite core helpers:
 
-```database/migrations/xxxx_create_posts_table.ts
-import { Migration } from '@roost/orm';
+```src/models/post.ts
+import { Model } from '@roost/orm';
+import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
 
-export default class CreatePostsTable extends Migration {
-  async up() {
-    this.schema.create('posts', (table) => {
-      table.id();
-      table.string('title');
-      table.text('body');
-      table.timestamps();
-    });
-  }
+export const posts = sqliteTable('posts', {
+  id:         integer('id').primaryKey({ autoIncrement: true }),
+  title:      text('title').notNull(),
+  body:       text('body').notNull(),
+  created_at: text('created_at'),
+  updated_at: text('updated_at'),
+});
 
-  async down() {
-    this.schema.drop('posts');
-  }
+export class Post extends Model {
+  static tableName = 'posts';
+  static _table = posts;
 }
 ```
 
@@ -1811,11 +1845,11 @@ Update your hello route to read from the database:
 
 ```src/routes/hello.tsx
 import { createFileRoute } from '@tanstack/react-router';
-import { createServerFn } from '@tanstack/start';
-import { Post } from '../models/Post';
+import { createServerFn } from '@tanstack/react-start';
+import { Post } from '../models/post';
 
 const getPosts = createServerFn({ method: 'GET' }).handler(async () => {
-  return Post.query().orderBy('created_at', 'desc').all();
+  return Post.where('id', '>', 0).orderBy('created_at', 'desc').all();
 });
 
 export const Route = createFileRoute('/hello')({
@@ -2133,26 +2167,17 @@ roost make:mcp-server AppServer
 
 # Middleware
 roost make:middleware RateLimit
-
-# Standalone migration (without model)
-roost make:migration add_published_at_to_posts
 ```
 
-Generator names are used as class names directly. Use PascalCase for classes (`PostController`), snake_case for migrations (`add_status_to_posts`).
+Generator names are used as class names directly. Use PascalCase for classes (`PostController`).
 
-## How to run and rollback migrations
+## How to run migrations
 
-Run all pending migrations with `roost migrate`. Roll back the last batch with `roost migrate:rollback`.
+Run all pending migrations with `roost migrate`.
 
 ```sh terminal
 # Run pending migrations
 roost migrate
-
-# Roll back the most recent batch
-roost migrate:rollback
-
-# Roll back all migrations and re-run from scratch (destructive)
-roost migrate:reset
 
 # Generate migration files from Drizzle schema changes
 roost migrate:generate
@@ -2421,14 +2446,12 @@ roost make:migration add_status_to_posts
 roost make:migration drop_legacy_table
 ```
 
-The generator creates a class with empty `up()` and `down()` methods. Write the forward change in `up()` and its inverse in `down()`.
+The generator creates a file with empty `up()` and `down()` methods. Write the forward change in `up()` using `this.db.run()` and its inverse in `down()`.
 
 ```ts database/migrations/0001_create_posts_table.ts
-import { Migration } from '@roost/orm';
-
-export default class CreatePostsTable extends Migration {
-  async up(): Promise<void> {
-    await this.db.run(`
+export default {
+  async up(db: D1Database): Promise<void> {
+    await db.prepare(`
       CREATE TABLE posts (
         id       INTEGER PRIMARY KEY AUTOINCREMENT,
         title    TEXT    NOT NULL,
@@ -2439,13 +2462,13 @@ export default class CreatePostsTable extends Migration {
         created_at TEXT  NOT NULL DEFAULT (datetime('now')),
         updated_at TEXT  NOT NULL DEFAULT (datetime('now'))
       )
-    `);
-  }
+    `).run();
+  },
 
-  async down(): Promise<void> {
-    await this.db.run('DROP TABLE IF EXISTS posts');
-  }
-}
+  async down(db: D1Database): Promise<void> {
+    await db.prepare('DROP TABLE IF EXISTS posts').run();
+  },
+};
 ```
 
 ## How to run pending migrations
@@ -2459,7 +2482,7 @@ roost migrate
 The CLI prints each migration as it runs. Migrations are recorded in a `migrations` table so they only run once. To run against a remote (production) D1 database, use the `wrangler` CLI directly:
 
 ```sh terminal
-wrangler d1 execute my-app-db --remote --file=database/migrations/0001_create_posts_table.ts
+wrangler d1 migrations apply my-app-db --remote
 ```
 
 ## How to rollback migrations
@@ -2514,28 +2537,30 @@ org_id    INTEGER REFERENCES organizations(id) ON DELETE SET NULL
 Add indexes in the same migration or a separate one. Name indexes consistently: `idx_{table}_{column}`.
 
 ```ts
-async up(): Promise<void> {
-  // Composite index for common query patterns
-  await this.db.run(`
-    CREATE INDEX idx_posts_author_status ON posts (author_id, status)
-  `);
+export default {
+  async up(db: D1Database): Promise<void> {
+    // Composite index for common query patterns
+    await db.prepare(
+      'CREATE INDEX idx_posts_author_status ON posts (author_id, status)'
+    ).run();
 
-  // Unique index
-  await this.db.run(`
-    CREATE UNIQUE INDEX idx_posts_slug ON posts (slug)
-  `);
+    // Unique index
+    await db.prepare(
+      'CREATE UNIQUE INDEX idx_posts_slug ON posts (slug)'
+    ).run();
 
-  // Foreign key (already enforced by REFERENCES in column definition)
-  // SQLite requires PRAGMA foreign_keys = ON at connection time to enforce them
-}
+    // Foreign key constraints are declared inline with REFERENCES.
+    // SQLite requires PRAGMA foreign_keys = ON at connection time to enforce them.
+  },
 
-async down(): Promise<void> {
-  await this.db.run('DROP INDEX IF EXISTS idx_posts_author_status');
-  await this.db.run('DROP INDEX IF EXISTS idx_posts_slug');
-}
+  async down(db: D1Database): Promise<void> {
+    await db.prepare('DROP INDEX IF EXISTS idx_posts_author_status').run();
+    await db.prepare('DROP INDEX IF EXISTS idx_posts_slug').run();
+  },
+};
 ```
 
-Related: [ORM guides](/docs/guides/orm) for model definitions, [@roost/orm reference](/docs/reference/orm) for the full Migration API.
+Related: [ORM guides](/docs/guides/orm) for model definitions, [@roost/orm reference](/docs/reference/orm) for the full Model and QueryBuilder API.
 
 
 ---
@@ -3437,13 +3462,13 @@ import { ServiceProvider } from '@roost/core';
 
 export class CacheServiceProvider extends ServiceProvider {
   async register(): Promise<void> {
-    this.container.singleton(CacheService, (c) => {
+    this.app.container.singleton(CacheService, (c) => {
       return new CacheService(c.resolve(ConfigManager));
     });
   }
 
   async boot(): Promise<void> {
-    const cache = this.container.resolve(CacheService);
+    const cache = this.app.container.resolve(CacheService);
     await cache.warmUp();
   }
 }
@@ -3994,13 +4019,16 @@ Register the webhook endpoint URL in the Stripe dashboard under Developers → W
 
 ## How to gate routes by subscription status
 
-Add `SubscriptionMiddleware` to routes that require an active subscription. Pass the allowed statuses as arguments.
+Add `SubscribedMiddleware` or `OnTrialMiddleware` to routes that require an active subscription or trial.
 
 ```ts
-import { SubscriptionMiddleware } from '@roost/billing';
+import { SubscribedMiddleware, OnTrialMiddleware } from '@roost/billing';
 
-// Allow both active subscriptions and trials
-app.useMiddleware(SubscriptionMiddleware, ['active', 'trialing']);
+// Require an active subscription
+app.useMiddleware(SubscribedMiddleware);
+
+// Or require an active trial
+app.useMiddleware(OnTrialMiddleware);
 ```
 
 Users without a matching subscription receive a `402 Payment Required` response. To redirect instead, wrap the check in a custom middleware:
@@ -4051,7 +4079,7 @@ The `subscriptionItemId` (format: `si_...`) is the metered item within the subsc
 
 # @roost/orm Guides
 
-> Task-oriented instructions for models, migrations, querying, relationships, and testing.
+> Task-oriented instructions for models, querying, relationships, factories, and testing.
 
 
 ## How to define a model
@@ -4070,42 +4098,6 @@ export class Post extends Model {
 ```
 
 Access attributes via the `attributes` proxy: `post.attributes.title`. Do not add TypeScript instance properties — the proxy handles attribute access dynamically.
-
-## How to write and run migrations
-
-Create a migration file in `database/migrations/` using `roost make:migration`, then run it with `roost migrate`.
-
-```sh terminal
-roost make:migration create_posts_table
-roost migrate
-```
-
-```ts database/migrations/0001_create_posts_table.ts
-import { Migration } from '@roost/orm';
-
-export default class CreatePostsTable extends Migration {
-  async up(): Promise<void> {
-    await this.db.run(`
-      CREATE TABLE posts (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        title TEXT NOT NULL,
-        slug TEXT NOT NULL UNIQUE,
-        body TEXT NOT NULL,
-        author_id INTEGER NOT NULL,
-        published_at TEXT,
-        created_at TEXT NOT NULL DEFAULT (datetime('now')),
-        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
-      )
-    `);
-  }
-
-  async down(): Promise<void> {
-    await this.db.run('DROP TABLE IF EXISTS posts');
-  }
-}
-```
-
-See [the migrations guide](/docs/guides/migrations) for the full column reference and rollback patterns.
 
 ## How to query with the QueryBuilder
 
@@ -4149,43 +4141,43 @@ const total = await Post.where('author_id', userId).count();
 
 ## How to define relationships between models
 
-Declare relationships as static method calls. They are lazy-loaded — call the method on an instance to fetch related records.
+Declare relationships as static properties using the relation classes. Call `load(instance)` on
+the relation to fetch related records for a single model, or `loadMany(instances)` to batch-load
+for a collection.
 
 ```ts src/models/User.ts
-import { Model } from '@roost/orm';
+import { Model, HasManyRelation, HasOneRelation } from '@roost/orm';
 import { Post } from './Post';
 import { Profile } from './Profile';
-import { Role } from './Role';
 
 export class User extends Model {
   static tableName = 'users';
 
   // One user has many posts
-  static hasMany(Post, 'author_id', 'id');
+  static posts = new HasManyRelation(Post, 'author_id', 'id');
 
   // One user has one profile
-  static hasOne(Profile, 'user_id', 'id');
-
-  // User belongs to many roles via pivot table
-  static belongsToMany(Role, 'user_roles', 'user_id', 'id', 'role_id', 'id');
+  static profile = new HasOneRelation(Profile, 'user_id', 'id');
 }
 ```
 
 ```ts src/models/Post.ts
-import { Model } from '@roost/orm';
+import { Model, BelongsToRelation } from '@roost/orm';
 import { User } from './User';
 
 export class Post extends Model {
   static tableName = 'posts';
 
   // Each post belongs to one user
-  static belongsTo(User, 'author_id', 'id');
+  static author = new BelongsToRelation(User, 'author_id', 'id');
 }
 
 // Usage
 const post = await Post.findOrFail(1);
-const author = await post.author(); // User instance
-const posts = await (await User.findOrFail(1)).posts(); // Post[]
+const author = await Post.author.load(post); // User | null
+
+const user = await User.findOrFail(1);
+const posts = await User.posts.load(user); // Post[]
 ```
 
 ## How to use lifecycle hooks
@@ -4222,49 +4214,36 @@ Post.on('updated', (post) => {
 });
 ```
 
-## How to seed the database
-
-Create seeder files in `database/seeders/` and run them with `roost db:seed`.
-
-```ts database/seeders/UserSeeder.ts
-import { Seeder } from '@roost/orm';
-import { User } from '../../src/models/User';
-
-export default class UserSeeder extends Seeder {
-  async run(): Promise<void> {
-    await User.create({ name: 'Alice Admin', email: 'alice@example.com', role: 'admin' });
-    await User.create({ name: 'Bob User', email: 'bob@example.com', role: 'user' });
-  }
-}
-```
-
-```sh terminal
-roost db:seed
-```
-
 ## How to use factories in tests
 
-Define a factory for a model and use it in tests to create records without specifying every attribute.
+Extend `Factory`, implement the `definition()` method, and use `.count()` / `.state()` to
+customise what gets created.
 
 ```ts database/factories/PostFactory.ts
 import { Factory } from '@roost/orm';
 import { Post } from '../../src/models/Post';
 
-export const PostFactory = new Factory(Post, () => ({
-  title: 'Test Post ' + Math.random().toString(36).slice(2),
-  slug: 'test-post-' + Math.random().toString(36).slice(2),
-  body: 'Lorem ipsum dolor sit amet.',
-  author_id: 1,
-  status: 'published',
-}));
+export class PostFactory extends Factory<typeof Post> {
+  definition() {
+    return {
+      title: 'Test Post ' + Math.random().toString(36).slice(2),
+      slug: 'test-post-' + Math.random().toString(36).slice(2),
+      body: 'Lorem ipsum dolor sit amet.',
+      author_id: 1,
+      status: 'published',
+    };
+  }
+}
 ```
 
 ```ts tests/posts.test.ts
 import { PostFactory } from '../database/factories/PostFactory';
 
+const factory = new PostFactory(Post);
+
 it('lists published posts', async () => {
-  await PostFactory.create({ status: 'published' });
-  await PostFactory.create({ status: 'draft' });
+  await factory.createOne();
+  await factory.state((a) => ({ ...a, status: 'draft' })).createOne();
 
   const published = await Post.where('status', 'published').all();
   expect(published.length).toBe(1);
@@ -4298,6 +4277,17 @@ return Response.json({
   },
 });
 ```
+
+## How to write and run migrations
+
+Create a migration file in `database/migrations/` using `roost make:migration`, then run it with `roost migrate`.
+
+```sh terminal
+roost make:migration create_posts_table
+roost migrate
+```
+
+Migrations are raw SQL files executed against D1. See [the migrations guide](/docs/guides/migrations) for the full column reference and rollback patterns.
 
 
 ---
@@ -4691,9 +4681,25 @@ Calls `onSuccess()` on success, `onFailure()` on final failure.
 
 Register a job class so the consumer can deserialize and route messages to it.
 
+## Dispatcher API
+
+Sends serialized job messages to the configured Cloudflare Queue binding.
+Used internally by `Job.dispatch()` and `Job.dispatchAfter()`.
+Resolve from the container when you need to dispatch jobs outside of a `Job` class context.
+
 ## Decorators
 
 Class decorators applied to `Job` subclasses.
+
+#### `@Queue(name: string)`
+
+Specify the queue binding name this job should be dispatched to. Overrides the
+default queue configured in the service provider.
+
+#### `@Delay(seconds: number)`
+
+Default delay in seconds before the job is first executed. Can be overridden
+per-dispatch by calling `Job.dispatchAfter(seconds, payload)` directly.
 
 #### `@MaxRetries(count: number)`
 
@@ -4708,6 +4714,16 @@ Retry backoff strategy. `'exponential'` doubles the delay on each attempt.
 
 Base delay in seconds before the first retry. For exponential backoff, subsequent
 delays are multiplied by 2 on each attempt.
+
+#### `@JobTimeout(seconds: number)`
+
+Maximum execution time in seconds for a single `handle()` invocation before
+it is considered failed.
+
+#### `getJobConfig(JobClass: typeof Job): JobConfig`
+
+Read the merged job configuration from a job class's decorators. Useful for
+inspecting or testing job configuration.
 
 ## Types
 
@@ -4817,23 +4833,11 @@ Generate a job class at `src/jobs/<Name>.ts`.
 
 Generate a middleware class at `src/middleware/<Name>.ts`.
 
-#### `roost make:migration <name>`
-
-Generate a blank migration file in `database/migrations/`.
-
 ## Database Commands
 
 #### `roost migrate`
 
 Run all pending migration files against the configured D1 database.
-
-#### `roost migrate:rollback`
-
-Rollback the most recently applied migration batch.
-
-#### `roost migrate:reset`
-
-Rollback all migrations and re-run them from scratch.
 
 #### `roost migrate:generate`
 
@@ -4846,9 +4850,9 @@ Run all seeder classes in `database/seeders/`.
 
 ## Development Commands
 
-#### `roost dev [--port <n>]`
+#### `roost dev`
 
-Start the development server with hot module reload. Default port is `8787`.
+Start the development server with hot module reload.
 
 #### `roost build`
 
@@ -5159,6 +5163,23 @@ Registers `SessionManager` and `WorkOSClient` in the container.
 Also registers the `/auth/login`, `/auth/callback`, and
 `/auth/logout` routes on the application.
 
+## WorkOS Clients
+
+#### `RoostWorkOSClient`
+
+The real WorkOS client implementation. Wraps the WorkOS SDK and resolves credentials
+from `WORKOS_API_KEY` and `WORKOS_CLIENT_ID` environment variables.
+Registered automatically by `AuthServiceProvider`.
+
+#### `FakeWorkOSClient`
+
+In-memory WorkOS client for use in tests. Returns synthetic users and tokens
+without making HTTP calls to WorkOS.
+
+#### `WorkOSClientToken`
+
+The DI container token used to resolve the active `WorkOSClient` implementation.
+
 ## SessionManager API
 
 Manages session creation, validation, and destruction using Cloudflare KV storage
@@ -5167,6 +5188,27 @@ with a sliding TTL.
 #### `constructor(kv: KVNamespace, secret: string)`
 
 Construct with a KV namespace for session storage and a secret for signing session tokens.
+
+## KVSessionStore
+
+Low-level session store that reads and writes session data to Cloudflare KV. Used
+internally by `SessionManager`. Resolve from the container when you need direct
+KV session access without going through `SessionManager`.
+
+## Session Utilities
+
+#### `parseCookie(cookieHeader: string): Record<string, string>`
+
+Parse a `Cookie` request header string into a key-value record.
+
+#### `buildSetCookie(name: string, value: string, options?: CookieOptions): string`
+
+Build a `Set-Cookie` header value string.
+
+#### `parseJwtExpiry(token: string): number | null`
+
+Extract the expiration timestamp from a JWT without verifying its signature.
+Returns the `exp` claim as a Unix timestamp, or `null` if absent.
 
 #### `async resolveUser(request: Request): Promise<RoostUser | null>`
 
@@ -5200,6 +5242,23 @@ creates a KV session, and redirects to `return_to` or `/`.
 #### `GET /auth/logout`
 
 Destroys the current session and redirects to `/`.
+
+## Route Handler Functions
+
+These are the underlying handler functions used by the built-in routes. Import them
+directly when you need to mount auth routes in a custom location.
+
+#### `handleCallback(request: Request, sessionManager: SessionManager, workosClient: WorkOSClient, redirectUrl: string): Promise<Response>`
+
+Handle the WorkOS OAuth callback. Exchanges the code for a session and redirects.
+
+#### `handleLogout(request: Request, sessionManager: SessionManager, redirectTo?: string): Promise<Response>`
+
+Destroy the current session and redirect. Defaults to redirecting to `/auth/login`.
+
+#### `createLoginHandler(workosClient: WorkOSClient, redirectUrl: string): (request: Request) => Promise<Response>`
+
+Create a login route handler that redirects to the WorkOS authorization URL.
 
 ## Middleware
 
@@ -5516,12 +5575,46 @@ const getUser = roostFnWithInput(
 );
 ```
 
+## Context Utilities
+
+#### `bootApp(createApp: () => Application): Application`
+
+Boot the Roost application singleton. Calls `createApp` once and caches the
+result. Subsequent calls return the cached instance. Used by `createRoostMiddleware`
+internally; call directly when you need the app outside of a middleware context.
+
+#### `getApp(): Application`
+
+Retrieve the cached application instance. Throws if `bootApp()` has not been
+called yet.
+
+#### `createRoostContext(app: Application): RoostServerContext`
+
+Create a per-request scoped context from the application. Returns a
+`RoostServerContext` with a scoped container. Called once per request by
+`createRoostMiddleware`.
+
+#### `resetAppCache(): void`
+
+Clear the cached application instance. Use in tests to ensure each test suite
+starts with a fresh application.
+
+## StartServiceProvider
+
+Service provider that registers `@roost/start` integrations in the Roost
+container. Register this provider when using `bootApp` directly to ensure
+TanStack Start bindings are available.
+
 ## Types
 
 ```ts
-interface RoostContext {
+interface RoostServerContext {
   container: RoostContainer;
   app: Application;
+}
+
+interface RoostMiddlewareContext {
+  roost: RoostServerContext;
 }
 ```
 
@@ -5564,14 +5657,10 @@ for the token.
 Returns `true` if a binding exists for the token. Searches parent containers
 in the scope chain.
 
-#### `scoped(): RoostContainer`
+#### `scoped(): Container`
 
 Create a child container that inherits all bindings from the parent but maintains its
 own singleton registry. Used for request-level isolation.
-
-#### `flush(): void`
-
-Remove all bindings and resolved singleton instances from the container.
 
 ## ConfigManager API
 
@@ -5618,12 +5707,12 @@ Add middleware to the pipeline. Supports plain functions and class-based middlew
 Additional string arguments are passed to class middleware constructors.
 Returns `this` for chaining.
 
-#### `handle(request: Request, handler: Handler): Promise<Response>`
+#### `handle(request: Request, destination: Handler): Promise<Response>`
 
 Run the request through all registered middleware in registration order, then call the
-final `handler`.
+final `destination` handler.
 
-#### `withContainer(container: RoostContainer): this`
+#### `withContainer(container: Container): this`
 
 Associate a container with the pipeline. Required for class-based middleware that needs
 dependency injection.
@@ -5676,21 +5765,25 @@ so all providers have the opportunity to register before any boots.
 Optional. Runs after all providers have called `register()`. Safe to resolve
 dependencies registered by other providers here.
 
-#### `container: RoostContainer`
+#### `app: Application`
 
-The application container. Available in both `register()` and `boot()`.
+The application instance. Available in both `register()` and `boot()`. Access the container via `this.app.container`.
 
 ## Types
 
 ```ts
-type Token<T> = abstract new (...args: any[]) => T | symbol | string;
-type Factory<T> = (container: RoostContainer) => T;
+type Token<T = unknown> = (abstract new (...args: any[]) => T) | string | symbol;
+type Factory<T> = (container: Container) => T;
 type Handler = (request: Request) => Promise<Response>;
-type Middleware = (request: Request, next: Handler) => Promise<Response>;
-type MiddlewareClass = new (...args: string[]) => { handle: Middleware };
+interface Middleware {
+  handle(request: Request, next: Handler, ...args: string[]): Promise<Response>;
+}
+type MiddlewareClass = new (...args: any[]) => Middleware;
 ```
 
 ## Errors
+
+The following error classes are thrown at runtime but are not exported from `@roost/core`. Catch them by name or use `instanceof` checks after importing the concrete class from its internal module path (not recommended for production code — prefer guarding with defaults or `has()` checks instead).
 
 #### `BindingNotFoundError`
 
@@ -5975,7 +6068,7 @@ const billing = container.resolve(BillingProviderToken);
 
 ## BillingProvider Interface
 
-The abstract interface implemented by `StripeAdapter` (and `BillingFake`).
+The abstract interface implemented by `StripeProvider` (and `FakeBillingProvider`).
 Resolve via `BillingProviderToken` to stay provider-agnostic.
 
 #### `createCustomer(params: CreateCustomerParams): Promise<CreateCustomerResult>`
@@ -5990,11 +6083,11 @@ Create a subscription for a customer on the given price.
 
 Cancel a subscription. The subscription remains active until the end of the billing period.
 
-#### `resumeSubscription(subscriptionId: string): Promise<SubscribeResult>`
+#### `resumeSubscription(subscriptionId: string): Promise<void>`
 
 Resume a cancelled subscription before the billing period ends.
 
-#### `swapSubscription(params: SwapSubscriptionParams): Promise<SubscribeResult>`
+#### `swapSubscription(subscriptionId: string, newPriceId: string): Promise<SubscribeResult>`
 
 Change an existing subscription to a different price. Prorates immediately.
 
@@ -6021,32 +6114,61 @@ Report metered usage for a subscription item.
 Verify the webhook signature using the Web Crypto API and parse the event payload.
 Throws if the signature is invalid.
 
-## StripeAdapter
+## StripeProvider
 
 Concrete implementation of `BillingProvider` using Stripe's REST API
 via `fetch`. Registered by `BillingServiceProvider`.
 
-## BillingFake
+## StripeClient
+
+Low-level HTTP client for the Stripe REST API. Used internally by `StripeProvider`.
+Import directly when you need raw Stripe API access beyond what `BillingProvider` exposes.
+
+## verifyStripeWebhook
+
+#### `verifyStripeWebhook(request: Request, secret: string): Promise<WebhookEvent>`
+
+Verify a Stripe webhook signature using the Web Crypto API and return the parsed event.
+Throws `WebhookVerificationError` if the signature is invalid or missing.
+
+## FakeBillingProvider
 
 In-memory implementation of `BillingProvider` for use in tests. Records
 all calls and returns synthetic results without network requests.
 
 ```ts
-import { BillingFake } from '@roost/billing';
+import { FakeBillingProvider } from '@roost/billing';
 
-const fake = new BillingFake();
+const fake = new FakeBillingProvider();
 const customer = await fake.createCustomer({ name: 'Test', email: 'test@example.com' });
 ```
 
-## SubscriptionMiddleware
-
-Middleware that gates access by subscription status. Accepts one or more allowed
-status strings as arguments. Returns `402 Payment Required` if the user
-has no active subscription matching an allowed status.
+Use the `Billing` helper object to enable/disable the fake globally:
 
 ```ts
-import { SubscriptionMiddleware } from '@roost/billing';
-app.useMiddleware(SubscriptionMiddleware, 'active', 'trialing');
+import { Billing } from '@roost/billing';
+
+const fake = Billing.fake();   // enable fake mode, returns FakeBillingProvider
+Billing.restore();             // disable fake mode
+```
+
+## SubscribedMiddleware
+
+Middleware that gates access to users with an active subscription. Returns
+`402 Payment Required` if the user has no active subscription.
+
+```ts
+import { SubscribedMiddleware } from '@roost/billing';
+app.useMiddleware(SubscribedMiddleware);
+```
+
+## OnTrialMiddleware
+
+Middleware that gates access to users currently on a trial subscription.
+
+```ts
+import { OnTrialMiddleware } from '@roost/billing';
+app.useMiddleware(OnTrialMiddleware);
 ```
 
 ## Types
@@ -6073,11 +6195,6 @@ interface SubscribeResult {
   subscriptionId: string;
   status: SubscriptionStatus;
   currentPeriodEnd: string;
-}
-
-interface SwapSubscriptionParams {
-  subscriptionId: string;
-  priceId: string;
 }
 
 interface CheckoutSessionParams {
@@ -6128,7 +6245,7 @@ type SubscriptionStatus =
 
 # @roost/orm
 
-> Laravel-inspired ORM built on Drizzle for D1 databases. Model classes, query builder, relationships, lifecycle hooks, migrations, factories, and seeders.
+> Laravel-inspired ORM built on Drizzle for D1 databases. Model classes, query builder, relationships, lifecycle hooks, factories.
 
 
 ## Installation
@@ -6145,9 +6262,11 @@ accessible via the `attributes` property.
 
 ### Static Configuration Properties
 
-#### `static tableName: string`
+#### `static tableName: string | null`
 
-The database table name. Required.
+The database table name. Defaults to `null`, which causes the ORM to derive the
+table name from the class name via `toTableName` (e.g. `PostComment` → `post_comments`).
+Set explicitly to override.
 
 #### `static primaryKey: string`
 
@@ -6161,8 +6280,7 @@ When `true`, automatically writes `created_at` on insert and
 #### `static softDeletes: boolean`
 
 When `true`, `delete()` sets `deleted_at` instead of
-removing the row. All queries automatically exclude soft-deleted records.
-Defaults to `false`.
+removing the row. Defaults to `false`.
 
 ### Static Query Methods
 
@@ -6176,7 +6294,7 @@ Find a record by primary key. Throws `ModelNotFoundError` if not found.
 
 #### `static async all(): Promise<T[]>`
 
-Retrieve all records from the table. Returns a `QueryBuilder` for chaining.
+Retrieve all records from the table.
 
 #### `static async create(attributes: Record<string, unknown>): Promise<T>`
 
@@ -6187,15 +6305,19 @@ Insert a new record and return the created model instance. Fires `creating` and 
 
 Begin a query with a WHERE constraint. Returns a `QueryBuilder`.
 
-#### `static on(event: LifecycleEvent, callback: (model: T) => boolean | void): void`
+#### `static whereIn(column: string, values: unknown[]): QueryBuilder<T>`
+
+Begin a query with a WHERE IN constraint. Returns a `QueryBuilder`.
+
+#### `static on(event: HookName, callback: HookFn): void`
 
 Register a lifecycle hook callback. Return `false` from a pre-event hook to abort the operation.
 
 ### Instance Methods
 
-#### `async save(): Promise<void>`
+#### `async save(): Promise<this>`
 
-Persist changes to `this.attributes`. Fires `updating` and `updated` hooks.
+Persist changes to `this.attributes`. Fires `updating` and `updated` hooks. Returns the instance.
 
 #### `async delete(): Promise<void>`
 
@@ -6217,7 +6339,7 @@ Add an AND WHERE clause. Supported operators: `=`, `!=`, `>`, `<`, `>=`, `<=`, `
 
 #### `orWhere(column: string, value: unknown): this`
 
-Add an OR WHERE clause.
+Add an OR WHERE clause (equality only).
 
 #### `whereIn(column: string, values: unknown[]): this`
 
@@ -6231,9 +6353,9 @@ Add a WHERE IS NULL clause.
 
 Add a WHERE IS NOT NULL clause.
 
-#### `orderBy(column: string, direction: 'asc' | 'desc'): this`
+#### `orderBy(column: string, direction?: 'asc' | 'desc'): this`
 
-Add an ORDER BY clause. Chainable for multiple sort columns.
+Add an ORDER BY clause. Direction defaults to `'asc'`. Chainable for multiple sort columns.
 
 #### `limit(n: number): this`
 
@@ -6242,6 +6364,10 @@ Limit the number of results.
 #### `offset(n: number): this`
 
 Skip the first `n` results.
+
+#### `with(...relations: string[]): this`
+
+Eager-load named relations when results are fetched.
 
 #### `first(): Promise<T | null>`
 
@@ -6267,27 +6393,42 @@ and `lastPage`.
 
 ## Relationships
 
-Define relationships as static calls during class definition. All relationships are lazy-loaded:
-call the method on an instance to fetch the related records.
+Define relationships by instantiating the relation classes. Call `load(parent)` on an
+instance to fetch related records, or `loadMany(parents)` to batch-load for a collection.
 
-#### `static hasOne(RelatedModel: typeof Model, foreignKey: string, localKey: string): void`
+#### `new HasOneRelation(RelatedModel, foreignKey, localKey?)`
 
-One-to-one ownership: this model has one related record. Adds an instance method named
-after the related model (camelCased) that returns `Promise<RelatedModel | null>`.
+One-to-one ownership: this model has one related record. `localKey` defaults to `'id'`.
+`load()` returns `Promise<RelatedModel | null>`.
 
-#### `static hasMany(RelatedModel: typeof Model, foreignKey: string, localKey: string): void`
+#### `new HasManyRelation(RelatedModel, foreignKey, localKey?)`
 
-One-to-many ownership. Adds an instance method that returns `Promise<RelatedModel[]>`.
+One-to-many ownership. `localKey` defaults to `'id'`.
+`load()` returns `Promise<RelatedModel[]>`.
 
-#### `static belongsTo(RelatedModel: typeof Model, foreignKey: string, ownerKey: string): void`
+#### `new BelongsToRelation(RelatedModel, foreignKey, localKey?)`
 
-Inverse of `hasOne` or `hasMany`. Adds an instance method that
-returns `Promise<RelatedModel | null>`.
+Inverse of `HasOneRelation` or `HasManyRelation`. `localKey` defaults to `'id'`.
+`load()` returns `Promise<RelatedModel | null>`.
 
-#### `static belongsToMany(RelatedModel: typeof Model, pivotTable: string, foreignKey: string, localKey: string, relatedKey: string, relatedModelKey: string): void`
+```ts
+import { Model, HasManyRelation, BelongsToRelation } from '@roost/orm';
+import { Post } from './Post';
 
-Many-to-many via a pivot table. Adds an instance method that returns
-`Promise<RelatedModel[]>`.
+export class User extends Model {
+  static tableName = 'users';
+  static posts = new HasManyRelation(Post, 'author_id', 'id');
+}
+
+export class Post extends Model {
+  static tableName = 'posts';
+  static user = new BelongsToRelation(User, 'author_id', 'id');
+}
+
+// Usage
+const post = await Post.findOrFail(1);
+const author = await Post.user.load(post); // User | null
+```
 
 ## Lifecycle Hooks
 
@@ -6308,30 +6449,68 @@ Model.on('deleted', (instance) => { ... });
 ## Factory API
 
 `Factory` generates model instances with fake data for seeding and testing.
+Extend it and implement the `definition()` method.
 
-#### `abstract define(): Record<string, unknown>`
+#### `abstract definition(): Record<string, unknown>`
 
-Return the default attribute map. Called once per instance.
+Return the default attribute map. Called once per generated instance.
 
-#### `async create(overrides?: Record<string, unknown>): Promise<T>`
+#### `count(n: number): this`
 
-Create and persist a model instance. Merges `overrides` over the defined defaults.
+Set the number of instances to generate. Chainable.
 
-#### `make(overrides?: Record<string, unknown>): T`
+#### `state(modifier: (attrs) => attrs): this`
 
-Build an unsaved model instance without persisting.
+Apply an attribute override to each generated instance. Chainable for multiple states.
 
-## Seeder API
+#### `async make(): Promise<T[]>`
 
-#### `abstract async run(): Promise<void>`
+Build unsaved model instances without persisting.
 
-Implement to seed the database. Called by `roost db:seed`.
+#### `async makeOne(): Promise<T>`
+
+Build a single unsaved model instance.
+
+#### `async create(): Promise<T[]>`
+
+Create and persist model instances.
+
+#### `async createOne(): Promise<T>`
+
+Create and persist a single model instance.
+
+```ts
+import { Factory } from '@roost/orm';
+import { Post } from '../../src/models/Post';
+
+class PostFactory extends Factory<typeof Post> {
+  definition() {
+    return {
+      title: 'Test Post ' + Math.random().toString(36).slice(2),
+      slug: 'test-post-' + Math.random().toString(36).slice(2),
+      body: 'Lorem ipsum dolor sit amet.',
+      author_id: 1,
+      status: 'published',
+    };
+  }
+}
+
+const factory = new PostFactory(Post);
+
+// Create 3 draft posts
+const drafts = await factory.count(3).state((a) => ({ ...a, status: 'draft' })).create();
+
+// Create one
+const post = await factory.createOne();
+```
 
 ## Types
 
 ```ts
 type Operator = '=' | '!=' | '>' | '<' | '>=' | '<=' | 'like';
-type LifecycleEvent = 'creating' | 'created' | 'updating' | 'updated' | 'deleting' | 'deleted';
+type HookName = 'creating' | 'created' | 'updating' | 'updated' | 'deleting' | 'deleted';
+type HookFn = (model: any) => boolean | void | Promise<boolean | void>;
+type ModelAttributes = Record<string, unknown>;
 
 interface PaginationResult<T> {
   data: T[];
@@ -6344,9 +6523,17 @@ interface PaginationResult<T> {
 
 ## Errors
 
+#### `OrmNotBootedError`
+
+Thrown when a query is executed before the ORM is booted (i.e. before `app.boot()` is called).
+
 #### `ModelNotFoundError`
 
 Thrown by `findOrFail()` and `firstOrFail()` when no record matches.
+
+#### `InvalidRelationError`
+
+Thrown when a relation name that is not defined on the model is accessed.
 
 
 ---
@@ -6686,25 +6873,39 @@ Create an error response.
 
 Serialize the response to MCP protocol JSON format.
 
+## createMcpRequest
+
+#### `createMcpRequest(args: Record<string, unknown>): McpRequest`
+
+Create an `McpRequest` from a plain arguments object. Used internally by
+`McpServer` when routing tool calls and prompt invocations. Import directly
+when testing tools or prompts in isolation without a full server.
+
 ## Types
 
 ```ts
-interface ToolDefinition {
+interface McpToolDefinition {
   name: string;
   description: string;
   inputSchema: JsonSchemaOutput;
 }
 
-interface ResourceDefinition {
+interface McpResourceDefinition {
   uri: string;
   description: string;
   mimeType: string;
 }
 
-interface PromptDefinition {
+interface McpPromptDefinition {
   name: string;
   description: string;
   arguments: JsonSchemaOutput;
+}
+
+interface PromptArgument {
+  name: string;
+  description?: string;
+  required?: boolean;
 }
 ```
 
@@ -7592,10 +7793,10 @@ safety) while Roost handles the ergonomics problem (Active Record conventions, h
 ## Query Builder Design
 
 The `QueryBuilder` class provides a chainable API for building queries:
-`where`, `orWhere`, `whereIn`, `orderBy`,
-`limit`, `with`. Each method returns a new `QueryBuilder`
-instance, so chains are immutable — holding a reference to a partially-built query and
-adding to it later is safe. Terminal methods — `first()`, `all()`,
+`where`, `orWhere`, `whereIn`, `whereNull`, `whereNotNull`, `orderBy`,
+`limit`, `offset`, `with`. Each method mutates the builder and returns `this`,
+so chains are stateful — create a new `QueryBuilder` (via a static model method) for each
+distinct query. Terminal methods — `first()`, `firstOrFail()`, `all()`,
 `count()`, `paginate()` — execute the query and return results.
 
 Raw SQL is not exposed directly. This is a deliberate trade-off: raw SQL is always more
@@ -7616,7 +7817,7 @@ the cost of a bad deployment significantly.
 
 - [Laravel Patterns — the Eloquent model and what Roost adapts](/docs/concepts/laravel-patterns)
 - [Edge Computing — D1 as the edge database and its consistency model](/docs/concepts/edge-computing)
-- [@roost/orm reference — Model, QueryBuilder, and migration API](/docs/packages/orm)
+- [@roost/orm reference — Model, QueryBuilder, and factory API](/docs/reference/orm)
 - [Drizzle ORM Documentation](https://orm.drizzle.team)
 
 

@@ -32,10 +32,10 @@ safety) while Roost handles the ergonomics problem (Active Record conventions, h
 ## Query Builder Design
 
 The `QueryBuilder` class provides a chainable API for building queries:
-`where`, `orWhere`, `whereIn`, `orderBy`,
-`limit`, `with`. Each method returns a new `QueryBuilder`
-instance, so chains are immutable — holding a reference to a partially-built query and
-adding to it later is safe. Terminal methods — `first()`, `all()`,
+`where`, `orWhere`, `whereIn`, `whereNull`, `whereNotNull`, `orderBy`,
+`limit`, `offset`, `with`. Each method mutates the builder and returns `this`,
+so chains are stateful — create a new `QueryBuilder` (via a static model method) for each
+distinct query. Terminal methods — `first()`, `firstOrFail()`, `all()`,
 `count()`, `paginate()` — execute the query and return results.
 
 Raw SQL is not exposed directly. This is a deliberate trade-off: raw SQL is always more
@@ -56,5 +56,5 @@ the cost of a bad deployment significantly.
 
 - [Laravel Patterns — the Eloquent model and what Roost adapts](/docs/concepts/laravel-patterns)
 - [Edge Computing — D1 as the edge database and its consistency model](/docs/concepts/edge-computing)
-- [@roost/orm reference — Model, QueryBuilder, and migration API](/docs/packages/orm)
+- [@roost/orm reference — Model, QueryBuilder, and factory API](/docs/reference/orm)
 - [Drizzle ORM Documentation](https://orm.drizzle.team)

@@ -12,13 +12,13 @@ import { ServiceProvider } from '@roost/core';
 
 export class CacheServiceProvider extends ServiceProvider {
   async register(): Promise<void> {
-    this.container.singleton(CacheService, (c) => {
+    this.app.container.singleton(CacheService, (c) => {
       return new CacheService(c.resolve(ConfigManager));
     });
   }
 
   async boot(): Promise<void> {
-    const cache = this.container.resolve(CacheService);
+    const cache = this.app.container.resolve(CacheService);
     await cache.warmUp();
   }
 }

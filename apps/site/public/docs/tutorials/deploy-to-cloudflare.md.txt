@@ -64,8 +64,7 @@ you, but it's worth understanding what's there.
 }
 ```
 
-You should see bindings for `DB` (D1 database), `KV` (key-value store), and `AI` (Workers AI). The `database_id` and KV `id` fields are filled in automatically when you run `roost new`. If
-they're still placeholder values, run `roost provision` to create the resources and populate the file.
+You should see bindings for `DB` (D1 database), `KV` (key-value store), and `AI` (Workers AI). The `database_id` and KV `id` fields need to be filled in with real resource IDs before deploying. Create a D1 database with `bunx wrangler d1 create my-app-db` and a KV namespace with `bunx wrangler kv namespace create KV`, then paste the returned IDs into `wrangler.jsonc`.
 
 ## Step 3: Sign up for Cloudflare
 
@@ -105,17 +104,11 @@ Run the deploy command from your project root:
 roost deploy
 ```
 
-Roost builds your app, runs database migrations against your production D1 instance, and
-publishes the Worker. The output looks like this:
+Roost builds your app with Vite and publishes it to Cloudflare Workers via Wrangler. The output looks like this:
 
 ```text title="terminal output"
 Building application...
-  ✓ TypeScript compiled
   ✓ Vite bundle complete (142 kB)
-
-Running migrations...
-  ✓ 0001_create_users applied
-  ✓ 0002_create_posts applied
 
 Deploying to Cloudflare Workers...
   ✓ Uploaded my-app (2.3 sec)
@@ -123,6 +116,14 @@ Deploying to Cloudflare Workers...
 
 https://my-app.your-subdomain.workers.dev
 ```
+
+<Callout type="tip">
+  <p>
+    <code>roost deploy</code> does not run migrations. To apply your schema to the production D1
+    database, run <code>bunx wrangler d1 execute my-app-db --remote --file schema.sql</code> or
+    use <code>bunx drizzle-kit push</code> pointed at your production environment before or after deploying.
+  </p>
+</Callout>
 
 You should see a `workers.dev` URL printed at the end of the output. Copy it — you'll use it in the next step.
 

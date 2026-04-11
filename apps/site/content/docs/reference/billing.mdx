@@ -34,7 +34,7 @@ const billing = container.resolve(BillingProviderToken);
 
 ## BillingProvider Interface
 
-The abstract interface implemented by `StripeAdapter` (and `BillingFake`).
+The abstract interface implemented by `StripeProvider` (and `FakeBillingProvider`).
 Resolve via `BillingProviderToken` to stay provider-agnostic.
 
 #### `createCustomer(params: CreateCustomerParams): Promise<CreateCustomerResult>`
@@ -49,11 +49,11 @@ Create a subscription for a customer on the given price.
 
 Cancel a subscription. The subscription remains active until the end of the billing period.
 
-#### `resumeSubscription(subscriptionId: string): Promise<SubscribeResult>`
+#### `resumeSubscription(subscriptionId: string): Promise<void>`
 
 Resume a cancelled subscription before the billing period ends.
 
-#### `swapSubscription(params: SwapSubscriptionParams): Promise<SubscribeResult>`
+#### `swapSubscription(subscriptionId: string, newPriceId: string): Promise<SubscribeResult>`
 
 Change an existing subscription to a different price. Prorates immediately.
 
@@ -80,32 +80,61 @@ Report metered usage for a subscription item.
 Verify the webhook signature using the Web Crypto API and parse the event payload.
 Throws if the signature is invalid.
 
-## StripeAdapter
+## StripeProvider
 
 Concrete implementation of `BillingProvider` using Stripe's REST API
 via `fetch`. Registered by `BillingServiceProvider`.
 
-## BillingFake
+## StripeClient
+
+Low-level HTTP client for the Stripe REST API. Used internally by `StripeProvider`.
+Import directly when you need raw Stripe API access beyond what `BillingProvider` exposes.
+
+## verifyStripeWebhook
+
+#### `verifyStripeWebhook(request: Request, secret: string): Promise<WebhookEvent>`
+
+Verify a Stripe webhook signature using the Web Crypto API and return the parsed event.
+Throws `WebhookVerificationError` if the signature is invalid or missing.
+
+## FakeBillingProvider
 
 In-memory implementation of `BillingProvider` for use in tests. Records
 all calls and returns synthetic results without network requests.
 
 ```ts
-import { BillingFake } from '@roost/billing';
+import { FakeBillingProvider } from '@roost/billing';
 
-const fake = new BillingFake();
+const fake = new FakeBillingProvider();
 const customer = await fake.createCustomer({ name: 'Test', email: 'test@example.com' });
 ```
 
-## SubscriptionMiddleware
-
-Middleware that gates access by subscription status. Accepts one or more allowed
-status strings as arguments. Returns `402 Payment Required` if the user
-has no active subscription matching an allowed status.
+Use the `Billing` helper object to enable/disable the fake globally:
 
 ```ts
-import { SubscriptionMiddleware } from '@roost/billing';
-app.useMiddleware(SubscriptionMiddleware, 'active', 'trialing');
+import { Billing } from '@roost/billing';
+
+const fake = Billing.fake();   // enable fake mode, returns FakeBillingProvider
+Billing.restore();             // disable fake mode
+```
+
+## SubscribedMiddleware
+
+Middleware that gates access to users with an active subscription. Returns
+`402 Payment Required` if the user has no active subscription.
+
+```ts
+import { SubscribedMiddleware } from '@roost/billing';
+app.useMiddleware(SubscribedMiddleware);
+```
+
+## OnTrialMiddleware
+
+Middleware that gates access to users currently on a trial subscription.
+
+```ts
+import { OnTrialMiddleware } from '@roost/billing';
+app.useMiddleware(OnTrialMiddleware);
 ```
 
 ## Types
@@ -132,11 +161,6 @@ interface SubscribeResult {
   subscriptionId: string;
   status: SubscriptionStatus;
   currentPeriodEnd: string;
-}
-
-interface SwapSubscriptionParams {
-  subscriptionId: string;
-  priceId: string;
 }
 
 interface CheckoutSessionParams {

@@ -9,14 +9,12 @@ roost make:migration add_status_to_posts
 roost make:migration drop_legacy_table
 ```
 
-The generator creates a class with empty `up()` and `down()` methods. Write the forward change in `up()` and its inverse in `down()`.
+The generator creates a file with empty `up()` and `down()` methods. Write the forward change in `up()` using `this.db.run()` and its inverse in `down()`.
 
 ```ts database/migrations/0001_create_posts_table.ts
-import { Migration } from '@roost/orm';
-
-export default class CreatePostsTable extends Migration {
-  async up(): Promise<void> {
-    await this.db.run(`
+export default {
+  async up(db: D1Database): Promise<void> {
+    await db.prepare(`
       CREATE TABLE posts (
         id       INTEGER PRIMARY KEY AUTOINCREMENT,
         title    TEXT    NOT NULL,
@@ -27,13 +25,13 @@ export default class CreatePostsTable extends Migration {
         created_at TEXT  NOT NULL DEFAULT (datetime('now')),
         updated_at TEXT  NOT NULL DEFAULT (datetime('now'))
       )
-    `);
-  }
+    `).run();
+  },
 
-  async down(): Promise<void> {
-    await this.db.run('DROP TABLE IF EXISTS posts');
-  }
-}
+  async down(db: D1Database): Promise<void> {
+    await db.prepare('DROP TABLE IF EXISTS posts').run();
+  },
+};
 ```
 
 ## How to run pending migrations
@@ -47,7 +45,7 @@ roost migrate
 The CLI prints each migration as it runs. Migrations are recorded in a `migrations` table so they only run once. To run against a remote (production) D1 database, use the `wrangler` CLI directly:
 
 ```sh terminal
-wrangler d1 execute my-app-db --remote --file=database/migrations/0001_create_posts_table.ts
+wrangler d1 migrations apply my-app-db --remote
 ```
 
 ## How to rollback migrations
@@ -102,25 +100,27 @@ org_id    INTEGER REFERENCES organizations(id) ON DELETE SET NULL
 Add indexes in the same migration or a separate one. Name indexes consistently: `idx_{table}_{column}`.
 
 ```ts
-async up(): Promise<void> {
-  // Composite index for common query patterns
-  await this.db.run(`
-    CREATE INDEX idx_posts_author_status ON posts (author_id, status)
-  `);
+export default {
+  async up(db: D1Database): Promise<void> {
+    // Composite index for common query patterns
+    await db.prepare(
+      'CREATE INDEX idx_posts_author_status ON posts (author_id, status)'
+    ).run();
 
-  // Unique index
-  await this.db.run(`
-    CREATE UNIQUE INDEX idx_posts_slug ON posts (slug)
-  `);
+    // Unique index
+    await db.prepare(
+      'CREATE UNIQUE INDEX idx_posts_slug ON posts (slug)'
+    ).run();
 
-  // Foreign key (already enforced by REFERENCES in column definition)
-  // SQLite requires PRAGMA foreign_keys = ON at connection time to enforce them
-}
+    // Foreign key constraints are declared inline with REFERENCES.
+    // SQLite requires PRAGMA foreign_keys = ON at connection time to enforce them.
+  },
 
-async down(): Promise<void> {
-  await this.db.run('DROP INDEX IF EXISTS idx_posts_author_status');
-  await this.db.run('DROP INDEX IF EXISTS idx_posts_slug');
-}
+  async down(db: D1Database): Promise<void> {
+    await db.prepare('DROP INDEX IF EXISTS idx_posts_author_status').run();
+    await db.prepare('DROP INDEX IF EXISTS idx_posts_slug').run();
+  },
+};
 ```
 
-Related: [ORM guides](/docs/guides/orm) for model definitions, [@roost/orm reference](/docs/reference/orm) for the full Migration API.
+Related: [ORM guides](/docs/guides/orm) for model definitions, [@roost/orm reference](/docs/reference/orm) for the full Model and QueryBuilder API.

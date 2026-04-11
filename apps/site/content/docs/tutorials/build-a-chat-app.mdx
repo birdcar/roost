@@ -51,32 +51,30 @@ No API keys are needed. Cloudflare Workers AI is available to any Workers accoun
 
 ## Step 2: Create a ChatMessage Model — Persist Conversation History
 
-Run the model generator to create a `ChatMessage` model and its migration file:
+Run the model generator to create a `ChatMessage` model file:
 
 ```terminal title="terminal"
 roost make:model ChatMessage
 ```
 
-This creates two files: `src/models/ChatMessage.ts` and a timestamped migration
-in `database/migrations/`. Open the migration and add the columns your chat app
-needs:
+This creates `src/models/chat-message.ts` with a stub. Open it and replace the
+placeholder columns with the schema your chat app needs:
 
-```ts title="database/migrations/XXXX_create_chat_messages_table.ts"
-import { Migration } from '@roost/orm';
+```ts title="src/models/chat-message.ts"
+import { Model } from '@roost/orm';
+import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
 
-export default class CreateChatMessagesTable extends Migration {
-  async up() {
-    await this.schema.createTable('chat_messages', (table) => {
-      table.id();
-      table.string('role');       // 'user' or 'assistant'
-      table.text('content');      // the message body
-      table.timestamps();         // created_at, updated_at
-    });
-  }
+export const chatMessages = sqliteTable('chat_messages', {
+  id:         integer('id').primaryKey({ autoIncrement: true }),
+  role:       text('role').notNull(),     // 'user' or 'assistant'
+  content:    text('content').notNull(),  // the message body
+  created_at: text('created_at'),
+  updated_at: text('updated_at'),
+});
 
-  async down() {
-    await this.schema.dropTable('chat_messages');
-  }
+export class ChatMessage extends Model {
+  static tableName = 'chat_messages';
+  static _table = chatMessages;
 }
 ```
 
@@ -86,8 +84,7 @@ Now run the migration to create the table in your local D1 database:
 roost migrate
 ```
 
-**You should see** output confirming the migration ran successfully, e.g.
-`Migrated: XXXX_create_chat_messages_table`. The
+**You should see** output from `drizzle-kit push` confirming the schema was applied. The
 `chat_messages` table now exists in your D1 database.
 
 ## Step 3: Create a ChatAssistant Agent — Define the AI's Behaviour
@@ -98,11 +95,11 @@ Run the agent generator, then open the generated file and give the agent its ins
 roost make:agent ChatAssistant
 ```
 
-```ts title="src/agents/ChatAssistant.ts"
+```ts title="src/agents/chat-assistant.ts"
 import { Agent, Model } from '@roost/ai';
 import type { HasTools } from '@roost/ai';
 import type { Tool } from '@roost/ai';
-import { SummarizeTool } from './tools/SummarizeTool';
+import { SummarizeTool } from './tools/summarize-tool';
 
 @Model('@cf/meta/llama-3.1-70b-instruct')
 export class ChatAssistant extends Agent implements HasTools {
@@ -143,10 +140,10 @@ about.
 roost make:tool SummarizeTool
 ```
 
-```ts title="src/agents/tools/SummarizeTool.ts"
+```ts title="src/agents/tools/summarize-tool.ts"
 import { type Tool, type ToolRequest } from '@roost/ai';
 import { schema } from '@roost/schema';
-import { ChatMessage } from '../../models/ChatMessage';
+import { ChatMessage } from '../../models/chat-message';
 
 export class SummarizeTool implements Tool {
   description(): string {
@@ -277,9 +274,9 @@ binding, and all other bindings. Create a server function that saves the user's 
 calls the agent, and saves the assistant's reply:
 
 ```ts title="src/server/chat.ts"
-import { createServerFn } from '@roost/start';
-import { ChatAssistant } from '../agents/ChatAssistant';
-import { ChatMessage } from '../models/ChatMessage';
+import { createServerFn } from '@tanstack/react-start';
+import { ChatAssistant } from '../agents/chat-assistant';
+import { ChatMessage } from '../models/chat-message';
 
 export const sendMessage = createServerFn({
   method: 'POST',
@@ -340,9 +337,9 @@ they arrive using `agent.stream()`. Update the server function to return a
 streaming response, then update the page to consume the event stream:
 
 ```ts title="src/server/chatStream.ts"
-import { createServerFn } from '@roost/start';
-import { ChatAssistant } from '../agents/ChatAssistant';
-import { ChatMessage } from '../models/ChatMessage';
+import { createServerFn } from '@tanstack/react-start';
+import { ChatAssistant } from '../agents/chat-assistant';
+import { ChatMessage } from '../models/chat-message';
 
 export const streamMessage = createServerFn({
   method: 'POST',
