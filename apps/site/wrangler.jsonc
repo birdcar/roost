@@ -3,5 +3,11 @@
   "name": "roost-site",
   "compatibility_date": "2026-04-10",
   "compatibility_flags": ["nodejs_compat"],
-  "main": "./src/worker.ts"
+  "main": "./src/worker.ts",
+  "routes": [
+    { "pattern": "roost.birdcar.dev", "custom_domain": true }
+  ],
+  "observability": {
+    "enabled": true
+  }
 }

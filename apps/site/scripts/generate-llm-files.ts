@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url'
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const CONTENT_DIR = join(__dirname, '../content/docs')
 const PUBLIC_DIR = join(__dirname, '../public')
-const SITE_URL = 'https://roost.dev'
+const SITE_URL = 'https://roost.birdcar.dev'
 
 const SECTIONS = ['tutorials', 'guides', 'reference', 'concepts'] as const
 type Section = (typeof SECTIONS)[number]
