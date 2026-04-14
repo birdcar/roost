@@ -165,6 +165,20 @@
         "typescript": "catalog:",
       },
     },
+    "packages/broadcast": {
+      "name": "@roost/broadcast",
+      "version": "0.1.0",
+      "dependencies": {
+        "@roost/cloudflare": "workspace:*",
+        "@roost/core": "workspace:*",
+        "@roost/events": "workspace:*",
+      },
+      "devDependencies": {
+        "@cloudflare/workers-types": "catalog:",
+        "bun-types": "catalog:",
+        "typescript": "catalog:",
+      },
+    },
     "packages/cli": {
       "name": "@roost/cli",
       "version": "0.1.0",
@@ -201,6 +215,41 @@
       },
       "peerDependencies": {
         "@cloudflare/workers-types": "^4.0.0",
+      },
+    },
+    "packages/events": {
+      "name": "@roost/events",
+      "version": "0.1.0",
+      "dependencies": {
+        "@roost/core": "workspace:*",
+      },
+      "devDependencies": {
+        "@cloudflare/workers-types": "catalog:",
+        "@roost/broadcast": "workspace:*",
+        "@roost/queue": "workspace:*",
+        "bun-types": "catalog:",
+        "typescript": "catalog:",
+      },
+      "peerDependencies": {
+        "@roost/broadcast": "workspace:*",
+        "@roost/queue": "workspace:*",
+      },
+      "optionalPeers": [
+        "@roost/broadcast",
+        "@roost/queue",
+      ],
+    },
+    "packages/feature-flags": {
+      "name": "@roost/feature-flags",
+      "version": "0.1.0",
+      "dependencies": {
+        "@roost/cloudflare": "workspace:*",
+        "@roost/core": "workspace:*",
+      },
+      "devDependencies": {
+        "@cloudflare/workers-types": "catalog:",
+        "bun-types": "catalog:",
+        "typescript": "catalog:",
       },
     },
     "packages/mcp": {
@@ -312,6 +361,21 @@
         "@roost/orm",
         "@roost/queue",
       ],
+    },
+    "packages/workflow": {
+      "name": "@roost/workflow",
+      "version": "0.1.0",
+      "dependencies": {
+        "@roost/core": "workspace:*",
+      },
+      "devDependencies": {
+        "@cloudflare/workers-types": "catalog:",
+        "bun-types": "catalog:",
+        "typescript": "catalog:",
+      },
+      "peerDependencies": {
+        "@cloudflare/workers-types": "*",
+      },
     },
   },
   "catalog": {
@@ -574,11 +638,17 @@
 
     "@roost/billing": ["@roost/billing@workspace:packages/billing"],
 
+    "@roost/broadcast": ["@roost/broadcast@workspace:packages/broadcast"],
+
     "@roost/cli": ["@roost/cli@workspace:packages/cli"],
 
     "@roost/cloudflare": ["@roost/cloudflare@workspace:packages/cloudflare"],
 
     "@roost/core": ["@roost/core@workspace:packages/core"],
+
+    "@roost/events": ["@roost/events@workspace:packages/events"],
+
+    "@roost/feature-flags": ["@roost/feature-flags@workspace:packages/feature-flags"],
 
     "@roost/mcp": ["@roost/mcp@workspace:packages/mcp"],
 
@@ -593,6 +663,8 @@
     "@roost/start": ["@roost/start@workspace:packages/start"],
 
     "@roost/testing": ["@roost/testing@workspace:packages/testing"],
+
+    "@roost/workflow": ["@roost/workflow@workspace:packages/workflow"],
 
     "@tanstack/history": ["@tanstack/history@1.161.6", "", {}, "sha512-NaOGLRrddszbQj9upGat6HG/4TKvXLvu+osAIgfxPYA+eIvYKv8GKDJOrY2D3/U9MRnKfMWD7bU4jeD4xmqyIg=="],
 
