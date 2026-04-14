@@ -3,14 +3,10 @@
   "name": "roost-site",
   "compatibility_date": "2026-04-10",
   "compatibility_flags": ["nodejs_compat"],
-  "main": "dist/server/server.js",
-  "no_bundle": true,
+  "main": "./src/worker.ts",
   "routes": [
     { "pattern": "roost.birdcar.dev", "custom_domain": true }
   ],
-  "assets": {
-    "directory": "dist/client"
-  },
   "observability": {
     "enabled": true
   }
