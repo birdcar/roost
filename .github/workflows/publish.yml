@@ -1,0 +1,48 @@
+name: Publish
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: 'Dry run (no actual publish)'
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  id-token: write  # Required for npm provenance
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          registry-url: 'https://registry.npmjs.org'
+      - run: bun install --frozen-lockfile
+      - run: bun run typecheck
+      - run: bun test
+      - name: Publish packages
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          DRY_RUN: ${{ inputs.dry-run }}
+          # Note: For full OIDC trusted publishing (no NPM_TOKEN needed),
+          # configure each package on npmjs.com under Settings > Publishing access
+          # to trust the GitHub repo + workflow. Then remove NODE_AUTH_TOKEN.
+        run: |
+          for pkg in packages/*/; do
+            if [ -f "$pkg/package.json" ]; then
+              echo "Publishing $(basename $pkg)..."
+              cd "$pkg"
+              if [ "$DRY_RUN" = "true" ]; then
+                npm publish --provenance --access public --dry-run
+              else
+                npm publish --provenance --access public
+              fi
+              cd ../..
+            fi
+          done
