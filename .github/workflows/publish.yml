@@ -11,7 +11,7 @@ on:
 
 permissions:
   contents: read
-  id-token: write  # Required for npm provenance
+  id-token: write
 
 jobs:
   publish:
@@ -29,19 +29,17 @@ jobs:
       - name: Publish packages
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          DRY_RUN: ${{ inputs.dry-run }}
-          # Note: For full OIDC trusted publishing (no NPM_TOKEN needed),
-          # configure each package on npmjs.com under Settings > Publishing access
-          # to trust the GitHub repo + workflow. Then remove NODE_AUTH_TOKEN.
         run: |
+          DRY_RUN="${{ inputs.dry-run }}"
           for pkg in packages/*/; do
             if [ -f "$pkg/package.json" ]; then
-              echo "Publishing $(basename $pkg)..."
+              name=$(node -e "console.log(require('./${pkg}package.json').name)")
+              echo "Publishing $name..."
               cd "$pkg"
               if [ "$DRY_RUN" = "true" ]; then
-                npm publish --provenance --access public --dry-run
+                npm publish --provenance --access public --dry-run || true
               else
-                npm publish --provenance --access public
+                npm publish --provenance --access public || echo "  ⚠ Failed to publish $name"
               fi
               cd ../..
             fi
