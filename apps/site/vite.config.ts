@@ -1,4 +1,5 @@
 import { defineConfig } from 'vite';
+import { cloudflare } from '@cloudflare/vite-plugin';
 import { tanstackStart } from '@tanstack/react-start/plugin/vite';
 import mdx from '@mdx-js/rollup';
 import remarkGfm from 'remark-gfm';
@@ -18,6 +19,7 @@ export default defineConfig({
       }),
     },
     tanstackStart(),
+    cloudflare(),
     react({ include: /\.(jsx|js|mdx|md|tsx|ts)$/ }),
     viteTsConfigPaths(),
   ],
