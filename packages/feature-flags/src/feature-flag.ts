@@ -1,9 +1,10 @@
-import type { FlagValue, FlagStore } from './types.js';
+import type { FlagValue, FlagStore, FlagContext, FlagProvider } from './types.js';
 import { FlagStoreNotConfiguredError, FlagNotFoundError } from './errors.js';
 import { FeatureFlagFake } from './fake.js';
 import { getRequestCache } from './cache.js';
 
 let store: FlagStore | null = null;
+let provider: FlagProvider | null = null;
 let activeFake: FeatureFlagFake | null = null;
 
 function isTruthy(value: FlagValue | null): boolean {
@@ -14,9 +15,95 @@ function isTruthy(value: FlagValue | null): boolean {
   return false;
 }
 
+async function resolveValue(flag: string, context?: FlagContext): Promise<FlagValue | null> {
+  if (provider) {
+    return provider.evaluate(flag, context);
+  }
+  if (store) {
+    return store.get<FlagValue>(flag);
+  }
+  throw new FlagStoreNotConfiguredError();
+}
+
+export class ScopedFeatureFlag {
+  constructor(private context: FlagContext) {}
+
+  async active(flag: string): Promise<boolean> {
+    if (activeFake) {
+      return isTruthy(await activeFake.get(flag));
+    }
+    try {
+      const value = await resolveValue(flag, this.context);
+      return isTruthy(value);
+    } catch {
+      return false;
+    }
+  }
+
+  async value<T extends FlagValue>(flag: string, defaultValue?: T): Promise<T | null> {
+    if (activeFake) {
+      const fakeValue = await activeFake.get<T>(flag);
+      return fakeValue ?? (defaultValue ?? null);
+    }
+    const raw = await resolveValue(flag, this.context);
+    if (raw === null) {
+      if (defaultValue !== undefined) return defaultValue;
+      throw new FlagNotFoundError(flag);
+    }
+    return raw as T;
+  }
+}
+
 export class FeatureFlag {
+  /**
+   * Configure a legacy FlagStore (KV-only). Clears any active provider.
+   */
   static configure(flagStore: FlagStore): void {
     store = flagStore;
+    provider = null;
+  }
+
+  /**
+   * Configure a FlagProvider (WorkOS, KVCache, etc). Clears legacy store.
+   */
+  static configureProvider(flagProvider: FlagProvider): void {
+    provider = flagProvider;
+    store = null;
+  }
+
+  /**
+   * Configure both a FlagProvider for reads and a FlagStore for writes.
+   * Used when WorkOS handles evaluation but KV handles FeatureFlag.set().
+   */
+  static configureProviderWithStore(flagProvider: FlagProvider, flagStore: FlagStore): void {
+    provider = flagProvider;
+    store = flagStore;
+  }
+
+  static for(context: FlagContext): ScopedFeatureFlag {
+    return new ScopedFeatureFlag(context);
+  }
+
+  static async active(flag: string, request?: Request): Promise<boolean> {
+    return FeatureFlag.isEnabled(flag, request);
+  }
+
+  static async value<T extends FlagValue>(flag: string, defaultValue?: T): Promise<T | null> {
+    if (activeFake) {
+      const fakeValue = await activeFake.get<T>(flag);
+      return fakeValue ?? (defaultValue ?? null);
+    }
+
+    if (!store && !provider) {
+      throw new FlagStoreNotConfiguredError();
+    }
+
+    const raw = await resolveValue(flag);
+    if (raw === null) {
+      if (defaultValue !== undefined) return defaultValue;
+      throw new FlagNotFoundError(flag);
+    }
+    return raw as T;
   }
 
   static async isEnabled(flag: string, request?: Request): Promise<boolean> {
@@ -32,12 +119,12 @@ export class FeatureFlag {
       return isTruthy(value);
     }
 
-    if (!store) {
+    if (!store && !provider) {
       throw new FlagStoreNotConfiguredError();
     }
 
     try {
-      const value = await store.get<FlagValue>(flag);
+      const value = await resolveValue(flag);
 
       if (request) {
         const cache = getRequestCache(request);
@@ -64,11 +151,11 @@ export class FeatureFlag {
       return activeFake.get<T>(flag);
     }
 
-    if (!store) {
+    if (!store && !provider) {
       throw new FlagStoreNotConfiguredError();
     }
 
-    const value = await store.get<T>(flag);
+    const value = (await resolveValue(flag)) as T | null;
     if (value === null) {
       throw new FlagNotFoundError(flag);
     }
@@ -89,11 +176,19 @@ export class FeatureFlag {
       return;
     }
 
-    if (!store) {
-      throw new FlagStoreNotConfiguredError();
+    if (store) {
+      await store.set(flag, value);
+      return;
     }
 
-    await store.set(flag, value);
+    if (provider) {
+      throw new Error(
+        'FeatureFlag.set() requires a writable store. The active provider is read-only. ' +
+        'Use configureProviderWithStore() to enable writes, or switch to KVFlagProvider.'
+      );
+    }
+
+    throw new FlagStoreNotConfiguredError();
   }
 
   static fake(flags: Record<string, FlagValue>): void {
@@ -103,6 +198,7 @@ export class FeatureFlag {
   static restore(): void {
     activeFake = null;
     store = null;
+    provider = null;
   }
 
   static assertChecked(flag: string): void {
@@ -114,3 +210,5 @@ export class FeatureFlag {
     }
   }
 }
+
+export { FeatureFlag as Feature };
