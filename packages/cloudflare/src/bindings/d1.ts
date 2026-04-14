@@ -29,6 +29,11 @@ export class D1Database {
   async dump(): Promise<ArrayBuffer> {
     return this.db.dump();
   }
+
+  withSession(token?: string): D1Database {
+    const sessionDb = (this.db as any).withSession(token) as RawD1;
+    return new D1Database(sessionDb);
+  }
 }
 
 type RawD1 = globalThis.D1Database;

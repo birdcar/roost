@@ -3,6 +3,7 @@ import type { DrizzleD1Database } from 'drizzle-orm/d1';
 import type { SQLiteTableWithColumns } from 'drizzle-orm/sqlite-core';
 import { OrmNotBootedError, ModelNotFoundError } from './errors.js';
 import { fireHook, registerHook } from './hooks.js';
+import type { TenantContext } from './tenant-context.js';
 import type { PaginationResult, ModelAttributes, HookName, HookFn } from './types.js';
 
 export abstract class Model {
@@ -10,6 +11,8 @@ export abstract class Model {
   static primaryKey = 'id';
   static timestamps = true;
   static softDeletes = false;
+  static tenantColumn: string | null = null;
+  static _tenantContext: TenantContext | null = null;
 
   static _table: SQLiteTableWithColumns<any> | null = null;
   static _db: DrizzleD1Database<any> | null = null;
@@ -32,8 +35,18 @@ export abstract class Model {
     return { db: this._db, table: this._table };
   }
 
+  static async withoutTenantScope<T>(fn: () => Promise<T>): Promise<T> {
+    const ctx = this._tenantContext;
+    if (ctx) ctx.bypass();
+    try {
+      return await fn();
+    } finally {
+      if (ctx) ctx.restore();
+    }
+  }
+
   static where<T extends typeof Model>(this: T, column: string, valueOrOp: unknown, maybeValue?: unknown): QueryBuilder<T> {
-    const qb = new QueryBuilder(this);
+    const qb = new QueryBuilder(this, (this as any)._tenantContext ?? null);
     if (maybeValue !== undefined) {
       return qb.where(column, valueOrOp as string, maybeValue);
     }
@@ -41,12 +54,17 @@ export abstract class Model {
   }
 
   static whereIn<T extends typeof Model>(this: T, column: string, values: unknown[]): QueryBuilder<T> {
-    return new QueryBuilder(this).whereIn(column, values);
+    return new QueryBuilder(this, (this as any)._tenantContext ?? null).whereIn(column, values);
   }
 
   static async find<T extends typeof Model>(this: T, id: unknown): Promise<InstanceType<T> | null> {
     const { db, table } = this.ensureBooted();
-    const rows = await db.select().from(table).where(eq(table[this.primaryKey], id)).limit(1);
+    const tenantCondition = resolveTenantCondition(this);
+    const primaryCondition = eq(table[this.primaryKey], id);
+    const whereClause = tenantCondition
+      ? and(buildSingleCondition(table, tenantCondition), primaryCondition)
+      : primaryCondition;
+    const rows = await db.select().from(table).where(whereClause).limit(1);
     if (rows.length === 0) return null;
     return new (this as any)(rows[0]) as InstanceType<T>;
   }
@@ -59,12 +77,24 @@ export abstract class Model {
 
   static async all<T extends typeof Model>(this: T): Promise<InstanceType<T>[]> {
     const { db, table } = this.ensureBooted();
-    const rows = await db.select().from(table);
-    return rows.map((r) => new (this as any)(r) as InstanceType<T>);
+    const tenantCondition = resolveTenantCondition(this);
+    let query = db.select().from(table) as any;
+    if (tenantCondition) {
+      query = query.where(buildSingleCondition(table, tenantCondition));
+    }
+    const rows = await query;
+    return rows.map((r: any) => new (this as any)(r) as InstanceType<T>);
   }
 
   static async create<T extends typeof Model>(this: T, attrs: ModelAttributes): Promise<InstanceType<T>> {
     const { db, table } = this.ensureBooted();
+
+    // Enforce tenant column — context value always wins over caller-supplied value
+    const tenantCondition = resolveTenantCondition(this);
+    if (tenantCondition) {
+      attrs = { ...attrs, [tenantCondition.column]: tenantCondition.value };
+    }
+
     const instance = new (this as any)(attrs) as InstanceType<T>;
 
     const shouldContinue = await fireHook(this, 'creating', instance);
@@ -96,7 +126,13 @@ export abstract class Model {
         this.attributes.updated_at = new Date().toISOString();
       }
 
-      await db.update(table).set(this.attributes).where(eq(table[ctor.primaryKey], id));
+      const tenantCondition = resolveTenantCondition(ctor);
+      const primaryCondition = eq(table[ctor.primaryKey], id);
+      const whereClause = tenantCondition
+        ? and(buildSingleCondition(table, tenantCondition), primaryCondition)
+        : primaryCondition;
+
+      await db.update(table).set(this.attributes).where(whereClause);
       await fireHook(ctor, 'updated', this);
     }
     return this;
@@ -110,10 +146,16 @@ export abstract class Model {
     const shouldContinue = await fireHook(ctor, 'deleting', this);
     if (!shouldContinue) throw new Error(`Deleting ${ctor.name} aborted by hook`);
 
+    const tenantCondition = resolveTenantCondition(ctor);
+    const primaryCondition = eq(table[ctor.primaryKey], id);
+    const whereClause = tenantCondition
+      ? and(buildSingleCondition(table, tenantCondition), primaryCondition)
+      : primaryCondition;
+
     if (ctor.softDeletes) {
-      await db.update(table).set({ deleted_at: new Date().toISOString() }).where(eq(table[ctor.primaryKey], id));
+      await db.update(table).set({ deleted_at: new Date().toISOString() }).where(whereClause);
     } else {
-      await db.delete(table).where(eq(table[ctor.primaryKey], id));
+      await db.delete(table).where(whereClause);
     }
 
     await fireHook(ctor, 'deleted', this);
@@ -124,6 +166,21 @@ export abstract class Model {
   }
 }
 
+type TenantCondition = { type: 'and'; column: string; op: '='; value: unknown };
+
+function resolveTenantCondition(modelClass: typeof Model): TenantCondition | null {
+  const col = (modelClass as any).tenantColumn as string | null;
+  const ctx = (modelClass as any)._tenantContext as TenantContext | null;
+  if (!col || !ctx || ctx.isBypassed()) return null;
+  const data = ctx.get();
+  if (!data) return null;
+  return { type: 'and', column: col, op: '=', value: data.orgId };
+}
+
+function buildSingleCondition(table: any, condition: TenantCondition): any {
+  return eq(table[condition.column], condition.value);
+}
+
 export class QueryBuilder<TModel extends typeof Model> {
   private wheres: Array<{ type: 'and' | 'or'; column: string; op: string; value: unknown }> = [];
   private orders: Array<{ column: string; direction: 'asc' | 'desc' }> = [];
@@ -131,7 +188,10 @@ export class QueryBuilder<TModel extends typeof Model> {
   private offsetValue: number | null = null;
   private eagerLoad: string[] = [];
 
-  constructor(private modelClass: TModel) {}
+  constructor(
+    private modelClass: TModel,
+    private tenantContext: TenantContext | null = null,
+  ) {}
 
   where(column: string, value: unknown): this;
   where(column: string, op: string, value: unknown): this;
@@ -202,9 +262,10 @@ export class QueryBuilder<TModel extends typeof Model> {
 
   async count(): Promise<number> {
     const { db, table } = this.getDbAndTable();
+    const allConditions = this.buildAllConditions();
     let query = db.select({ count: sql<number>`count(*)` }).from(table);
-    if (this.wheres.length > 0) {
-      query = query.where(this.buildWhereClause(table)) as any;
+    if (allConditions.length > 0) {
+      query = query.where(this.buildWhereClause(table, allConditions)) as any;
     }
     const rows = await query;
     return (rows[0] as any)?.count ?? 0;
@@ -225,13 +286,31 @@ export class QueryBuilder<TModel extends typeof Model> {
     };
   }
 
+  private resolveTenantCondition(): { type: 'and'; column: string; op: '='; value: unknown } | null {
+    const col = (this.modelClass as any).tenantColumn as string | null;
+    const ctx = this.tenantContext;
+    if (!col || !ctx || ctx.isBypassed()) return null;
+    const data = ctx.get();
+    if (!data) return null;
+    return { type: 'and', column: col, op: '=', value: data.orgId };
+  }
+
+  private buildAllConditions(): Array<{ type: 'and' | 'or'; column: string; op: string; value: unknown }> {
+    const tenantCondition = this.resolveTenantCondition();
+    if (tenantCondition) {
+      return [tenantCondition, ...this.wheres];
+    }
+    return this.wheres;
+  }
+
   private async execute(): Promise<InstanceType<TModel>[]> {
     const { db, table } = this.getDbAndTable();
+    const allConditions = this.buildAllConditions();
 
     let query = db.select().from(table) as any;
 
-    if (this.wheres.length > 0) {
-      query = query.where(this.buildWhereClause(table));
+    if (allConditions.length > 0) {
+      query = query.where(this.buildWhereClause(table, allConditions));
     }
 
     for (const order of this.orders) {
@@ -253,8 +332,8 @@ export class QueryBuilder<TModel extends typeof Model> {
     return { db, table };
   }
 
-  private buildWhereClause(table: any): any {
-    const conditions = this.wheres.map((w) => {
+  private buildWhereClause(table: any, conditions: Array<{ type: 'and' | 'or'; column: string; op: string; value: unknown }>): any {
+    const built = conditions.map((w) => {
       const col = table[w.column];
       switch (w.op) {
         case '=': return eq(col, w.value);
@@ -271,10 +350,10 @@ export class QueryBuilder<TModel extends typeof Model> {
       }
     });
 
-    if (conditions.length === 1) return conditions[0];
+    if (built.length === 1) return built[0];
 
-    const hasOr = this.wheres.some((w) => w.type === 'or');
-    if (hasOr) return or(...conditions);
-    return and(...conditions);
+    const hasOr = conditions.some((w) => w.type === 'or');
+    if (hasOr) return or(...built);
+    return and(...built);
   }
 }

@@ -21,3 +21,20 @@ export class InvalidRelationError extends Error {
     this.name = 'InvalidRelationError';
   }
 }
+
+export class TenantNotResolvedError extends Error {
+  constructor(slug: string) {
+    super(`Tenant "${slug}" could not be resolved to an organization.`);
+    this.name = 'TenantNotResolvedError';
+  }
+}
+
+export class TenantBindingNotFoundError extends Error {
+  constructor(bindingName: string) {
+    super(
+      `No D1 binding found for "${bindingName}". ` +
+      'Add it to wrangler.jsonc [[d1_databases]] or fall back to shared DB.'
+    );
+    this.name = 'TenantBindingNotFoundError';
+  }
+}
