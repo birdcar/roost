@@ -1,4 +1,4 @@
-import type { Application } from '@roost/core';
+import type { Application } from '@roostjs/core';
 import type { RoostServerContext } from './types.js';
 
 let cachedApp: Application | null = null;

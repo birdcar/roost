@@ -27,7 +27,7 @@ After this phase, Roost has a public documentation site with getting-started gui
 - **FR-11.1**: Built as a Roost app, deployed to Cloudflare Workers
 - **FR-11.2**: MDX-based content — documentation written in Markdown with JSX components
 - **FR-11.3**: Getting Started guide: install CLI, scaffold project, add auth, add a model, deploy
-- **FR-11.4**: Package API docs: @roost/core, @roost/auth, @roost/orm, @roost/ai, @roost/mcp, @roost/billing, @roost/queue, @roost/cloudflare, @roost/testing, @roost/cli
+- **FR-11.4**: Package API docs: @roostjs/core, @roostjs/auth, @roostjs/orm, @roostjs/ai, @roostjs/mcp, @roostjs/billing, @roostjs/queue, @roostjs/cloudflare, @roostjs/testing, @roostjs/cli
 - **FR-11.5**: Example walkthroughs: step-by-step for each example app (todo, AI chat, SaaS starter)
 - **FR-11.6**: Search functionality (KV-indexed or client-side)
 - **FR-11.7**: Version selector (for future versions)

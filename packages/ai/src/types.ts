@@ -1,4 +1,4 @@
-import type { JsonSchemaOutput } from '@roost/schema';
+import type { JsonSchemaOutput } from '@roostjs/schema';
 
 export interface AgentConfig {
   provider?: string;

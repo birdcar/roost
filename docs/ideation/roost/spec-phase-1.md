@@ -29,7 +29,7 @@ Decorators use TC39 Stage 3 decorators (TypeScript 5.x experimentalDecorators of
 | `package.json` | Root workspace config |
 | `bunfig.toml` | Bun workspace config |
 | `tsconfig.base.json` | Shared TypeScript strict config |
-| `packages/core/package.json` | @roost/core package manifest |
+| `packages/core/package.json` | @roostjs/core package manifest |
 | `packages/core/tsconfig.json` | Extends base TS config |
 | `packages/core/src/index.ts` | Public API barrel export |
 | `packages/core/src/container.ts` | Service container |
@@ -43,7 +43,7 @@ Decorators use TC39 Stage 3 decorators (TypeScript 5.x experimentalDecorators of
 | `packages/core/__tests__/config.test.ts` | Config tests |
 | `packages/core/__tests__/middleware.test.ts` | Middleware tests |
 | `packages/core/__tests__/application.test.ts` | Application tests |
-| `packages/cloudflare/package.json` | @roost/cloudflare package manifest |
+| `packages/cloudflare/package.json` | @roostjs/cloudflare package manifest |
 | `packages/cloudflare/tsconfig.json` | Extends base TS config |
 | `packages/cloudflare/src/index.ts` | Public API barrel export |
 | `packages/cloudflare/src/types.ts` | Wrangler Env type augmentation |
@@ -76,12 +76,12 @@ roost/
 ├── bunfig.toml               # bun workspace config
 ├── tsconfig.base.json        # shared strict TS config
 ├── packages/
-│   ├── core/                 # @roost/core
+│   ├── core/                 # @roostjs/core
 │   │   ├── package.json
 │   │   ├── tsconfig.json
 │   │   ├── src/
 │   │   └── __tests__/
-│   └── cloudflare/           # @roost/cloudflare
+│   └── cloudflare/           # @roostjs/cloudflare
 │       ├── package.json
 │       ├── tsconfig.json
 │       ├── src/
@@ -140,7 +140,7 @@ roost/
 
 ---
 
-### 2. Service Container (@roost/core)
+### 2. Service Container (@roostjs/core)
 
 **Overview**: A lightweight IoC container supporting singleton and transient bindings, constructor injection, and request-scoped containers. Designed to feel like Laravel's container but without the PHP magic — everything is typed.
 
@@ -183,7 +183,7 @@ const userService = container.resolve(UserService);
 
 ---
 
-### 3. Service Provider Pattern (@roost/core)
+### 3. Service Provider Pattern (@roostjs/core)
 
 **Overview**: Service providers are the bridge between packages and the container. Each Roost package ships a provider that registers its services. The Application boots all providers on startup.
 
@@ -223,7 +223,7 @@ class CloudflareServiceProvider extends ServiceProvider {
 
 ---
 
-### 4. Configuration System (@roost/core)
+### 4. Configuration System (@roostjs/core)
 
 **Overview**: Typed config access with convention-based loading. Config files live in `config/` and export objects. The config manager merges defaults with environment overrides.
 
@@ -266,7 +266,7 @@ const binding = config.get<string>('database.connections.d1.binding');
 
 ---
 
-### 5. Middleware Pipeline (@roost/core)
+### 5. Middleware Pipeline (@roostjs/core)
 
 **Overview**: A composable pipeline where middleware classes process requests in order, with before/after hooks. Modeled after Laravel's middleware but typed for Workers' `Request`/`Response`.
 
@@ -316,7 +316,7 @@ class LogMiddleware implements Middleware {
 
 ---
 
-### 6. Base Application Class (@roost/core)
+### 6. Base Application Class (@roostjs/core)
 
 **Overview**: The Application class is the entry point. It boots the container, loads config, registers providers, and handles incoming Worker `fetch` requests through the middleware pipeline.
 
@@ -380,7 +380,7 @@ export default {
 
 ---
 
-### 7. Cloudflare Bindings (@roost/cloudflare)
+### 7. Cloudflare Bindings (@roostjs/cloudflare)
 
 **Overview**: Typed wrappers around each Cloudflare Worker binding. Each wrapper adds: type safety, JSON serialization, error normalization, and a consistent API pattern. The wrappers are thin — they don't add significant logic, just ergonomics.
 
@@ -482,7 +482,7 @@ class HyperdriveClient {
 - Wrappers are thin. They don't hide the underlying Cloudflare APIs — they add type safety and convenience methods (like `putJson` for KV).
 - Each wrapper takes the raw Wrangler binding in its constructor. The CloudflareServiceProvider resolves them from `env`.
 - R2 `createPresignedUrl` is a convenience that may require Workers-specific signing logic.
-- The AI binding is intentionally minimal here — @roost/ai (Phase 5) builds the agent abstraction on top.
+- The AI binding is intentionally minimal here — @roostjs/ai (Phase 5) builds the agent abstraction on top.
 
 **Implementation steps**:
 1. Define Wrangler Env type augmentation in `types.ts`
@@ -545,13 +545,13 @@ No database schema in Phase 1. D1 is wrapped as a binding but ORM is Phase 4.
 
 ```bash
 # Type checking
-bun run --filter '@roost/*' tsc --noEmit
+bun run --filter '@roostjs/*' tsc --noEmit
 
 # Unit tests
 bun test
 
 # Build all packages
-bun run --filter '@roost/*' build
+bun run --filter '@roostjs/*' build
 
 # Verify workspace integrity
 bun install --dry-run

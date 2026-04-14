@@ -1,5 +1,5 @@
 import { createMiddleware } from '@tanstack/react-start';
-import type { Application } from '@roost/core';
+import type { Application } from '@roostjs/core';
 import type { RoostServerContext } from './types.js';
 import { bootApp, createRoostContext } from './context.js';
 
@@ -13,8 +13,8 @@ import { bootApp, createRoostContext } from './context.js';
  *
  * @example
  * ```typescript
- * import { createRoostMiddleware } from '@roost/start';
- * import { CloudflareServiceProvider } from '@roost/cloudflare';
+ * import { createRoostMiddleware } from '@roostjs/start';
+ * import { CloudflareServiceProvider } from '@roostjs/cloudflare';
  *
  * export const roostMiddleware = createRoostMiddleware(() => {
  *   const app = new Application({});

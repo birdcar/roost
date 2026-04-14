@@ -1,5 +1,5 @@
-import { ServiceProvider } from '@roost/core';
-import { DurableObjectClient } from '@roost/cloudflare';
+import { ServiceProvider } from '@roostjs/core';
+import { DurableObjectClient } from '@roostjs/cloudflare';
 import { BroadcastManager } from './manager.js';
 
 export class BroadcastServiceProvider extends ServiceProvider {

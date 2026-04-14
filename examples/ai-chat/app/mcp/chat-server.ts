@@ -1,5 +1,5 @@
-import { McpServer, McpResource, McpPrompt, McpResponse } from '@roost/mcp';
-import type { McpRequest } from '@roost/mcp';
+import { McpServer, McpResource, McpPrompt, McpResponse } from '@roostjs/mcp';
+import type { McpRequest } from '@roostjs/mcp';
 
 class ConversationListResource extends McpResource {
   description() { return 'Lists all conversations for the authenticated user.'; }

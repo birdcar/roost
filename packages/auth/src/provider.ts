@@ -1,5 +1,5 @@
-import { ServiceProvider } from '@roost/core';
-import { KVStore } from '@roost/cloudflare';
+import { ServiceProvider } from '@roostjs/core';
+import { KVStore } from '@roostjs/cloudflare';
 import { RoostWorkOSClient, WorkOSClientToken } from './workos-client.js';
 import { KVSessionStore } from './session/store.js';
 import { SessionManager } from './session/manager.js';

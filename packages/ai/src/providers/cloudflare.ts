@@ -1,4 +1,4 @@
-import type { AIClient } from '@roost/cloudflare';
+import type { AIClient } from '@roostjs/cloudflare';
 import type { AIProvider } from './interface.js';
 import type { ProviderRequest, ProviderResponse } from '../types.js';
 

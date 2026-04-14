@@ -1,4 +1,4 @@
-import { ServiceProvider } from '@roost/core';
+import { ServiceProvider } from '@roostjs/core';
 import { BillingProviderToken } from './provider-interface.js';
 import { StripeProvider } from './stripe/provider.js';
 import { Billing } from './fake.js';

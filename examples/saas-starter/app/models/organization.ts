@@ -1,4 +1,4 @@
-import { Model } from '@roost/orm';
+import { Model } from '@roostjs/orm';
 import { text } from 'drizzle-orm/sqlite-core';
 
 export class Organization extends Model {

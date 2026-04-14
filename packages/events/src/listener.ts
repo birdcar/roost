@@ -5,7 +5,7 @@ export interface Listener<T = unknown> {
 /**
  * Marker interface: apply to a Listener class to have it dispatched as a Job
  * instead of called synchronously. Classes implementing ShouldQueue must also
- * extend Job<TEvent> from @roost/queue.
+ * extend Job<TEvent> from @roostjs/queue.
  */
 export interface ShouldQueue {
   readonly shouldQueue: true;

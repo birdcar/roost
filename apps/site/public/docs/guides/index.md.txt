@@ -14,25 +14,25 @@ Guides that span multiple packages or apply to the full application lifecycle.
 
 Guides for the foundational packages every Roost app uses.
 
-- [@roost/core — service providers, DI bindings, middleware, config](/docs/guides/core.md)
-- [@roost/cloudflare — D1, R2, KV, Queues, Workers AI, Vectorize](/docs/guides/cloudflare.md)
-- [@roost/start — routes, server functions, SSR](/docs/guides/start.md)
+- [@roostjs/core — service providers, DI bindings, middleware, config](/docs/guides/core.md)
+- [@roostjs/cloudflare — D1, R2, KV, Queues, Workers AI, Vectorize](/docs/guides/cloudflare.md)
+- [@roostjs/start — routes, server functions, SSR](/docs/guides/start.md)
 
 ## Features
 
 Guides for feature packages you add as your application grows.
 
-- [@roost/auth — authentication, roles, multi-tenancy, sessions, CSRF](/docs/guides/auth.md)
-- [@roost/orm — models, migrations, queries, relationships, factories](/docs/guides/orm.md)
-- [@roost/ai — agents, tools, streaming, conversation memory](/docs/guides/ai.md)
-- [@roost/mcp — MCP servers, tools, resources, prompts](/docs/guides/mcp.md)
-- [@roost/billing — Stripe, subscriptions, webhooks, metered billing](/docs/guides/billing.md)
-- [@roost/queue — jobs, dispatch, chains, batches, retries](/docs/guides/queue.md)
+- [@roostjs/auth — authentication, roles, multi-tenancy, sessions, CSRF](/docs/guides/auth.md)
+- [@roostjs/orm — models, migrations, queries, relationships, factories](/docs/guides/orm.md)
+- [@roostjs/ai — agents, tools, streaming, conversation memory](/docs/guides/ai.md)
+- [@roostjs/mcp — MCP servers, tools, resources, prompts](/docs/guides/mcp.md)
+- [@roostjs/billing — Stripe, subscriptions, webhooks, metered billing](/docs/guides/billing.md)
+- [@roostjs/queue — jobs, dispatch, chains, batches, retries](/docs/guides/queue.md)
 
 ## Tooling
 
 Guides for the development and testing tools.
 
-- [@roost/cli — scaffold, generate, migrate, deploy](/docs/guides/cli.md)
-- [@roost/testing — HTTP tests, assertions, fakes, database isolation](/docs/guides/testing.md)
-- [@roost/schema — tool input schemas, optional fields, descriptions](/docs/guides/schema.md)
+- [@roostjs/cli — scaffold, generate, migrate, deploy](/docs/guides/cli.md)
+- [@roostjs/testing — HTTP tests, assertions, fakes, database isolation](/docs/guides/testing.md)
+- [@roostjs/schema — tool input schemas, optional fields, descriptions](/docs/guides/schema.md)

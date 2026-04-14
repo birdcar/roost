@@ -23,7 +23,7 @@ response will not — it only cares about the outcome.
 
 ## TestClient: Testing HTTP Without a Server
 
-The `TestClient` from `@roost/testing` takes a Roost
+The `TestClient` from `@roostjs/testing` takes a Roost
 `Application` instance and calls `app.handle(request)` directly.
 No port binding, no network, no spawned process. The test constructs a real
 `Request` object, passes it to the application, and receives a real
@@ -62,7 +62,7 @@ rather than hiding it behind another fake.
 
 ## Further Reading
 
-- [@roost/testing concepts — the package-specific testing model](/docs/concepts/testing.md)
-- [@roost/testing reference — TestClient, fakes, and setup](/docs/packages/testing.md)
-- [@roost/ai reference — Agent.fake() and assertion methods](/docs/packages/ai.md)
-- [@roost/queue reference — Job.fake() and assertion methods](/docs/packages/queue.md)
+- [@roostjs/testing concepts — the package-specific testing model](/docs/concepts/testing.md)
+- [@roostjs/testing reference — TestClient, fakes, and setup](/docs/packages/testing.md)
+- [@roostjs/ai reference — Agent.fake() and assertion methods](/docs/packages/ai.md)
+- [@roostjs/queue reference — Job.fake() and assertion methods](/docs/packages/queue.md)

@@ -37,7 +37,7 @@ roost db:seed
 
 ### 6. Write Tests
 ```typescript
-import { describeRoost } from '@roost/testing';
+import { describeRoost } from '@roostjs/testing';
 
 describeRoost('{Feature}', ({ client, factory }) => {
   test('{scenario}', async () => {
@@ -94,7 +94,7 @@ Each app follows this convention:
 All three apps must:
 - [ ] Be scaffolded with `roost new` (no manual project creation)
 - [ ] Compile with zero TypeScript errors
-- [ ] Have a passing test suite using @roost/testing
+- [ ] Have a passing test suite using @roostjs/testing
 - [ ] Run locally with `bun run dev`
 - [ ] Deploy to Cloudflare Workers successfully
 - [ ] Use only Roost framework abstractions (no escape hatches to raw Wrangler APIs)

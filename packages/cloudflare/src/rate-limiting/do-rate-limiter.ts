@@ -1,4 +1,4 @@
-import type { Middleware } from '@roost/core';
+import type { Middleware } from '@roostjs/core';
 import type { RateLimiterConfig } from './types.js';
 import type { DurableObjectClient } from '../bindings/durable-objects.js';
 import { getActiveRateLimiterFake } from './fake.js';

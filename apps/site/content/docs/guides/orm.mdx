@@ -1,5 +1,5 @@
 ---
-title: "@roost/orm Guides"
+title: "@roostjs/orm Guides"
 description: Task-oriented instructions for models, querying, relationships, factories, and testing.
 ---
 
@@ -8,7 +8,7 @@ description: Task-oriented instructions for models, querying, relationships, fac
 Extend `Model`, set `tableName`, and configure optional flags for timestamps and soft deletes.
 
 ```ts src/models/Post.ts
-import { Model } from '@roost/orm';
+import { Model } from '@roostjs/orm';
 
 export class Post extends Model {
   static tableName = 'posts';
@@ -67,7 +67,7 @@ the relation to fetch related records for a single model, or `loadMany(instances
 for a collection.
 
 ```ts src/models/User.ts
-import { Model, HasManyRelation, HasOneRelation } from '@roost/orm';
+import { Model, HasManyRelation, HasOneRelation } from '@roostjs/orm';
 import { Post } from './Post';
 import { Profile } from './Profile';
 
@@ -83,7 +83,7 @@ export class User extends Model {
 ```
 
 ```ts src/models/Post.ts
-import { Model, BelongsToRelation } from '@roost/orm';
+import { Model, BelongsToRelation } from '@roostjs/orm';
 import { User } from './User';
 
 export class Post extends Model {
@@ -106,7 +106,7 @@ const posts = await User.posts.load(user); // Post[]
 Register hooks via `Model.on(event, callback)`. Return `false` from a `creating` or `updating` hook to abort the operation.
 
 ```ts src/models/Post.ts
-import { Model } from '@roost/orm';
+import { Model } from '@roostjs/orm';
 
 export class Post extends Model {
   static tableName = 'posts';
@@ -141,7 +141,7 @@ Extend `Factory`, implement the `definition()` method, and use `.count()` / `.st
 customise what gets created.
 
 ```ts database/factories/PostFactory.ts
-import { Factory } from '@roost/orm';
+import { Factory } from '@roostjs/orm';
 import { Post } from '../../src/models/Post';
 
 export class PostFactory extends Factory<typeof Post> {
@@ -213,7 +213,7 @@ CREATE INDEX idx_posts_org_id ON posts (org_id);
 ### 2. Set `tenantColumn` on the model
 
 ```ts title="src/models/Post.ts"
-import { Model } from '@roost/orm';
+import { Model } from '@roostjs/orm';
 
 export class Post extends Model {
   static tableName = 'posts';
@@ -226,9 +226,9 @@ export class Post extends Model {
 `TenantScopeMiddleware` reads the org from the request, looks up its ID, and sets it on the shared `TenantContext`. All subsequent model queries in the same request are automatically scoped to that org.
 
 ```ts title="src/middleware/TenantMiddleware.ts"
-import { TenantScopeMiddleware } from '@roost/orm';
-import { OrgResolver } from '@roost/auth';
-import { TenantContext } from '@roost/orm';
+import { TenantScopeMiddleware } from '@roostjs/orm';
+import { OrgResolver } from '@roostjs/auth';
+import { TenantContext } from '@roostjs/orm';
 import { Organization } from '../models/Organization';
 
 const resolver = new OrgResolver(['subdomain']);
@@ -245,7 +245,7 @@ export function makeTenantMiddleware(ctx: TenantContext) {
 ```
 
 ```ts title="src/app.ts"
-import { OrmServiceProvider } from '@roost/orm';
+import { OrmServiceProvider } from '@roostjs/orm';
 
 app.register(
   new OrmServiceProvider()
@@ -319,7 +319,7 @@ With `useSession: true`, `OrmServiceProvider` wraps the D1 binding in a `D1Sessi
 Call `markWritten()` after any write that must be visible to subsequent reads in the same request lifecycle:
 
 ```ts title="src/controllers/PostsController.ts"
-import { D1SessionHandle } from '@roost/orm';
+import { D1SessionHandle } from '@roostjs/orm';
 
 const sessionHandle = app.container.resolve(D1SessionHandle);
 

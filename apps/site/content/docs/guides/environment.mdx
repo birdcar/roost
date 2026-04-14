@@ -56,7 +56,7 @@ Via dashboard: Cloudflare dashboard → Workers & Pages → your worker → Sett
 In a Worker, all env vars arrive as properties on the `env` object passed to the `fetch` handler. Access them directly or merge them into `ConfigManager`.
 
 ```ts src/app.ts
-import { Application, ConfigManager } from '@roost/core';
+import { Application, ConfigManager } from '@roostjs/core';
 
 export default {
   async fetch(request: Request, env: Env) {
@@ -124,4 +124,4 @@ export default {
 };
 ```
 
-Related: [Deployment guide](/docs/guides/deployment) for setting production secrets, [@roost/core reference](/docs/packages/core) for the ConfigManager API.
+Related: [Deployment guide](/docs/guides/deployment) for setting production secrets, [@roostjs/core reference](/docs/packages/core) for the ConfigManager API.

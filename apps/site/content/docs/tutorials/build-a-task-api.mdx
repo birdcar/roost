@@ -21,10 +21,10 @@ import { Callout } from '../../../src/components/callout'
   </p>
   <p>
     <strong>Packages used:</strong>{' '}
-    <a href="/docs/packages/orm">@roost/orm</a>,{' '}
-    <a href="/docs/packages/core">@roost/core</a>,{' '}
-    <a href="/docs/packages/testing">@roost/testing</a>,{' '}
-    <a href="/docs/packages/start">@roost/start</a>
+    <a href="/docs/packages/orm">@roostjs/orm</a>,{' '}
+    <a href="/docs/packages/core">@roostjs/core</a>,{' '}
+    <a href="/docs/packages/testing">@roostjs/testing</a>,{' '}
+    <a href="/docs/packages/start">@roostjs/start</a>
   </p>
 </Callout>
 
@@ -57,7 +57,7 @@ This creates `src/models/task.ts` with a stub. Open it and replace the placehold
 columns with the schema for our task:
 
 ```ts title="src/models/task.ts"
-import { Model } from '@roost/orm';
+import { Model } from '@roostjs/orm';
 import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
 
 export const tasks = sqliteTable('tasks', {
@@ -313,7 +313,7 @@ boots the application once per suite and gives you a pre-configured `TestClient`
 
 ```ts title="tests/tasks.test.ts"
 import { describe, it, beforeAll, afterAll } from 'bun:test';
-import { setupTestSuite } from '@roost/testing';
+import { setupTestSuite } from '@roostjs/testing';
 
 const suite = setupTestSuite();
 
@@ -434,7 +434,7 @@ roost migrate
 Now declare the relationship on the `Task` model using `BelongsToRelation`, and add the inverse `HasManyRelation` to the `User` model:
 
 ```ts title="src/models/task.ts (updated)"
-import { Model, BelongsToRelation } from '@roost/orm';
+import { Model, BelongsToRelation } from '@roostjs/orm';
 import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
 
 export const tasks = sqliteTable('tasks', {
@@ -463,7 +463,7 @@ export class Task extends Model {
 ```
 
 ```ts title="src/models/user.ts (updated)"
-import { Model, HasManyRelation } from '@roost/orm';
+import { Model, HasManyRelation } from '@roostjs/orm';
 import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
 import { Task } from './task';
 
@@ -505,9 +505,9 @@ requests require authentication — unauthenticated requests receive a
 `302` redirect to `/auth/login`.
 
 ```ts title="src/app.ts"
-import { Application } from '@roost/core';
-import { AuthServiceProvider, AuthMiddleware } from '@roost/auth';
-import { OrmServiceProvider } from '@roost/orm';
+import { Application } from '@roostjs/core';
+import { AuthServiceProvider, AuthMiddleware } from '@roostjs/auth';
+import { OrmServiceProvider } from '@roostjs/orm';
 
 export function createApp(env: Record<string, unknown>) {
   return Application.create(env)
@@ -599,6 +599,6 @@ You now have a fully functional, tested REST API with:
 
 ## Next steps
 
-- [@roost/orm reference](/docs/reference/orm) — full API documentation for `Model`, `QueryBuilder`, and all relation types
+- [@roostjs/orm reference](/docs/reference/orm) — full API documentation for `Model`, `QueryBuilder`, and all relation types
 - [ORM guide](/docs/guides/orm) — pagination, soft deletes, model hooks, and eager loading
 - [ORM concepts](/docs/concepts/orm) — how the ORM maps to Drizzle and D1 under the hood

@@ -11,7 +11,7 @@
 Five self-contained changes, none of which depend on each other, but all of which must land before any Phase 2+ work begins:
 
 1. **ExecutionContext threading** — `Application` gains a `ctx` property and a `defer(promise)` helper. `handle()` accepts an optional second argument so the Worker entry point can pass `ctx`. The scoped container gets a `'ctx'` binding per request so middleware can call `waitUntil()` without importing `Application`.
-2. **Structured Logger + RequestIdMiddleware** — A `Logger` class lives in `packages/core/src/logger.ts`. `RequestIdMiddleware` registers a scoped `Logger` per request and injects `X-Request-Id` into the response. Both are exported from `@roost/core`.
+2. **Structured Logger + RequestIdMiddleware** — A `Logger` class lives in `packages/core/src/logger.ts`. `RequestIdMiddleware` registers a scoped `Logger` per request and injects `X-Request-Id` into the response. Both are exported from `@roostjs/core`.
 3. **CPU limits in wrangler.jsonc** — One object key added to the scaffolded config in `new.ts`.
 4. **Smart Placement in wrangler.jsonc** — One object key added to the scaffolded config in `new.ts`.
 5. **Gradual rollout hint in wrangler.jsonc** — A comment-carrying string constant placed in the generated `wrangler.jsonc` that documents `wrangler deployments list` and `wrangler rollback`. Because `JSON.stringify` strips comments, the file is built with a manual string template rather than a plain object for the comment lines.
@@ -36,20 +36,20 @@ The three wrangler changes (3, 4, 5) are a single edit to one function. Items 1 
 
 | File | Package | Purpose |
 |---|---|---|
-| `packages/core/src/logger.ts` | `@roost/core` | `Logger` class with structured JSON output and trace ID |
-| `packages/core/src/middleware/request-id.ts` | `@roost/core` | `RequestIdMiddleware` — scopes Logger, writes `X-Request-Id` |
-| `packages/core/__tests__/logger.test.ts` | `@roost/core` | Unit tests for `Logger` |
-| `packages/core/__tests__/request-id-middleware.test.ts` | `@roost/core` | Unit tests for `RequestIdMiddleware` |
+| `packages/core/src/logger.ts` | `@roostjs/core` | `Logger` class with structured JSON output and trace ID |
+| `packages/core/src/middleware/request-id.ts` | `@roostjs/core` | `RequestIdMiddleware` — scopes Logger, writes `X-Request-Id` |
+| `packages/core/__tests__/logger.test.ts` | `@roostjs/core` | Unit tests for `Logger` |
+| `packages/core/__tests__/request-id-middleware.test.ts` | `@roostjs/core` | Unit tests for `RequestIdMiddleware` |
 
 ### Modified Files
 
 | File | Package | Change |
 |---|---|---|
-| `packages/core/src/application.ts` | `@roost/core` | Add `ctx` property, `defer()` method, accept `ctx` in `handle()`, bind `'ctx'` in scoped container |
-| `packages/core/src/types.ts` | `@roost/core` | Export `LogContext`, `LogLevel`, `LogEntry` types |
-| `packages/core/src/index.ts` | `@roost/core` | Export `Logger`, `RequestIdMiddleware` |
-| `packages/core/__tests__/application.test.ts` | `@roost/core` | Add tests for `defer()` and ctx threading |
-| `packages/cli/src/commands/new.ts` | `@roost/cli` | Add `limits`, `placement`, and gradual rollout comment to generated `wrangler.jsonc` |
+| `packages/core/src/application.ts` | `@roostjs/core` | Add `ctx` property, `defer()` method, accept `ctx` in `handle()`, bind `'ctx'` in scoped container |
+| `packages/core/src/types.ts` | `@roostjs/core` | Export `LogContext`, `LogLevel`, `LogEntry` types |
+| `packages/core/src/index.ts` | `@roostjs/core` | Export `Logger`, `RequestIdMiddleware` |
+| `packages/core/__tests__/application.test.ts` | `@roostjs/core` | Add tests for `defer()` and ctx threading |
+| `packages/cli/src/commands/new.ts` | `@roostjs/cli` | Add `limits`, `placement`, and gradual rollout comment to generated `wrangler.jsonc` |
 
 ---
 
@@ -78,7 +78,7 @@ The Workers runtime passes `ExecutionContext` (`ctx`) as the third argument to `
 
 **Implementation steps**
 
-1. Add `import type { ExecutionContext } from '@cloudflare/workers-types'` to `application.ts` — or use the local definition `interface ExecutionContext { waitUntil(promise: Promise<unknown>): void; passThroughOnException(): void; }` if the workers-types package is not already a dependency of `@roost/core`. Check `packages/core/package.json` first.
+1. Add `import type { ExecutionContext } from '@cloudflare/workers-types'` to `application.ts` — or use the local definition `interface ExecutionContext { waitUntil(promise: Promise<unknown>): void; passThroughOnException(): void; }` if the workers-types package is not already a dependency of `@roostjs/core`. Check `packages/core/package.json` first.
 2. Add `private _ctx: ExecutionContext | undefined` as a private property.
 3. Add `defer(promise: Promise<unknown>): void` method that calls `this._ctx?.waitUntil(promise)`.
 4. Update `handle(request: Request, ctx?: ExecutionContext)` to assign `this._ctx = ctx` before calling `boot()`.
@@ -125,7 +125,7 @@ The output is a single JSON object per line (JSON Lines), which is what CF Logpu
 
 - `Logger` is a class (not a factory function) so it can be used as its own container token — `scoped.singleton(Logger, () => new Logger(...))` — matching how `SessionManager` is used in auth.
 - `Logger` takes `LogContext` (requestId, method, path, userId?) in its constructor and exposes `info()`, `warn()`, `error()`, `debug()` methods. No log levels are filtered by default — Workers Logs handles that at ingestion.
-- `userId` enrichment is best-effort: `RequestIdMiddleware` calls `request.__roostContainer?.resolve(SessionManager)` and reads `.userId` if available. If auth hasn't run or auth isn't installed, `userId` is omitted. This avoids a hard dependency on `@roost/auth` from `@roost/core`.
+- `userId` enrichment is best-effort: `RequestIdMiddleware` calls `request.__roostContainer?.resolve(SessionManager)` and reads `.userId` if available. If auth hasn't run or auth isn't installed, `userId` is omitted. This avoids a hard dependency on `@roostjs/auth` from `@roostjs/core`.
 - The `Logger` class has `fake()` and `restore()` static methods for tests. `Logger.fake()` returns a `FakeLogger` that collects entries in memory. `FakeLogger` exposes `assertLogged(level, partialMessage)` and `assertNotLogged(level)`.
 - Response headers are immutable in CF Workers once sent; `new Response(response.body, response)` is the correct clone pattern to add headers (as seen in `middleware.test.ts`).
 

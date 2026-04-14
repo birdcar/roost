@@ -1,12 +1,12 @@
 ---
-title: "@roost/cloudflare"
+title: "@roostjs/cloudflare"
 description: "Typed wrappers around all Cloudflare Worker bindings: D1, KV, R2, Queues, AI, Vectorize, Durable Objects, and Hyperdrive."
 ---
 
 ## Installation
 
 ```bash title="terminal"
-bun add @roost/cloudflare
+bun add @roostjs/cloudflare
 ```
 
 ## Configuration
@@ -15,8 +15,8 @@ Register `CloudflareServiceProvider` to make all binding wrappers available
 via the container. Bindings are resolved from the Worker `env` object by name.
 
 ```ts title="src/app.ts"
-import { Application } from '@roost/core';
-import { CloudflareServiceProvider } from '@roost/cloudflare';
+import { Application } from '@roostjs/core';
+import { CloudflareServiceProvider } from '@roostjs/cloudflare';
 
 const app = Application.create(env);
 app.register(CloudflareServiceProvider);
@@ -129,7 +129,7 @@ Send multiple messages in a single operation.
 ## AIClient API
 
 Typed wrapper around the Cloudflare Workers `Ai` binding. This is the
-low-level client used internally by `@roost/ai`.
+low-level client used internally by `@roostjs/ai`.
 
 #### `constructor(ai: Ai)`
 

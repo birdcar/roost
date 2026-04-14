@@ -55,14 +55,14 @@ For `CodeBlock`, the full conversion looks like:
 ```
 // Input TSX:
 <CodeBlock title="app/models/user.ts" lang="typescript">
-{`import { Model } from '@roost/orm'
+{`import { Model } from '@roostjs/orm'
 
 export class User extends Model {}`}
 </CodeBlock>
 
 // Output MDX:
 ```typescript title="app/models/user.ts"
-import { Model } from '@roost/orm'
+import { Model } from '@roostjs/orm'
 
 export class User extends Model {}
 ```

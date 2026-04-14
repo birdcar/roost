@@ -34,7 +34,7 @@ Model events use a synchronous observer list per model class. Hooks can abort mu
 
 | File Path | Purpose |
 |---|---|
-| `packages/orm/package.json` | @roost/orm package manifest |
+| `packages/orm/package.json` | @roostjs/orm package manifest |
 | `packages/orm/tsconfig.json` | Extends base TS config |
 | `packages/orm/src/index.ts` | Public API barrel export |
 | `packages/orm/src/model.ts` | Model base class |
@@ -71,12 +71,12 @@ Model events use a synchronous observer list per model class. Hooks can abort mu
 
 ### 1. Package Setup
 
-**Overview**: `@roost/orm` is a peer of `@roost/cloudflare`, depending on it for the D1 binding. Drizzle ORM and Drizzle Kit are direct dependencies. `@faker-js/faker` is a dev dependency (test data only).
+**Overview**: `@roostjs/orm` is a peer of `@roostjs/cloudflare`, depending on it for the D1 binding. Drizzle ORM and Drizzle Kit are direct dependencies. `@faker-js/faker` is a dev dependency (test data only).
 
 ```json
 // packages/orm/package.json
 {
-  "name": "@roost/orm",
+  "name": "@roostjs/orm",
   "version": "0.1.0",
   "type": "module",
   "exports": {
@@ -84,8 +84,8 @@ Model events use a synchronous observer list per model class. Hooks can abort mu
   },
   "dependencies": {
     "drizzle-orm": "^0.44.0",
-    "@roost/cloudflare": "workspace:*",
-    "@roost/core": "workspace:*"
+    "@roostjs/cloudflare": "workspace:*",
+    "@roostjs/core": "workspace:*"
   },
   "devDependencies": {
     "drizzle-kit": "^0.30.0",
@@ -746,7 +746,7 @@ export abstract class Factory<TModel extends typeof Model> {
 
 ```typescript
 import { faker } from '@faker-js/faker';
-import { Factory } from '@roost/orm';
+import { Factory } from '@roostjs/orm';
 
 class UserFactory extends Factory<typeof User> {
   protected modelClass = User;
@@ -871,8 +871,8 @@ async paginate(page: number, perPage: number): Promise<PaginationResult<Instance
 ```typescript
 // packages/orm/src/provider.ts
 
-import type { ServiceProvider } from '@roost/core';
-import type { D1Store } from '@roost/cloudflare';
+import type { ServiceProvider } from '@roostjs/core';
+import type { D1Store } from '@roostjs/cloudflare';
 import { ModelRegistry } from './registry.ts';
 
 export class OrmServiceProvider extends ServiceProvider {
@@ -957,7 +957,7 @@ Not in scope for Phase 4 — Phase 5 defines this. Phase 4's QueryBuilder is wha
 
 ## API Design
 
-### Public exports from `@roost/orm`
+### Public exports from `@roostjs/orm`
 
 ```typescript
 export { Model } from './model.ts';
@@ -1057,13 +1057,13 @@ export class MockD1Database implements D1Database {
 
 ```bash
 # Type checking
-bun run tsc --noEmit --filter '@roost/orm'
+bun run tsc --noEmit --filter '@roostjs/orm'
 
 # Unit tests
 bun test --filter packages/orm
 
 # Build package
-bun run build --filter '@roost/orm'
+bun run build --filter '@roostjs/orm'
 
 # Verify Drizzle schema export shape (run in a test project)
 node -e "import('./app/models/index.ts').then(m => console.log(Object.keys(m)))"

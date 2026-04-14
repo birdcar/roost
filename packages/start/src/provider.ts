@@ -1,4 +1,4 @@
-import { ServiceProvider } from '@roost/core';
+import { ServiceProvider } from '@roostjs/core';
 
 export class StartServiceProvider extends ServiceProvider {
   register(): void {

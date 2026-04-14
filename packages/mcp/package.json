@@ -1,5 +1,5 @@
 {
-  "name": "@roost/mcp",
+  "name": "@roostjs/mcp",
   "version": "0.1.0",
   "type": "module",
   "exports": {
@@ -13,11 +13,24 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@roost/core": "workspace:*",
-    "@roost/schema": "workspace:*"
+    "@roostjs/core": "workspace:*",
+    "@roostjs/schema": "workspace:*"
   },
   "devDependencies": {
     "bun-types": "catalog:",
     "typescript": "catalog:"
-  }
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/birdcar/roost.git",
+    "directory": "packages/mcp"
+  },
+  "homepage": "https://github.com/birdcar/roost/tree/main/packages/mcp#readme",
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "src"
+  ]
 }

@@ -303,8 +303,8 @@ import { toTableName } from './registry.js';
 The `makeModel` template from Phase 1 generates a `sqliteTable()` export and a class. Extend it with a `relations()` stub so devs know where to add them:
 
 ```ts
-import { Model } from '@roost/orm';
-import { relations } from '@roost/orm';
+import { Model } from '@roostjs/orm';
+import { relations } from '@roostjs/orm';
 import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
 
 export const ${table} = sqliteTable('${table}', {
@@ -334,9 +334,9 @@ The `relations()` export name follows Drizzle's convention: `${tableName}Relatio
 ```ts
 // src/models/user.ts
 import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
-import { relations } from '@roost/orm';
+import { relations } from '@roostjs/orm';
 import { posts } from './post.js';
-import { Model } from '@roost/orm';
+import { Model } from '@roostjs/orm';
 
 export const users = sqliteTable('users', {
   id: integer('id').primaryKey({ autoIncrement: true }),
@@ -400,10 +400,10 @@ const result = await User.drizzle()
 
 ```bash
 # From repo root
-bun test --filter @roost/orm
+bun test --filter @roostjs/orm
 
 # Type check
-bun run --filter @roost/orm typecheck
+bun run --filter @roostjs/orm typecheck
 ```
 
 Update `packages/orm/__tests__/registry.test.ts` to cover the new `register(Model, relations)` signature:

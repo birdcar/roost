@@ -1,5 +1,5 @@
 {
-  "name": "@roost/billing",
+  "name": "@roostjs/billing",
   "version": "0.1.0",
   "type": "module",
   "exports": {
@@ -13,12 +13,25 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@roost/core": "workspace:*",
-    "@roost/orm": "workspace:*"
+    "@roostjs/core": "workspace:*",
+    "@roostjs/orm": "workspace:*"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "catalog:",
     "bun-types": "catalog:",
     "typescript": "catalog:"
-  }
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/birdcar/roost.git",
+    "directory": "packages/billing"
+  },
+  "homepage": "https://github.com/birdcar/roost/tree/main/packages/billing#readme",
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "src"
+  ]
 }

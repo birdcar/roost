@@ -11,7 +11,7 @@ function HomePage() {
       <p>A simple todo app built with Roost.</p>
       <ul>
         <li>WorkOS AuthKit authentication</li>
-        <li>CRUD operations against D1 via @roost/orm</li>
+        <li>CRUD operations against D1 via @roostjs/orm</li>
         <li>Server-rendered with TanStack Start</li>
       </ul>
       <a href="/todos">Go to Todos</a>

@@ -1,6 +1,6 @@
 import { describe, test, expect } from 'bun:test';
 import { TestClient, TestResponse } from '../src/client';
-import { Application } from '@roost/core';
+import { Application } from '@roostjs/core';
 
 function createTestApp(handler: (req: Request) => Response | Promise<Response>): Application {
   const app = Application.create({});

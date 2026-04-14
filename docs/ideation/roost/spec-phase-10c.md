@@ -9,7 +9,7 @@
 
 - App name: `saas-starter`
 - Scaffold flags: `--with-billing --with-queue`
-- Primary packages: @roost/core, @roost/auth, @roost/orm, @roost/billing, @roost/queue, @roost/cloudflare
+- Primary packages: @roostjs/core, @roostjs/auth, @roostjs/orm, @roostjs/billing, @roostjs/queue, @roostjs/cloudflare
 
 ## Models
 
@@ -44,7 +44,7 @@
 - **Billing flow**:
   1. New org starts on free trial (14 days)
   2. `/billing` shows current plan and Stripe checkout button
-  3. Checkout creates Stripe subscription via @roost/billing
+  3. Checkout creates Stripe subscription via @roostjs/billing
   4. Webhook updates local Subscription model
   5. `subscribed` middleware gates premium features
   6. Portal redirect for self-service plan changes
@@ -57,7 +57,7 @@
 ## Deviations from Template
 
 - Multiple models with relationships — the most complex data model of the three apps.
-- R2 integration for file storage — demonstrates @roost/cloudflare R2 binding.
+- R2 integration for file storage — demonstrates @roostjs/cloudflare R2 binding.
 - Stripe webhooks require raw body access and signature verification.
 - Multi-tenant scoping adds a query scope to every database access.
 - Job queue demonstrates async processing pattern.

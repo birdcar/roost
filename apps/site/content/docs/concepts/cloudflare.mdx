@@ -1,5 +1,5 @@
 ---
-title: "@roost/cloudflare"
+title: "@roostjs/cloudflare"
 description: Why Roost wraps Cloudflare's native bindings, how typed clients improve the developer experience, and how binding names are resolved.
 ---
 
@@ -13,7 +13,7 @@ not carry information about which database or namespace they represent. And when
 code reaches directly into `env`, it becomes harder to test — tests need to
 fabricate an `env` object with the right shape.
 
-`@roost/cloudflare` solves this by providing thin typed wrappers — `KVStore`,
+`@roostjs/cloudflare` solves this by providing thin typed wrappers — `KVStore`,
 `D1Database`, `R2Bucket`, `Queue`, `AIClient` —
 and registering them in the service container under the binding's configured name. Application
 code resolves the binding by name from the container rather than reading `env`
@@ -44,7 +44,7 @@ no `client.generateText()` or `client.embed()`. This is intentional.
 
 The alternative — a method per task — would require updating the client every time Workers AI
 adds a new task type. The pass-through design stays current without changes, and the
-`@roost/ai` package builds the higher-level agent abstraction on top of
+`@roostjs/ai` package builds the higher-level agent abstraction on top of
 `AIClient.run()`. The cloudflare package stays thin; the AI package adds
 structure.
 
@@ -156,6 +156,6 @@ data that changes at most once per day.
 ## Further Reading
 
 - [Edge Computing — bindings, the Workers runtime, and what they mean for design](/docs/concepts/edge-computing)
-- [@roost/ai concepts — how the agent abstraction uses AIClient](/docs/concepts/ai)
-- [@roost/cloudflare reference — all binding wrapper APIs](/docs/packages/cloudflare)
+- [@roostjs/ai concepts — how the agent abstraction uses AIClient](/docs/concepts/ai)
+- [@roostjs/cloudflare reference — all binding wrapper APIs](/docs/packages/cloudflare)
 - [Cloudflare Workers AI Documentation](https://developers.cloudflare.com/workers-ai/)

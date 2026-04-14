@@ -124,4 +124,4 @@ routes that use it do not need to handle verification failures explicitly.
 
 - [Service Container — the DI model in depth](/docs/concepts/service-container.md)
 - [Application Architecture — how core fits into the full request lifecycle](/docs/concepts/architecture.md)
-- [@roost/core reference — Application, Container, Pipeline API](/docs/packages/core.md)
+- [@roostjs/core reference — Application, Container, Pipeline API](/docs/packages/core.md)

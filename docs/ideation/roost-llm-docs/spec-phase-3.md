@@ -28,18 +28,18 @@ One agent per package. 12 agents run in parallel — each is fully independent b
 
 | Agent | Package | Key docs to audit |
 |-------|---------|------------------|
-| Agent 1 | `@roost/orm` | `reference/orm.mdx`, `guides/database.mdx`, `guides/models.mdx`, `guides/migrations.mdx`, `concepts/packages/orm.mdx`, any tutorial using DB |
-| Agent 2 | `@roost/router` | `reference/router.mdx`, `guides/routing.mdx`, `guides/middleware.mdx` (routing aspects), `concepts/packages/router.mdx` |
-| Agent 3 | `@roost/middleware` | `reference/middleware.mdx`, `guides/middleware.mdx`, `concepts/packages/middleware.mdx` |
-| Agent 4 | `@roost/auth` | `reference/auth.mdx`, `guides/authentication.mdx`, `guides/authorization.mdx`, `tutorials/add-authentication.mdx`, `concepts/packages/auth.mdx` |
-| Agent 5 | `@roost/queue` | `reference/queue.mdx`, `guides/queues.mdx`, `concepts/packages/queue.mdx` |
-| Agent 6 | `@roost/jobs` | `reference/jobs.mdx`, `guides/jobs.mdx`, `tutorials/build-a-background-job.mdx`, `concepts/packages/jobs.mdx` |
-| Agent 7 | `@roost/agents` | `reference/agents.mdx`, `guides/ai-agents.mdx`, `concepts/packages/agents.mdx` |
-| Agent 8 | `@roost/tools` | `reference/tools.mdx`, `guides/tools.mdx`, `guides/mcp-servers.mdx`, `concepts/packages/tools.mdx` |
-| Agent 9 | `@roost/storage` | `reference/storage.mdx`, `guides/storage.mdx`, `concepts/packages/storage.mdx` |
-| Agent 10 | `@roost/cache` | `reference/cache.mdx`, `guides/caching.mdx`, `concepts/packages/cache.mdx` |
-| Agent 11 | `@roost/config` | `reference/config.mdx`, `guides/configuration.mdx`, `concepts/packages/config.mdx` |
-| Agent 12 | `@roost/cli` | `reference/cli.mdx`, `getting-started.mdx`, any tutorial that uses CLI commands |
+| Agent 1 | `@roostjs/orm` | `reference/orm.mdx`, `guides/database.mdx`, `guides/models.mdx`, `guides/migrations.mdx`, `concepts/packages/orm.mdx`, any tutorial using DB |
+| Agent 2 | `@roostjs/router` | `reference/router.mdx`, `guides/routing.mdx`, `guides/middleware.mdx` (routing aspects), `concepts/packages/router.mdx` |
+| Agent 3 | `@roostjs/middleware` | `reference/middleware.mdx`, `guides/middleware.mdx`, `concepts/packages/middleware.mdx` |
+| Agent 4 | `@roostjs/auth` | `reference/auth.mdx`, `guides/authentication.mdx`, `guides/authorization.mdx`, `tutorials/add-authentication.mdx`, `concepts/packages/auth.mdx` |
+| Agent 5 | `@roostjs/queue` | `reference/queue.mdx`, `guides/queues.mdx`, `concepts/packages/queue.mdx` |
+| Agent 6 | `@roostjs/jobs` | `reference/jobs.mdx`, `guides/jobs.mdx`, `tutorials/build-a-background-job.mdx`, `concepts/packages/jobs.mdx` |
+| Agent 7 | `@roostjs/agents` | `reference/agents.mdx`, `guides/ai-agents.mdx`, `concepts/packages/agents.mdx` |
+| Agent 8 | `@roostjs/tools` | `reference/tools.mdx`, `guides/tools.mdx`, `guides/mcp-servers.mdx`, `concepts/packages/tools.mdx` |
+| Agent 9 | `@roostjs/storage` | `reference/storage.mdx`, `guides/storage.mdx`, `concepts/packages/storage.mdx` |
+| Agent 10 | `@roostjs/cache` | `reference/cache.mdx`, `guides/caching.mdx`, `concepts/packages/cache.mdx` |
+| Agent 11 | `@roostjs/config` | `reference/config.mdx`, `guides/configuration.mdx`, `concepts/packages/config.mdx` |
+| Agent 12 | `@roostjs/cli` | `reference/cli.mdx`, `getting-started.mdx`, any tutorial that uses CLI commands |
 
 ## Known Issue: Migrations Guide
 
@@ -98,14 +98,14 @@ Each agent works through this checklist:
 - [ ] Check guide: does it use the preferred API patterns? Does it use the right import paths?
 - [ ] Check concepts page: is the description of what the package does accurate?
 - [ ] Check any tutorials: do the step-by-step instructions match the real CLI commands and API?
-- [ ] Check import paths: `import { X } from '@roost/{pkg}'` — is `X` actually exported from that path?
+- [ ] Check import paths: `import { X } from '@roostjs/{pkg}'` — is `X` actually exported from that path?
 
 ## Output Format
 
 Each agent produces a `FIXES-{pkg}.md` at `apps/site/content/` with this structure:
 
 ```markdown
-# Audit: @roost/{pkg}
+# Audit: @roostjs/{pkg}
 
 ## Status: {CLEAN | FIXED | NEEDS-REVIEW}
 

@@ -3,7 +3,7 @@ import { SessionManager, parseJwtExpiry, parseCookie, buildSetCookie } from '../
 import { KVSessionStore } from '../src/session/store';
 import { FakeWorkOSClient } from '../src/workos-client';
 import type { WorkOSUser } from '../src/workos-client';
-import { KVStore } from '@roost/cloudflare';
+import { KVStore } from '@roostjs/cloudflare';
 
 const mockUser: WorkOSUser = {
   id: 'user_123',

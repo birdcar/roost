@@ -38,22 +38,22 @@ Full gate before any commit: `bun run typecheck` must pass clean.
 
 | File | Package | Purpose |
 |---|---|---|
-| `packages/cloudflare/src/html/transformer.ts` | `@roost/cloudflare` | `HtmlTransformer` class |
-| `packages/cloudflare/__tests__/html-transformer.test.ts` | `@roost/cloudflare` | Tests for `HtmlTransformer` |
-| `packages/core/src/webhooks/verify.ts` | `@roost/core` | `verifyWebhook`, `WebhookPresets`, `WebhookVerificationError` |
-| `packages/core/src/webhooks/middleware.ts` | `@roost/core` | `WebhookMiddleware` |
-| `packages/core/__tests__/webhooks/verify.test.ts` | `@roost/core` | Tests for `verifyWebhook` and presets |
-| `packages/core/__tests__/webhooks/middleware.test.ts` | `@roost/core` | Tests for `WebhookMiddleware` |
-| `packages/cloudflare/src/bindings/versioned-kv.ts` | `@roost/cloudflare` | `VersionedKVStore` class |
-| `packages/cloudflare/__tests__/versioned-kv.test.ts` | `@roost/cloudflare` | Tests for `VersionedKVStore` |
+| `packages/cloudflare/src/html/transformer.ts` | `@roostjs/cloudflare` | `HtmlTransformer` class |
+| `packages/cloudflare/__tests__/html-transformer.test.ts` | `@roostjs/cloudflare` | Tests for `HtmlTransformer` |
+| `packages/core/src/webhooks/verify.ts` | `@roostjs/core` | `verifyWebhook`, `WebhookPresets`, `WebhookVerificationError` |
+| `packages/core/src/webhooks/middleware.ts` | `@roostjs/core` | `WebhookMiddleware` |
+| `packages/core/__tests__/webhooks/verify.test.ts` | `@roostjs/core` | Tests for `verifyWebhook` and presets |
+| `packages/core/__tests__/webhooks/middleware.test.ts` | `@roostjs/core` | Tests for `WebhookMiddleware` |
+| `packages/cloudflare/src/bindings/versioned-kv.ts` | `@roostjs/cloudflare` | `VersionedKVStore` class |
+| `packages/cloudflare/__tests__/versioned-kv.test.ts` | `@roostjs/cloudflare` | Tests for `VersionedKVStore` |
 
 ### Modified Files
 
 | File | Package | Change |
 |---|---|---|
-| `packages/cloudflare/src/index.ts` | `@roost/cloudflare` | Export `HtmlTransformer` and `VersionedKVStore` |
-| `packages/core/src/index.ts` | `@roost/core` | Export `verifyWebhook`, `WebhookPresets`, `WebhookMiddleware`, `WebhookVerificationError` from webhooks module |
-| `packages/billing/src/stripe/webhook.ts` | `@roost/billing` | Refactor `verifyStripeWebhook` to delegate to `verifyWebhook` with `WebhookPresets.stripe()` |
+| `packages/cloudflare/src/index.ts` | `@roostjs/cloudflare` | Export `HtmlTransformer` and `VersionedKVStore` |
+| `packages/core/src/index.ts` | `@roostjs/core` | Export `verifyWebhook`, `WebhookPresets`, `WebhookMiddleware`, `WebhookVerificationError` from webhooks module |
+| `packages/billing/src/stripe/webhook.ts` | `@roostjs/billing` | Refactor `verifyStripeWebhook` to delegate to `verifyWebhook` with `WebhookPresets.stripe()` |
 
 ---
 
@@ -359,7 +359,7 @@ The middleware calls `verifyWebhook`, which reads the body. To avoid the "body a
 After implementing the generic verifier, update `packages/billing/src/stripe/webhook.ts` to delegate:
 
 ```typescript
-import { verifyWebhook, WebhookPresets, WebhookVerificationError } from '@roost/core';
+import { verifyWebhook, WebhookPresets, WebhookVerificationError } from '@roostjs/core';
 import type { WebhookEvent } from '../types.js';
 
 export { WebhookVerificationError };
@@ -373,9 +373,9 @@ export async function verifyStripeWebhook(
 }
 ```
 
-The public API of `verifyStripeWebhook` is unchanged — same signature, same error type — so existing callers in `@roost/billing` are unaffected. The existing `webhook.test.ts` tests continue to pass without modification.
+The public API of `verifyStripeWebhook` is unchanged — same signature, same error type — so existing callers in `@roostjs/billing` are unaffected. The existing `webhook.test.ts` tests continue to pass without modification.
 
-**Exports from `@roost/core`**
+**Exports from `@roostjs/core`**
 
 Add to `packages/core/src/index.ts`:
 ```typescript

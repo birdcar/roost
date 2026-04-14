@@ -1,5 +1,5 @@
 {
-  "name": "@roost/schema",
+  "name": "@roostjs/schema",
   "version": "0.1.0",
   "type": "module",
   "exports": {
@@ -15,5 +15,18 @@
   "devDependencies": {
     "bun-types": "catalog:",
     "typescript": "catalog:"
-  }
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/birdcar/roost.git",
+    "directory": "packages/schema"
+  },
+  "homepage": "https://github.com/birdcar/roost/tree/main/packages/schema#readme",
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "src"
+  ]
 }

@@ -1,5 +1,5 @@
 {
-  "name": "@roost/workflow",
+  "name": "@roostjs/workflow",
   "version": "0.1.0",
   "type": "module",
   "exports": {
@@ -13,7 +13,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@roost/core": "workspace:*"
+    "@roostjs/core": "workspace:*"
   },
   "peerDependencies": {
     "@cloudflare/workers-types": "*"
@@ -22,5 +22,18 @@
     "@cloudflare/workers-types": "catalog:",
     "bun-types": "catalog:",
     "typescript": "catalog:"
-  }
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/birdcar/roost.git",
+    "directory": "packages/workflow"
+  },
+  "homepage": "https://github.com/birdcar/roost/tree/main/packages/workflow#readme",
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "src"
+  ]
 }

@@ -2,7 +2,7 @@ import { describe, test, expect, beforeEach, afterEach } from 'bun:test';
 import { Event } from '../src/event';
 import { EventDispatcher } from '../src/dispatcher';
 import { EventServiceProvider } from '../src/provider';
-import type { Application } from '@roost/core';
+import type { Application } from '@roostjs/core';
 import type { EventClass, ListenerClass } from '../src/types';
 
 class OrderCreated extends Event {

@@ -1,6 +1,6 @@
-import { Agent } from '@roost/ai';
-import type { Tool, ToolRequest } from '@roost/ai';
-import { schema } from '@roost/schema';
+import { Agent } from '@roostjs/ai';
+import type { Tool, ToolRequest } from '@roostjs/ai';
+import { schema } from '@roostjs/schema';
 
 class Calculator implements Tool {
   description() { return 'Adds two numbers together.'; }

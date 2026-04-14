@@ -1,5 +1,5 @@
 ---
-title: "@roost/start Guides"
+title: "@roostjs/start Guides"
 description: Task-oriented instructions for routing, server functions, and SSR with TanStack Start.
 ---
 
@@ -51,7 +51,7 @@ function PostsPage() {
 Use `roostFn` for server functions that read data, and `roostFnWithInput` when the function accepts typed user input.
 
 ```ts src/functions/posts.ts
-import { roostFn, roostFnWithInput } from '@roost/start';
+import { roostFn, roostFnWithInput } from '@roostjs/start';
 import { roostMiddleware } from '../middleware';
 
 // No input — read-only server function
@@ -99,10 +99,10 @@ function NewPostPage() {
 Use `createRoostMiddleware` to bootstrap your application and expose the container via the `roost` context in server functions and loaders.
 
 ```ts src/middleware.ts
-import { createRoostMiddleware } from '@roost/start';
-import { Application } from '@roost/core';
-import { CloudflareServiceProvider } from '@roost/cloudflare';
-import { AuthServiceProvider } from '@roost/auth';
+import { createRoostMiddleware } from '@roostjs/start';
+import { Application } from '@roostjs/core';
+import { CloudflareServiceProvider } from '@roostjs/cloudflare';
+import { AuthServiceProvider } from '@roostjs/auth';
 
 export const roostMiddleware = createRoostMiddleware(() => {
   const app = new Application({});
@@ -113,7 +113,7 @@ export const roostMiddleware = createRoostMiddleware(() => {
 ```
 
 ```ts src/functions/users.ts
-import { roostFn } from '@roost/start';
+import { roostFn } from '@roostjs/start';
 import { roostMiddleware } from '../middleware';
 
 export const getCurrentUser = roostFn(roostMiddleware, async (roost) => {

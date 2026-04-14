@@ -1,5 +1,5 @@
 ---
-title: "@roost/testing Guides"
+title: "@roostjs/testing Guides"
 description: Task-oriented instructions for HTTP tests, response assertions, fakes, and database isolation.
 ---
 
@@ -9,7 +9,7 @@ Create a `TestClient` and call HTTP methods directly. The client handles applica
 
 ```ts tests/api/posts.test.ts
 import { describe, it, expect } from 'bun:test';
-import { TestClient } from '@roost/testing';
+import { TestClient } from '@roostjs/testing';
 
 describe('POST /api/posts', () => {
   it('creates a post', async () => {
@@ -84,9 +84,9 @@ Use `fakeAll()` to stub all external services at once, or fake individual servic
 
 ```ts tests/signup.test.ts
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
-import { TestClient, fakeAll, restoreAll } from '@roost/testing';
+import { TestClient, fakeAll, restoreAll } from '@roostjs/testing';
 import { SendWelcomeEmail } from '../src/jobs/SendWelcomeEmail';
-import { BillingFake } from '@roost/billing';
+import { BillingFake } from '@roostjs/billing';
 
 describe('User signup', () => {
   beforeEach(() => fakeAll());
@@ -125,8 +125,8 @@ To fake only specific services, call their individual fake methods (`SendWelcome
 Use `createTestApp` with a fresh in-memory D1 database for each test run to avoid state leaking between tests.
 
 ```ts
-import { createTestApp } from '@roost/testing';
-import { TestClient } from '@roost/testing';
+import { createTestApp } from '@roostjs/testing';
+import { TestClient } from '@roostjs/testing';
 
 // Create a fresh app with test configuration
 const app = await createTestApp({

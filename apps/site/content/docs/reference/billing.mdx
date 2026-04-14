@@ -1,12 +1,12 @@
 ---
-title: "@roost/billing"
+title: "@roostjs/billing"
 description: Abstract billing provider interface with a Stripe adapter. Implemented using only fetch for Cloudflare Worker compatibility — no Node.js SDK.
 ---
 
 ## Installation
 
 ```bash title="terminal"
-bun add @roost/billing
+bun add @roostjs/billing
 ```
 
 ## Configuration
@@ -21,14 +21,14 @@ STRIPE_WEBHOOK_SECRET=whsec_...
 Register the service provider:
 
 ```ts title="src/app.ts"
-import { BillingServiceProvider } from '@roost/billing';
+import { BillingServiceProvider } from '@roostjs/billing';
 app.register(BillingServiceProvider);
 ```
 
 Resolve the provider via the `BillingProviderToken` symbol:
 
 ```ts
-import { BillingProviderToken } from '@roost/billing';
+import { BillingProviderToken } from '@roostjs/billing';
 const billing = container.resolve(BillingProviderToken);
 ```
 
@@ -103,7 +103,7 @@ In-memory implementation of `BillingProvider` for use in tests. Records
 all calls and returns synthetic results without network requests.
 
 ```ts
-import { FakeBillingProvider } from '@roost/billing';
+import { FakeBillingProvider } from '@roostjs/billing';
 
 const fake = new FakeBillingProvider();
 const customer = await fake.createCustomer({ name: 'Test', email: 'test@example.com' });
@@ -112,7 +112,7 @@ const customer = await fake.createCustomer({ name: 'Test', email: 'test@example.
 Use the `Billing` helper object to enable/disable the fake globally:
 
 ```ts
-import { Billing } from '@roost/billing';
+import { Billing } from '@roostjs/billing';
 
 const fake = Billing.fake();   // enable fake mode, returns FakeBillingProvider
 Billing.restore();             // disable fake mode
@@ -124,7 +124,7 @@ Middleware that gates access to users with an active subscription. Returns
 `402 Payment Required` if the user has no active subscription.
 
 ```ts
-import { SubscribedMiddleware } from '@roost/billing';
+import { SubscribedMiddleware } from '@roostjs/billing';
 app.useMiddleware(SubscribedMiddleware);
 ```
 
@@ -133,7 +133,7 @@ app.useMiddleware(SubscribedMiddleware);
 Middleware that gates access to users currently on a trial subscription.
 
 ```ts
-import { OnTrialMiddleware } from '@roost/billing';
+import { OnTrialMiddleware } from '@roostjs/billing';
 app.useMiddleware(OnTrialMiddleware);
 ```
 

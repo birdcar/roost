@@ -6,7 +6,7 @@
 
 ## Technical Approach
 
-Phase 9 creates @roost/testing — the unified testing package that ties together the per-package fakes (from Phases 5-7) and adds HTTP test client, database helpers, and factory integration. It's built on bun:test and designed so that writing a test in Roost feels like writing a test in Laravel.
+Phase 9 creates @roostjs/testing — the unified testing package that ties together the per-package fakes (from Phases 5-7) and adds HTTP test client, database helpers, and factory integration. It's built on bun:test and designed so that writing a test in Roost feels like writing a test in Laravel.
 
 The key abstraction is the `TestCase` helper that boots a test Application instance, sets up database refresh, and provides request helpers. Individual fakes (Agent.fake, Billing.fake, Job.fake) are already implemented in their respective packages — this phase orchestrates them and adds cross-cutting concerns.
 
@@ -24,7 +24,7 @@ The key abstraction is the `TestCase` helper that boots a test Application insta
 
 | File Path | Purpose |
 |---|---|
-| `packages/testing/package.json` | @roost/testing package manifest |
+| `packages/testing/package.json` | @roostjs/testing package manifest |
 | `packages/testing/tsconfig.json` | TS config |
 | `packages/testing/src/index.ts` | Public API exports |
 | `packages/testing/src/client.ts` | HTTP test client |
@@ -180,7 +180,7 @@ async function assertDatabaseCount(
 
 ### 3. Factory Integration
 
-**Overview**: Convenience wrappers around @roost/orm factories for test use.
+**Overview**: Convenience wrappers around @roostjs/orm factories for test use.
 
 ```typescript
 function factory<T extends typeof Model>(
@@ -298,7 +298,7 @@ describeRoost('User API', ({ client, factory }) => {
 | TestClient request to non-existent route | TestResponse wraps 404 — test asserts expected status |
 | assertDatabaseHas finds no match | Throws with table, conditions, and actual row count |
 | Factory for model without factory class | Throw `NoFactoryDefinedError` with model name |
-| fakeAll called with package not installed | Skip silently — billing fake is no-op if @roost/billing isn't in deps |
+| fakeAll called with package not installed | Skip silently — billing fake is no-op if @roostjs/billing isn't in deps |
 
 ## Failure Modes
 
@@ -315,5 +315,5 @@ describeRoost('User API', ({ client, factory }) => {
 bun test --filter packages/testing
 
 # Type check
-bun run --filter @roost/testing tsc --noEmit
+bun run --filter @roostjs/testing tsc --noEmit
 ```

@@ -22,8 +22,8 @@
     }
   },
   "scripts": {
-    "build": "bun run --filter '@roost/*' build",
+    "build": "bun run --filter '@roostjs/*' build",
     "test": "bun test",
-    "typecheck": "bun run --filter '@roost/*' typecheck"
+    "typecheck": "bun run --filter '@roostjs/*' typecheck"
   }
 }

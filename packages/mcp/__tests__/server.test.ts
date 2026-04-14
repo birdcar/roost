@@ -5,7 +5,7 @@ import { McpResource } from '../src/resource';
 import { McpPrompt } from '../src/prompt';
 import { McpResponse } from '../src/response';
 import type { McpRequest } from '../src/types';
-import { schema } from '@roost/schema';
+import { schema } from '@roostjs/schema';
 
 class CalculatorTool extends McpTool {
   description() { return 'Add two numbers'; }

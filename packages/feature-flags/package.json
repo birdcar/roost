@@ -1,5 +1,5 @@
 {
-  "name": "@roost/feature-flags",
+  "name": "@roostjs/feature-flags",
   "version": "0.1.0",
   "type": "module",
   "exports": {
@@ -13,13 +13,26 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@roost/core": "workspace:*",
-    "@roost/cloudflare": "workspace:*",
+    "@roostjs/core": "workspace:*",
+    "@roostjs/cloudflare": "workspace:*",
     "@workos-inc/node": "^7.0.0"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "catalog:",
     "bun-types": "catalog:",
     "typescript": "catalog:"
-  }
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/birdcar/roost.git",
+    "directory": "packages/feature-flags"
+  },
+  "homepage": "https://github.com/birdcar/roost/tree/main/packages/feature-flags#readme",
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "src"
+  ]
 }

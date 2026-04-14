@@ -9,9 +9,9 @@
   <p><strong>Prerequisites:</strong> A working local Roost app and a Cloudflare account.</p>
   <p>
     <strong>Packages used:</strong>{' '}
-    <a href="/docs/packages/cloudflare">@roost/cloudflare</a>,{' '}
-    <a href="/docs/packages/start">@roost/start</a>,{' '}
-    <a href="/docs/packages/cli">@roost/cli</a>
+    <a href="/docs/packages/cloudflare">@roostjs/cloudflare</a>,{' '}
+    <a href="/docs/packages/start">@roostjs/start</a>,{' '}
+    <a href="/docs/packages/cli">@roostjs/cli</a>
   </p>
 </Callout>
 
@@ -160,7 +160,7 @@ within seconds.
 
 ## Next steps
 
-- [@roost/cloudflare](/docs/packages/cloudflare.md) — D1, KV, AI bindings in depth
-- [@roost/auth](/docs/packages/auth.md) — configure production WorkOS callbacks
-- [@roost/billing](/docs/packages/billing.md) — connect Stripe webhooks for production
-- [@roost/queue](/docs/packages/queue.md) — background jobs with Cloudflare Queues
+- [@roostjs/cloudflare](/docs/packages/cloudflare.md) — D1, KV, AI bindings in depth
+- [@roostjs/auth](/docs/packages/auth.md) — configure production WorkOS callbacks
+- [@roostjs/billing](/docs/packages/billing.md) — connect Stripe webhooks for production
+- [@roostjs/queue](/docs/packages/queue.md) — background jobs with Cloudflare Queues

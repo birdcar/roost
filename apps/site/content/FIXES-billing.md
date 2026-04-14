@@ -1,4 +1,4 @@
-# Audit: @roost/billing
+# Audit: @roostjs/billing
 
 ## Status: FIXED
 

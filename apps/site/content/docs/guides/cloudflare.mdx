@@ -1,5 +1,5 @@
 ---
-title: "@roost/cloudflare Guides"
+title: "@roostjs/cloudflare Guides"
 description: "Task-oriented instructions for Cloudflare bindings: D1, R2, KV, Queues, Workers AI, and Vectorize."
 ---
 
@@ -40,7 +40,7 @@ Create D1 databases and KV namespaces via the Cloudflare dashboard or `wrangler`
 Wrap the raw D1 binding with `D1Database` for typed prepared statements and batch operations.
 
 ```ts
-import { D1Database } from '@roost/cloudflare';
+import { D1Database } from '@roostjs/cloudflare';
 
 const db = new D1Database(env.DB);
 
@@ -60,14 +60,14 @@ const results = await db.batch([
 ]);
 ```
 
-For application-level querying, prefer [@roost/orm](/docs/packages/orm) models over raw D1. Use raw D1 for migrations or complex SQL not covered by the query builder.
+For application-level querying, prefer [@roostjs/orm](/docs/packages/orm) models over raw D1. Use raw D1 for migrations or complex SQL not covered by the query builder.
 
 ## How to store and retrieve files with R2
 
 Use `R2Storage` to upload and download objects. Pass a `contentType` in `httpMetadata` so browsers render files correctly.
 
 ```ts
-import { R2Storage } from '@roost/cloudflare';
+import { R2Storage } from '@roostjs/cloudflare';
 
 const storage = new R2Storage(env.FILES);
 
@@ -101,7 +101,7 @@ const exists = meta !== null;
 Use `KVStore` for short-lived cache entries. Always set `expirationTtl` to avoid stale data accumulating.
 
 ```ts
-import { KVStore } from '@roost/cloudflare';
+import { KVStore } from '@roostjs/cloudflare';
 
 const kv = new KVStore(env.CACHE);
 
@@ -130,10 +130,10 @@ for (const key of result.keys) {
 
 ## How to send messages to a Queue
 
-Use `QueueSender` for direct queue access, or use [@roost/queue](/docs/packages/queue) jobs for structured background processing.
+Use `QueueSender` for direct queue access, or use [@roostjs/queue](/docs/packages/queue) jobs for structured background processing.
 
 ```ts
-import { QueueSender } from '@roost/cloudflare';
+import { QueueSender } from '@roostjs/cloudflare';
 
 const queue = new QueueSender(env.MY_QUEUE);
 
@@ -153,7 +153,7 @@ await queue.sendBatch([
 Use `AIClient` to run inference on Cloudflare's hosted models. No API keys required — the `AI` binding in `wrangler.jsonc` is all you need.
 
 ```ts
-import { AIClient } from '@roost/cloudflare';
+import { AIClient } from '@roostjs/cloudflare';
 
 const ai = new AIClient(env.AI);
 
@@ -171,14 +171,14 @@ const embeddings = await ai.run('@cf/baai/bge-base-en-v1.5', {
 });
 ```
 
-For full agent capabilities with tools and conversation memory, use [@roost/ai](/docs/packages/ai). `AIClient` is the low-level binding wrapper.
+For full agent capabilities with tools and conversation memory, use [@roostjs/ai](/docs/packages/ai). `AIClient` is the low-level binding wrapper.
 
 ## How to configure Vectorize for embeddings
 
 Create a Vectorize index in the Cloudflare dashboard matching the dimensionality of your embedding model, then use `VectorStore` to insert and query.
 
 ```ts
-import { VectorStore, AIClient } from '@roost/cloudflare';
+import { VectorStore, AIClient } from '@roostjs/cloudflare';
 
 const vectorize = new VectorStore(env.VECTORIZE);
 const ai = new AIClient(env.AI);
@@ -224,7 +224,7 @@ container. `CloudflareServiceProvider` auto-detects `Fetcher` bindings and wraps
 ```
 
 ```ts title="src/handlers/checkout.ts"
-import { ServiceClient } from '@roost/cloudflare';
+import { ServiceClient } from '@roostjs/cloudflare';
 
 // Resolved automatically by CloudflareServiceProvider
 const payments = container.resolve<ServiceClient>('PAYMENTS_SERVICE');
@@ -263,7 +263,7 @@ a dispatch namespace binding, then use `DispatchNamespaceClient` to route by scr
 ```
 
 ```ts title="src/handlers/tenant.ts"
-import { DispatchNamespaceClient } from '@roost/cloudflare';
+import { DispatchNamespaceClient } from '@roostjs/cloudflare';
 
 const dispatch = container.resolve<DispatchNamespaceClient>('DISPATCH');
 
@@ -285,7 +285,7 @@ const response = await fetcher.fetch('https://worker/path');
 deployment. Declare the DO binding in `wrangler.jsonc` and reference it by name.
 
 ```ts title="src/handlers/render.ts"
-import { ContainerClient } from '@roost/cloudflare';
+import { ContainerClient } from '@roostjs/cloudflare';
 
 const containers = container.resolve<ContainerClient>('RENDER_CONTAINER');
 
@@ -310,7 +310,7 @@ Use `HtmlTransformer` to modify HTML as it streams through the Worker. Chain met
 compose transformations, then call `transform()` on the response.
 
 ```ts title="src/middleware/html-enrichment.ts"
-import { HtmlTransformer } from '@roost/cloudflare';
+import { HtmlTransformer } from '@roostjs/cloudflare';
 
 export async function enrichHtml(
   request: Request,
@@ -351,7 +351,7 @@ return transformer.transform(response, request);
 cache-hit detection by hash rather than by TTL.
 
 ```ts title="src/services/config-cache.ts"
-import { VersionedKVStore, KVStore } from '@roost/cloudflare';
+import { VersionedKVStore, KVStore } from '@roostjs/cloudflare';
 
 const kv = container.resolve<KVStore>('CONFIG_KV');
 const store = new VersionedKVStore(kv, { contentTtl: 3600 });
@@ -382,8 +382,8 @@ writes from multiple isolates without external coordination.
 Workers where eventual consistency is acceptable.
 
 ```ts title="src/app.ts"
-import { Application } from '@roost/core';
-import { KVRateLimiter, KVStore } from '@roost/cloudflare';
+import { Application } from '@roostjs/core';
+import { KVRateLimiter, KVStore } from '@roostjs/cloudflare';
 
 const app = Application.create(env);
 
@@ -401,7 +401,7 @@ app.useMiddleware(
 consistency under concurrent requests from the same key.
 
 ```ts title="src/app.ts"
-import { DORateLimiter, DurableObjectClient } from '@roost/cloudflare';
+import { DORateLimiter, DurableObjectClient } from '@roostjs/cloudflare';
 
 app.useMiddleware(
   new DORateLimiter(new DurableObjectClient(env.RATE_LIMITER_DO), {
@@ -423,7 +423,7 @@ Export `RateLimiterDO` from your Worker entry and declare the binding:
 ```
 
 ```ts title="src/index.ts"
-export { RateLimiterDO } from '@roost/cloudflare';
+export { RateLimiterDO } from '@roostjs/cloudflare';
 ```
 
 ### Testing rate limiting
@@ -431,7 +431,7 @@ export { RateLimiterDO } from '@roost/cloudflare';
 Use `fakeRateLimiter()` to replace KV and DO checks with an in-memory fake:
 
 ```ts title="src/handlers/api.test.ts"
-import { fakeRateLimiter, restoreRateLimiter } from '@roost/cloudflare';
+import { fakeRateLimiter, restoreRateLimiter } from '@roostjs/cloudflare';
 
 test('returns 429 when rate limited', async () => {
   const fake = fakeRateLimiter();

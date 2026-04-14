@@ -1,5 +1,5 @@
 ---
-title: "@roost/mcp Guides"
+title: "@roostjs/mcp Guides"
 description: Task-oriented instructions for building MCP servers with tools, resources, and prompts.
 ---
 
@@ -8,7 +8,7 @@ description: Task-oriented instructions for building MCP servers with tools, res
 Extend `McpServer`, declare the classes to expose, and set server metadata. The server handles JSON-RPC over HTTP automatically.
 
 ```ts src/mcp/AppServer.ts
-import { McpServer } from '@roost/mcp';
+import { McpServer } from '@roostjs/mcp';
 import { SearchTool } from './tools/SearchTool';
 import { DocsResource } from './resources/DocsResource';
 import { SummarizePrompt } from './prompts/SummarizePrompt';
@@ -32,16 +32,16 @@ export class AppServer extends McpServer {
 }
 ```
 
-Mount the server on a route to accept MCP connections from clients like Claude or Cursor. See [@roost/mcp reference](/docs/packages/mcp) for mounting details.
+Mount the server on a route to accept MCP connections from clients like Claude or Cursor. See [@roostjs/mcp reference](/docs/packages/mcp) for mounting details.
 
 ## How to define MCP tools
 
 Extend `McpTool` and implement `description()`, `schema()`, and `handle()`. Return an `McpResponse`.
 
 ```ts src/mcp/tools/CreatePostTool.ts
-import { McpTool, McpResponse } from '@roost/mcp';
-import { schema } from '@roost/schema';
-import type { McpRequest } from '@roost/mcp';
+import { McpTool, McpResponse } from '@roostjs/mcp';
+import { schema } from '@roostjs/schema';
+import type { McpRequest } from '@roostjs/mcp';
 import { Post } from '../../models/Post';
 
 export class CreatePostTool extends McpTool {
@@ -82,8 +82,8 @@ shouldRegister(): boolean {
 Extend `McpResource` to provide documents or data the AI can read. URIs are unique identifiers for each resource.
 
 ```ts src/mcp/resources/SchemaResource.ts
-import { McpResource, McpResponse } from '@roost/mcp';
-import type { McpRequest } from '@roost/mcp';
+import { McpResource, McpResponse } from '@roostjs/mcp';
+import type { McpRequest } from '@roostjs/mcp';
 
 export class SchemaResource extends McpResource {
   uri(): string {
@@ -119,9 +119,9 @@ Use protocol-style URIs (`docs://`, `db://`, `config://`) to namespace related r
 Extend `McpPrompt` to create reusable prompt templates the AI client can invoke by name.
 
 ```ts src/mcp/prompts/ReviewCodePrompt.ts
-import { McpPrompt, McpResponse } from '@roost/mcp';
-import { schema } from '@roost/schema';
-import type { McpRequest } from '@roost/mcp';
+import { McpPrompt, McpResponse } from '@roostjs/mcp';
+import { schema } from '@roostjs/schema';
+import type { McpRequest } from '@roostjs/mcp';
 
 export class ReviewCodePrompt extends McpPrompt {
   description(): string {
@@ -177,7 +177,7 @@ Use `AiSearchResource` to make a Cloudflare AI Search index available as an MCP 
 `AiSearchResource` requires constructor arguments, so wrap it in a subclass that reads from `env`:
 
 ```ts title="src/mcp/resources/DocsSearch.ts"
-import { AiSearchResource } from '@roost/mcp';
+import { AiSearchResource } from '@roostjs/mcp';
 
 export class DocsSearch extends AiSearchResource {
   constructor() {
@@ -190,7 +190,7 @@ export class DocsSearch extends AiSearchResource {
 ### 3. Register on your MCP server
 
 ```ts title="src/mcp/AppServer.ts"
-import { McpServer } from '@roost/mcp';
+import { McpServer } from '@roostjs/mcp';
 import { DocsSearch } from './resources/DocsSearch';
 
 export class AppServer extends McpServer {

@@ -23,7 +23,7 @@ describe('code generators', () => {
 
       expect(content).toContain('class Post extends Model');
       expect(content).toContain("static tableName = 'posts'");
-      expect(content).toContain("import { Model } from '@roost/orm'");
+      expect(content).toContain("import { Model } from '@roostjs/orm'");
     } finally {
       process.chdir(origCwd);
     }
@@ -39,7 +39,7 @@ describe('code generators', () => {
       const content = await readFile(join(tempDir, 'src', 'agents', 'assistant.ts'), 'utf-8');
 
       expect(content).toContain('class Assistant extends Agent');
-      expect(content).toContain("import { Agent } from '@roost/ai'");
+      expect(content).toContain("import { Agent } from '@roostjs/ai'");
       expect(content).toContain('instructions()');
     } finally {
       process.chdir(origCwd);
@@ -74,7 +74,7 @@ describe('code generators', () => {
       const content = await readFile(join(tempDir, 'src', 'jobs', 'send-welcome-email.ts'), 'utf-8');
 
       expect(content).toContain('class SendWelcomeEmail extends Job');
-      expect(content).toContain("import { Job } from '@roost/queue'");
+      expect(content).toContain("import { Job } from '@roostjs/queue'");
       expect(content).toContain('handle()');
     } finally {
       process.chdir(origCwd);
@@ -91,7 +91,7 @@ describe('code generators', () => {
       const content = await readFile(join(tempDir, 'src', 'middleware', 'rate-limit.ts'), 'utf-8');
 
       expect(content).toContain('class RateLimitMiddleware implements Middleware');
-      expect(content).toContain("import type { Middleware } from '@roost/core'");
+      expect(content).toContain("import type { Middleware } from '@roostjs/core'");
     } finally {
       process.chdir(origCwd);
     }
@@ -106,7 +106,7 @@ describe('code generators', () => {
       await makeEvent('Foo');
       const content = await readFile(join(tempDir, 'src', 'events', 'foo.ts'), 'utf-8');
 
-      expect(content).toContain("import { Event } from '@roost/events'");
+      expect(content).toContain("import { Event } from '@roostjs/events'");
       expect(content).toContain('class Foo extends Event');
       expect(content).not.toContain('BroadcastableEvent');
     } finally {
@@ -124,7 +124,7 @@ describe('code generators', () => {
       const content = await readFile(join(tempDir, 'src', 'events', 'order-created.ts'), 'utf-8');
 
       expect(content).toContain('class OrderCreated extends Event implements BroadcastableEvent');
-      expect(content).toContain("from '@roost/broadcast'");
+      expect(content).toContain("from '@roostjs/broadcast'");
       expect(content).toContain('broadcastOn()');
       expect(content).toContain('broadcastWith()');
     } finally {
@@ -142,7 +142,7 @@ describe('code generators', () => {
       const content = await readFile(join(tempDir, 'src', 'listeners', 'bar.ts'), 'utf-8');
 
       expect(content).toContain('class Bar implements Listener');
-      expect(content).toContain("import type { Listener } from '@roost/events'");
+      expect(content).toContain("import type { Listener } from '@roostjs/events'");
       expect(content).toContain('handle(');
     } finally {
       process.chdir(origCwd);
@@ -174,7 +174,7 @@ describe('code generators', () => {
       await makeListener('Bar', { queued: true });
       const content = await readFile(join(tempDir, 'src', 'listeners', 'bar.ts'), 'utf-8');
 
-      expect(content).toContain("import { Job } from '@roost/queue'");
+      expect(content).toContain("import { Job } from '@roostjs/queue'");
       expect(content).toContain('extends Job');
       expect(content).toContain('ShouldQueue');
       expect(content).toContain('readonly shouldQueue = true as const');

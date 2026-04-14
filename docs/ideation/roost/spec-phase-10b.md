@@ -9,7 +9,7 @@
 
 - App name: `ai-chat`
 - Scaffold flags: `--with-ai`
-- Primary packages: @roost/core, @roost/auth, @roost/orm, @roost/ai, @roost/mcp, @roost/cloudflare
+- Primary packages: @roostjs/core, @roostjs/auth, @roostjs/orm, @roostjs/ai, @roostjs/mcp, @roostjs/cloudflare
 
 ## Models
 

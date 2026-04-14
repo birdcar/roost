@@ -1,12 +1,12 @@
 ---
-title: "@roost/ai"
+title: "@roostjs/ai"
 description: Class-based AI agents with typed tools, conversation memory, and streaming. Powered exclusively by Cloudflare Workers AI — no API keys required.
 ---
 
 ## Installation
 
 ```bash title="terminal"
-bun add @roost/ai @roost/schema
+bun add @roostjs/ai @roostjs/schema
 ```
 
 ## Configuration
@@ -24,7 +24,7 @@ in `wrangler.jsonc`:
 Register the service provider to inject the provider into all agent classes:
 
 ```ts title="src/app.ts"
-import { AiServiceProvider } from '@roost/ai';
+import { AiServiceProvider } from '@roostjs/ai';
 app.register(AiServiceProvider);
 ```
 
@@ -130,7 +130,7 @@ Retrieve a typed parameter value from the tool call arguments.
 ## CloudflareAIProvider
 
 The only built-in `AIProvider` implementation. Wraps `AIClient`
-from `@roost/cloudflare`, which in turn wraps the Cloudflare Workers
+from `@roostjs/cloudflare`, which in turn wraps the Cloudflare Workers
 `Ai` binding. Registered automatically by `AiServiceProvider`.
 
 #### `constructor(client: AIClient)`
@@ -263,8 +263,8 @@ Send a chat request through the AI Gateway REST endpoint. If the request contain
 ### Usage
 
 ```ts title="src/app.ts"
-import { GatewayAIProvider } from '@roost/ai';
-import { CloudflareAIProvider, AIClient } from '@roost/cloudflare';
+import { GatewayAIProvider } from '@roostjs/ai';
+import { CloudflareAIProvider, AIClient } from '@roostjs/cloudflare';
 
 const directProvider = new CloudflareAIProvider(new AIClient(env.AI));
 const gatewayProvider = new GatewayAIProvider(
@@ -297,14 +297,14 @@ if (result.queued) {
 
 ## AIClient.poll()
 
-Check the status of a queued async inference task via the Cloudflare REST API. Located in `@roost/cloudflare`.
+Check the status of a queued async inference task via the Cloudflare REST API. Located in `@roostjs/cloudflare`.
 
 #### `async poll<T = string>(taskId: string, fetcher: typeof fetch, accountId: string): Promise<{ status: 'running' } | { status: 'done'; result: T }>`
 
 Polls `https://api.cloudflare.com/client/v4/accounts/{accountId}/ai/run/tasks/{taskId}`. The `fetcher` must carry an `Authorization: Bearer <CF_API_TOKEN>` header. Returns `{ status: 'running' }` while the task is in progress and `{ status: 'done'; result: T }` when complete.
 
 ```ts
-import { AIClient } from '@roost/cloudflare';
+import { AIClient } from '@roostjs/cloudflare';
 
 const client = new AIClient(env.AI);
 const poll = await client.poll(taskId, fetch.bind(env), env.CF_ACCOUNT_ID);
@@ -316,7 +316,7 @@ if (poll.status === 'done') {
 
 ## RAG Pipeline
 
-Import from `@roost/ai/rag`.
+Import from `@roostjs/ai/rag`.
 
 ### Chunkers
 

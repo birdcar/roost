@@ -1,4 +1,4 @@
-import type { Middleware } from '@roost/core';
+import type { Middleware } from '@roostjs/core';
 import type { FlagValue } from './types.js';
 import { FeatureFlag } from './feature-flag.js';
 import { setRequestCache } from './cache.js';

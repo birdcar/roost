@@ -18,7 +18,7 @@
 **2. Export `ChannelDO` from your Worker entry point:**
 
 ```ts title="src/index.ts"
-export { ChannelDO } from '@roost/broadcast';
+export { ChannelDO } from '@roostjs/broadcast';
 export { app } from './app';
 ```
 
@@ -34,7 +34,7 @@ export const app = createApp({
 ## How to create a broadcastable event
 
 Implement `BroadcastableEvent` on any event class. If you are also using
-`@roost/events`, extend `Event` as well to get in-process listener support
+`@roostjs/events`, extend `Event` as well to get in-process listener support
 alongside broadcasting.
 
 ```ts title="src/events/OrderShipped.ts"
@@ -65,7 +65,7 @@ export class OrderShipped extends Event implements BroadcastableEvent {
 }
 ```
 
-Dispatch the event normally. If `@roost/events`' `EventDispatcher` is
+Dispatch the event normally. If `@roostjs/events`' `EventDispatcher` is
 configured, it forwards broadcastable events to `BroadcastManager` automatically.
 
 ```ts
@@ -91,7 +91,7 @@ await manager.broadcast({
 
 ## How to connect a WebSocket client
 
-Use `createBroadcastClient` from `@roost/broadcast/client` in browser or client-side code.
+Use `createBroadcastClient` from `@roostjs/broadcast/client` in browser or client-side code.
 
 ```ts title="src/client/notifications.ts"
 

@@ -1,12 +1,12 @@
 ## The Testing Package's Scope
 
-`@roost/testing` provides the shared testing infrastructure that other packages
+`@roostjs/testing` provides the shared testing infrastructure that other packages
 build on. Its two primary exports are `TestClient` — for making HTTP requests
 against a Roost application without a running server — and the test setup utilities that
 configure the application environment for tests.
 
 The package intentionally does not try to be a testing framework. Roost applications use
-Bun's built-in test runner, and `@roost/testing` extends it rather than
+Bun's built-in test runner, and `@roostjs/testing` extends it rather than
 replacing it. Tests use `describe`, `it`, and `expect`
 from Bun — the testing package adds Roost-specific assertions on top of those primitives.
 
@@ -49,5 +49,5 @@ This package page focuses on the specific tools the package provides.
 ## Further Reading
 
 - [Testing Philosophy — the reasoning behind Roost's testing approach](/docs/concepts/testing-philosophy.md)
-- [@roost/testing reference — TestClient, TestResponse, and setup API](/docs/packages/testing.md)
+- [@roostjs/testing reference — TestClient, TestResponse, and setup API](/docs/packages/testing.md)
 - [Bun Test Documentation](https://bun.sh/docs/test/writing)

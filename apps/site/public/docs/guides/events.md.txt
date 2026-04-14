@@ -111,7 +111,7 @@ export class AppEventServiceProvider extends EventServiceProvider {
 ## How to defer a listener to the queue
 
 Add the `ShouldQueue` interface to a listener that also extends `Job<TEvent>`
-from `@roost/queue`. The event dispatcher will dispatch the listener as a job
+from `@roostjs/queue`. The event dispatcher will dispatch the listener as a job
 rather than calling `handle()` inline.
 
 ```ts title="src/listeners/GenerateInvoiceListener.ts"
@@ -129,7 +129,7 @@ export class GenerateInvoiceListener
 }
 ```
 
-Requires `@roost/queue` to be installed and configured.
+Requires `@roostjs/queue` to be installed and configured.
 
 ## How to test event dispatches
 

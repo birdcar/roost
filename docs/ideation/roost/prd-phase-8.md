@@ -8,7 +8,7 @@
 
 Phase 8 gives Roost its command-line interface — the `roost` command that makes the framework feel like Laravel's `artisan`. This is where convention-over-configuration pays off: the CLI knows the project structure, knows the package APIs, and generates code that fits.
 
-This phase is sequenced after Phases 2-7 because the CLI needs to know what it's generating. You can't scaffold an agent class until @roost/ai exists, can't generate a model until @roost/orm exists. The CLI is a capstone that ties all packages together into a coherent developer experience.
+This phase is sequenced after Phases 2-7 because the CLI needs to know what it's generating. You can't scaffold an agent class until @roostjs/ai exists, can't generate a model until @roostjs/orm exists. The CLI is a capstone that ties all packages together into a coherent developer experience.
 
 After this phase, a developer types `roost new my-app` and gets a fully configured project. They type `roost make:model User` and get a model class, migration, and factory. The CLI is also the primary interface for migrations, dev server, and deployment.
 
@@ -28,7 +28,7 @@ After this phase, a developer types `roost new my-app` and gets a fully configur
 - **FR-8.1**: `roost new <name>` creates a new project directory with full structure
 - **FR-8.2**: Project scaffold includes: `app/routes/`, `app/models/`, `app/agents/`, `config/`, `database/migrations/`, `database/seeders/`, `tests/`
 - **FR-8.3**: Setup wizard prompts for WorkOS API key and client ID (or detects from env)
-- **FR-8.4**: Generated project includes: TanStack Start config, Vinxi config, Wrangler config, TypeScript config, package.json with all @roost/* dependencies
+- **FR-8.4**: Generated project includes: TanStack Start config, Vinxi config, Wrangler config, TypeScript config, package.json with all @roostjs/* dependencies
 - **FR-8.5**: `bun install && bun run dev` works immediately after scaffolding
 - **FR-8.6**: Optional flags: `--with-billing`, `--with-ai`, `--with-queue` to include/exclude packages
 
@@ -60,7 +60,7 @@ After this phase, a developer types `roost new my-app` and gets a fully configur
 
 ### CLI Infrastructure
 
-- **FR-8.24**: CLI built as standalone bun executable (@roost/cli package)
+- **FR-8.24**: CLI built as standalone bun executable (@roostjs/cli package)
 - **FR-8.25**: Template engine for code generation — Handlebars or similar with Roost conventions baked in
 - **FR-8.26**: CLI self-updates via npm/bun
 - **FR-8.27**: `roost help` and `roost <command> --help` for discoverability
@@ -102,5 +102,5 @@ After this phase, a developer types `roost new my-app` and gets a fully configur
 - [ ] `roost dev` starts a working dev server
 - [ ] `roost deploy` deploys to Cloudflare Workers
 - [ ] All generated code compiles with zero TypeScript errors
-- [ ] CLI is installable globally via `bun add -g @roost/cli`
+- [ ] CLI is installable globally via `bun add -g @roostjs/cli`
 - [ ] `roost help` lists all available commands

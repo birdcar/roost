@@ -1,4 +1,4 @@
-import { verifyWebhook, WebhookPresets, WebhookVerificationError } from '@roost/core';
+import { verifyWebhook, WebhookPresets, WebhookVerificationError } from '@roostjs/core';
 import type { WebhookEvent } from '../types.js';
 
 export { WebhookVerificationError };

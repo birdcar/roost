@@ -8,7 +8,7 @@
 
 Phase 6 gives Roost apps background job processing. Cloudflare Queues provide the infrastructure, but the DX today is raw consumer handlers with untyped messages. Roost wraps this in a Laravel-like job abstraction: define a job class, dispatch it, and the framework handles serialization, retry, dead letter, and monitoring.
 
-This phase depends only on Phase 1 (Queues binding from @roost/cloudflare). It can run in parallel with Phases 2-5. The job infrastructure doesn't need routing, auth, or ORM — it's a pure background processing layer.
+This phase depends only on Phase 1 (Queues binding from @roostjs/cloudflare). It can run in parallel with Phases 2-5. The job infrastructure doesn't need routing, auth, or ORM — it's a pure background processing layer.
 
 After this phase, a developer can define `class SendWelcomeEmail extends Job`, dispatch it from anywhere, configure retry strategies, and monitor job status — all on Cloudflare Queues.
 
@@ -23,7 +23,7 @@ After this phase, a developer can define `class SendWelcomeEmail extends Job`, d
 
 ## Functional Requirements
 
-### Job Base Class (@roost/queue)
+### Job Base Class (@roostjs/queue)
 
 - **FR-6.1**: `Job` base class with typed payload and `handle()` method
 - **FR-6.2**: Job configuration via decorators: `@Queue('name')`, `@Delay(seconds)`, `@MaxRetries(n)`, `@RetryAfter(seconds)`

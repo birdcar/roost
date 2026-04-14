@@ -32,18 +32,18 @@ Inspired by Laravel 13's "The Basics" and "Digging Deeper" sections, which are e
 
 | File Path | Purpose |
 |-----------|---------|
-| `apps/site/src/routes/docs/guides/core.tsx` | Guides for @roost/core |
-| `apps/site/src/routes/docs/guides/cloudflare.tsx` | Guides for @roost/cloudflare |
-| `apps/site/src/routes/docs/guides/start.tsx` | Guides for @roost/start |
-| `apps/site/src/routes/docs/guides/auth.tsx` | Guides for @roost/auth |
-| `apps/site/src/routes/docs/guides/orm.tsx` | Guides for @roost/orm |
-| `apps/site/src/routes/docs/guides/ai.tsx` | Guides for @roost/ai |
-| `apps/site/src/routes/docs/guides/mcp.tsx` | Guides for @roost/mcp |
-| `apps/site/src/routes/docs/guides/billing.tsx` | Guides for @roost/billing |
-| `apps/site/src/routes/docs/guides/queue.tsx` | Guides for @roost/queue |
-| `apps/site/src/routes/docs/guides/cli.tsx` | Guides for @roost/cli |
-| `apps/site/src/routes/docs/guides/testing.tsx` | Guides for @roost/testing |
-| `apps/site/src/routes/docs/guides/schema.tsx` | Guides for @roost/schema |
+| `apps/site/src/routes/docs/guides/core.tsx` | Guides for @roostjs/core |
+| `apps/site/src/routes/docs/guides/cloudflare.tsx` | Guides for @roostjs/cloudflare |
+| `apps/site/src/routes/docs/guides/start.tsx` | Guides for @roostjs/start |
+| `apps/site/src/routes/docs/guides/auth.tsx` | Guides for @roostjs/auth |
+| `apps/site/src/routes/docs/guides/orm.tsx` | Guides for @roostjs/orm |
+| `apps/site/src/routes/docs/guides/ai.tsx` | Guides for @roostjs/ai |
+| `apps/site/src/routes/docs/guides/mcp.tsx` | Guides for @roostjs/mcp |
+| `apps/site/src/routes/docs/guides/billing.tsx` | Guides for @roostjs/billing |
+| `apps/site/src/routes/docs/guides/queue.tsx` | Guides for @roostjs/queue |
+| `apps/site/src/routes/docs/guides/cli.tsx` | Guides for @roostjs/cli |
+| `apps/site/src/routes/docs/guides/testing.tsx` | Guides for @roostjs/testing |
+| `apps/site/src/routes/docs/guides/schema.tsx` | Guides for @roostjs/schema |
 
 **Cross-cutting guide pages**:
 
@@ -73,7 +73,7 @@ Every guide page uses `DocLayout` and contains multiple named guides as `<h2>` s
 ```tsx
 function Page() {
   return (
-    <DocLayout title="@roost/{package} Guides" subtitle="Task-oriented instructions for {package description}">
+    <DocLayout title="@roostjs/{package} Guides" subtitle="Task-oriented instructions for {package description}">
       <h2>How to {Task 1}</h2>
       <p>{Brief context — 1 sentence max}</p>
       <h3>Steps</h3>
@@ -92,14 +92,14 @@ function Page() {
 
 The following lists the specific guides to write for each package. Each `<h2>` is a separate guide. Source content from existing docs where applicable, but rewrite as task-focused instructions without teaching.
 
-**@roost/core**
+**@roostjs/core**
 - How to register a service provider
 - How to configure dependency injection bindings
 - How to create custom middleware
 - How to access configuration values
 - How to build a middleware pipeline
 
-**@roost/cloudflare**
+**@roostjs/cloudflare**
 - How to configure Cloudflare bindings in wrangler.jsonc
 - How to use D1 for database queries
 - How to store and retrieve files with R2
@@ -108,13 +108,13 @@ The following lists the specific guides to write for each package. Each `<h2>` i
 - How to use Workers AI (the `AIClient`)
 - How to configure Vectorize for embeddings
 
-**@roost/start**
+**@roostjs/start**
 - How to create a new route
 - How to use server functions
 - How to access the Roost container from routes
 - How to configure SSR
 
-**@roost/auth**
+**@roostjs/auth**
 - How to protect routes with authentication
 - How to check user roles and permissions
 - How to implement multi-tenancy with organizations
@@ -122,7 +122,7 @@ The following lists the specific guides to write for each package. Each `<h2>` i
 - How to handle the OAuth callback
 - How to add CSRF protection
 
-**@roost/orm**
+**@roostjs/orm**
 - How to define a model
 - How to write and run migrations
 - How to query with the QueryBuilder
@@ -132,7 +132,7 @@ The following lists the specific guides to write for each package. Each `<h2>` i
 - How to use factories in tests
 - How to paginate query results
 
-**@roost/ai**
+**@roostjs/ai**
 - How to create an AI agent
 - How to define and register tools
 - How to configure the model and parameters
@@ -140,39 +140,39 @@ The following lists the specific guides to write for each package. Each `<h2>` i
 - How to manage conversation memory
 - How to test agents without calling the AI provider
 
-**@roost/mcp**
+**@roostjs/mcp**
 - How to create an MCP server
 - How to define MCP tools
 - How to expose resources via MCP
 - How to define MCP prompts
 
-**@roost/billing**
+**@roostjs/billing**
 - How to configure Stripe credentials
 - How to create a customer and subscription
 - How to handle Stripe webhooks
 - How to gate routes by subscription status
 - How to implement metered billing
 
-**@roost/queue**
+**@roostjs/queue**
 - How to define a background job
 - How to dispatch jobs
 - How to chain and batch jobs
 - How to handle job failures and retries
 - How to test jobs without dispatching
 
-**@roost/cli**
+**@roostjs/cli**
 - How to scaffold a new project
 - How to generate models, controllers, and other code
 - How to run and rollback migrations
 - How to deploy your application
 
-**@roost/testing**
+**@roostjs/testing**
 - How to write HTTP tests with TestClient
 - How to assert on responses
 - How to use fakes for unit testing
 - How to test with a fresh database
 
-**@roost/schema**
+**@roostjs/schema**
 - How to define a tool input schema
 - How to use optional and nested schemas
 - How to add descriptions to schema fields

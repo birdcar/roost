@@ -1,7 +1,7 @@
 ## Installation
 
 ```bash title="terminal"
-bun add @roost/events
+bun add @roostjs/events
 ```
 
 ## Event API
@@ -16,7 +16,7 @@ All dispatch and testing methods are static.
 Dispatch the event to all registered listeners. If a fake is active, records the
 event without calling listeners. If the event implements `BroadcastableEvent`
 (has a `broadcastOn()` method), the dispatcher also forwards it to
-`BroadcastManager` if `@roost/broadcast` is installed.
+`BroadcastManager` if `@roostjs/broadcast` is installed.
 
 #### `static fake(): void`
 
@@ -59,7 +59,7 @@ service provider.
 #### `async dispatch(event: Event): Promise<void>`
 
 Instantiate and call all listeners registered for `event`'s class. If a listener
-implements `ShouldQueue`, the listener is dispatched as a Job via `@roost/queue`
+implements `ShouldQueue`, the listener is dispatched as a Job via `@roostjs/queue`
 instead of being called synchronously.
 
 ## Listener Interface
@@ -82,8 +82,8 @@ interface ShouldQueue {
 ```
 
 A marker interface. Add this to a `Listener` class that also extends `Job<TEvent>`
-from `@roost/queue` to have the listener dispatched as a background job instead
-of called inline. Requires `@roost/queue` to be installed.
+from `@roostjs/queue` to have the listener dispatched as a background job instead
+of called inline. Requires `@roostjs/queue` to be installed.
 
 ## Subscriber API
 

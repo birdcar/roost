@@ -1,5 +1,5 @@
 ---
-title: "@roost/billing Guides"
+title: "@roostjs/billing Guides"
 description: Task-oriented instructions for Stripe integration, subscriptions, webhooks, and metered billing.
 ---
 
@@ -13,7 +13,7 @@ STRIPE_WEBHOOK_SECRET=whsec_...
 ```
 
 ```ts src/app.ts
-import { BillingServiceProvider } from '@roost/billing';
+import { BillingServiceProvider } from '@roostjs/billing';
 
 app.register(BillingServiceProvider);
 // BillingProvider is now available in the container
@@ -26,7 +26,7 @@ For production, add secrets via the Cloudflare dashboard under Workers → Setti
 Resolve `BillingProviderToken` from the container and call `createCustomer`, then `subscribe`. Store the returned IDs on your user record.
 
 ```ts
-import { BillingProviderToken } from '@roost/billing';
+import { BillingProviderToken } from '@roostjs/billing';
 
 async function subscribeUser(userId: string, priceId: string) {
   const billing = container.resolve(BillingProviderToken);
@@ -63,7 +63,7 @@ Use `parseWebhookEvent` to verify the signature and parse the event. Return 200 
 
 ```ts src/routes/api/webhooks/stripe.ts
 import { createFileRoute } from '@tanstack/react-router';
-import { BillingProviderToken } from '@roost/billing';
+import { BillingProviderToken } from '@roostjs/billing';
 
 export const Route = createFileRoute('/api/webhooks/stripe')({ component: () => null });
 
@@ -112,7 +112,7 @@ Register the webhook endpoint URL in the Stripe dashboard under Developers → W
 Add `SubscribedMiddleware` or `OnTrialMiddleware` to routes that require an active subscription or trial.
 
 ```ts
-import { SubscribedMiddleware, OnTrialMiddleware } from '@roost/billing';
+import { SubscribedMiddleware, OnTrialMiddleware } from '@roostjs/billing';
 
 // Require an active subscription
 app.useMiddleware(SubscribedMiddleware);
@@ -142,7 +142,7 @@ async function requireSubscription(request: Request, next: Handler): Promise<Res
 Report usage to Stripe after each billable action using `reportUsage` with the subscription item ID from the subscription object.
 
 ```ts
-import { BillingProviderToken } from '@roost/billing';
+import { BillingProviderToken } from '@roostjs/billing';
 
 async function runAiQuery(userId: string, query: string) {
   const user = await User.findOrFail(userId);

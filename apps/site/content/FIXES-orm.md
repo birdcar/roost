@@ -41,10 +41,10 @@ Audited against source in `packages/orm/src/` and `packages/schema/src/`.
 - `Factory` is abstract — must be subclassed, cannot be instantiated directly with a callback.
 
 ### `Seeder` class — does not exist
-`Seeder` is not exported from `@roost/orm` (or any package). Removed from reference.
+`Seeder` is not exported from `@roostjs/orm` (or any package). Removed from reference.
 
 ### Missing errors: `OrmNotBootedError`, `InvalidRelationError`
-Both are exported from `@roost/orm` but were absent from the Errors section. Added.
+Both are exported from `@roostjs/orm` but were absent from the Errors section. Added.
 
 ### Types section — wrong type names
 **Before:** `type Operator`, `type LifecycleEvent`.
@@ -55,11 +55,11 @@ Both are exported from `@roost/orm` but were absent from the Errors section. Add
 ## `apps/site/content/docs/guides/orm.mdx`
 
 ### Migration example — `Migration` class does not exist
-**Before:** `import { Migration } from '@roost/orm'` with a class extending `Migration`.
+**Before:** `import { Migration } from '@roostjs/orm'` with a class extending `Migration`.
 **After:** Removed the inline migration example and replaced with a brief callout to the migrations guide. `Migration` is not exported from any package.
 
 ### `Seeder` import — does not exist
-**Before:** `import { Seeder } from '@roost/orm'`.
+**Before:** `import { Seeder } from '@roostjs/orm'`.
 **After:** Removed the seeder section entirely. `Seeder` is not exported from any package.
 
 ### Relationship syntax — wrong API
@@ -86,14 +86,14 @@ Added `whereNull`, `whereNotNull`, `offset`, `firstOrFail()` to the method list 
 **After:** `/docs/reference/orm`
 
 ### Link description mentions "migration API"
-Updated to "factory API" since migrations are not part of `@roost/orm`.
+Updated to "factory API" since migrations are not part of `@roostjs/orm`.
 
 ---
 
 ## `apps/site/content/docs/guides/migrations.mdx`
 
 ### `Migration` class used throughout — does not exist
-**Before:** All migration examples import and extend `Migration` from `@roost/orm`, using `this.db.run(sql)`.
+**Before:** All migration examples import and extend `Migration` from `@roostjs/orm`, using `this.db.run(sql)`.
 **After:** Migrations export a plain object with `up(db: D1Database)` and `down(db: D1Database)` methods that call `db.prepare(sql).run()` directly against the D1 binding. No `Migration` base class exists in any package.
 
 ### `wrangler d1 execute --file=...ts` — invalid wrangler usage

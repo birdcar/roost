@@ -1,12 +1,12 @@
 ---
-title: "@roost/core"
+title: "@roostjs/core"
 description: Dependency injection container, configuration management, middleware pipeline, application lifecycle, and service provider base class.
 ---
 
 ## Installation
 
 ```bash title="terminal"
-bun add @roost/core
+bun add @roostjs/core
 ```
 
 ## RoostContainer API
@@ -274,7 +274,7 @@ Extracts or generates a request trace ID and binds a configured `Logger` instanc
 the request-scoped container.
 
 ```ts
-import { RequestIdMiddleware } from '@roost/core/middleware/request-id';
+import { RequestIdMiddleware } from '@roostjs/core/middleware/request-id';
 ```
 
 #### Behavior
@@ -285,8 +285,8 @@ import { RequestIdMiddleware } from '@roost/core/middleware/request-id';
 4. Sets `X-Request-Id` on the outgoing response.
 
 ```ts title="src/app.ts"
-import { Application } from '@roost/core';
-import { RequestIdMiddleware } from '@roost/core/middleware/request-id';
+import { Application } from '@roostjs/core';
+import { RequestIdMiddleware } from '@roostjs/core/middleware/request-id';
 
 const app = Application.create(env);
 app.useMiddleware(RequestIdMiddleware);
@@ -343,8 +343,8 @@ Route-level middleware that calls `verifyWebhook` and returns `401` on failure.
 #### `constructor(options: WebhookVerifyOptions)`
 
 ```ts title="src/routes/webhooks.ts"
-import { WebhookMiddleware } from '@roost/core/webhooks/middleware';
-import { WebhookPresets } from '@roost/core/webhooks/verify';
+import { WebhookMiddleware } from '@roostjs/core/webhooks/middleware';
+import { WebhookPresets } from '@roostjs/core/webhooks/verify';
 
 const stripeWebhook = new WebhookMiddleware({
   ...WebhookPresets.stripe(),
@@ -368,7 +368,7 @@ responds with `401 { "error": "<message>" }`.
 
 ## Errors
 
-The following error classes are thrown at runtime but are not exported from `@roost/core`. Catch them by name or use `instanceof` checks after importing the concrete class from its internal module path (not recommended for production code — prefer guarding with defaults or `has()` checks instead).
+The following error classes are thrown at runtime but are not exported from `@roostjs/core`. Catch them by name or use `instanceof` checks after importing the concrete class from its internal module path (not recommended for production code — prefer guarding with defaults or `has()` checks instead).
 
 #### `BindingNotFoundError`
 

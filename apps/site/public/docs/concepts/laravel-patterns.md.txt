@@ -30,7 +30,7 @@ before passing it on, and can modify the response on the way back. The composabi
 same; the implementation uses the Web Platform `Request`/`Response`
 types instead of Symfony's HTTP Foundation.
 
-**Artisan-style code generation** is the model for `@roost/cli`.
+**Artisan-style code generation** is the model for `@roostjs/cli`.
 The philosophy — generate a file once, own it forever — means the generated code is not
 a locked-down black box but a starting point you modify freely.
 
@@ -69,7 +69,7 @@ the runtime's actual constraints rather than pretending those constraints do not
 ## Further Reading
 
 - [Service Container — the DI and provider model in depth](/docs/concepts/service-container.md)
-- [@roost/orm concepts — Active Record on D1](/docs/concepts/orm.md)
-- [@roost/cli concepts — code generation philosophy](/docs/concepts/cli.md)
+- [@roostjs/orm concepts — Active Record on D1](/docs/concepts/orm.md)
+- [@roostjs/cli concepts — code generation philosophy](/docs/concepts/cli.md)
 - [Laravel Service Providers](https://laravel.com/docs/providers)
 - [Laravel Eloquent ORM](https://laravel.com/docs/eloquent)

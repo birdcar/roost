@@ -31,7 +31,7 @@ Laravel's broadcasting system (`Event` + `Broadcast` + channels) maps very well 
 | `Broadcast::channel('user.{id}', ...)` | Authorization middleware on WebSocket upgrade request |
 | `whisper` (client-to-client) | DO relays message to other WebSocket connections |
 
-**Recommendation**: Add a `@roost/broadcast` package or extend the DO wrapper to support Laravel-style broadcasting. This is a natural fit because:
+**Recommendation**: Add a `@roostjs/broadcast` package or extend the DO wrapper to support Laravel-style broadcasting. This is a natural fit because:
 1. DOs provide the single-threaded coordination that broadcasting needs
 2. WebSocket hibernation handles idle connections at near-zero cost
 3. The channel metaphor maps 1:1 to DO-per-entity routing
@@ -71,7 +71,7 @@ Laravel's event system (`Event::dispatch`, listeners, subscribers) should be add
 
 This maps cleanly to CF because:
 - Sync listeners run in the same Worker request
-- Queued listeners dispatch to CF Queues (already have `@roost/queue`)
+- Queued listeners dispatch to CF Queues (already have `@roostjs/queue`)
 - Broadcast listeners push to DO WebSockets
 
 ## Laravel Pennant -> Roost Feature Flags

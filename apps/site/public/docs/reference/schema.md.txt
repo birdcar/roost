@@ -1,7 +1,7 @@
 ## Installation
 
 ```bash title="terminal"
-bun add @roost/schema
+bun add @roostjs/schema
 ```
 
 ## schema API

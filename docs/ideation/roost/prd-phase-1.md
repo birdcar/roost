@@ -6,7 +6,7 @@
 
 ## Phase Overview
 
-Phase 1 establishes the entire foundation that every subsequent phase builds on. It creates the bun workspace monorepo structure, the core framework package (@roost/core), and typed abstractions for all eight Cloudflare Worker bindings (@roost/cloudflare).
+Phase 1 establishes the entire foundation that every subsequent phase builds on. It creates the bun workspace monorepo structure, the core framework package (@roostjs/core), and typed abstractions for all eight Cloudflare Worker bindings (@roostjs/cloudflare).
 
 This phase is sequenced first because nothing else can exist without it. The service container, configuration system, middleware pipeline, and binding abstractions are the bedrock. By the end of this phase, a developer has a typed, structured way to interact with every Cloudflare service — but no routing, no auth, no ORM yet. It's the engine without the car body.
 
@@ -25,39 +25,39 @@ The Cloudflare bindings are included in Phase 1 (rather than a separate phase) b
 
 ### Monorepo Structure
 
-- **FR-1.1**: Bun workspace with `packages/` directory containing all @roost/* packages
+- **FR-1.1**: Bun workspace with `packages/` directory containing all @roostjs/* packages
 - **FR-1.2**: Shared TypeScript configuration (strict mode, ES2022+, NodeNext modules)
 - **FR-1.3**: Root-level bun scripts for building, testing, and linting all packages
 - **FR-1.4**: Each package independently publishable to npm with its own package.json
 
-### Service Container (@roost/core)
+### Service Container (@roostjs/core)
 
 - **FR-1.5**: Class-based service container with singleton and transient bindings
 - **FR-1.6**: Constructor injection via TypeScript decorators or explicit registration
 - **FR-1.7**: Service provider pattern for package-level service registration
 - **FR-1.8**: Container scoping for request-level isolation on Workers
 
-### Configuration System (@roost/core)
+### Configuration System (@roostjs/core)
 
 - **FR-1.9**: Convention-based config loading from `config/` directory
 - **FR-1.10**: Environment variable integration via Wrangler's `Env` type
 - **FR-1.11**: Typed config access with dot-notation support (`config.get('database.default')`)
 - **FR-1.12**: Config merging (defaults + environment overrides)
 
-### Middleware Pipeline (@roost/core)
+### Middleware Pipeline (@roostjs/core)
 
 - **FR-1.13**: Composable middleware pipeline with before/after hooks
 - **FR-1.14**: Middleware classes with `handle(request, next)` pattern
 - **FR-1.15**: Global, group, and route-level middleware registration
 - **FR-1.16**: Middleware ordering and priority support
 
-### Base Application (@roost/core)
+### Base Application (@roostjs/core)
 
 - **FR-1.17**: Application class that boots the service container, loads config, and wires bindings
 - **FR-1.18**: Application lifecycle hooks (booting, booted, terminating)
 - **FR-1.19**: Wrangler `fetch` handler integration — Application receives Worker requests
 
-### Cloudflare Bindings (@roost/cloudflare)
+### Cloudflare Bindings (@roostjs/cloudflare)
 
 - **FR-1.20**: D1 binding — typed database client wrapping Wrangler's D1Database
 - **FR-1.21**: KV binding — typed get/put/delete/list with JSON serialization, TTL support, and cache-aside pattern
@@ -86,8 +86,8 @@ The Cloudflare bindings are included in Phase 1 (rather than a separate phase) b
 ### Outputs for Next Phase
 
 - Bun workspace monorepo with package structure
-- @roost/core: service container, config, middleware pipeline, base Application
-- @roost/cloudflare: typed bindings for all 8 Cloudflare services
+- @roostjs/core: service container, config, middleware pipeline, base Application
+- @roostjs/cloudflare: typed bindings for all 8 Cloudflare services
 - Shared TypeScript config and test infrastructure
 - Convention documentation for file structure and naming
 

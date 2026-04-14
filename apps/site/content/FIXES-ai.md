@@ -1,4 +1,4 @@
-# Audit: @roost/ai
+# Audit: @roostjs/ai
 
 ## Status: CLEAN
 

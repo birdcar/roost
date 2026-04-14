@@ -1,5 +1,5 @@
 {
-  "name": "@roost/auth",
+  "name": "@roostjs/auth",
   "version": "0.1.0",
   "type": "module",
   "exports": {
@@ -13,9 +13,9 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@roost/core": "workspace:*",
-    "@roost/cloudflare": "workspace:*",
-    "@roost/start": "workspace:*",
+    "@roostjs/core": "workspace:*",
+    "@roostjs/cloudflare": "workspace:*",
+    "@roostjs/start": "workspace:*",
     "@workos-inc/node": "^7.0.0"
   },
   "peerDependencies": {
@@ -30,5 +30,18 @@
     "typescript": "catalog:",
     "react": "catalog:",
     "@types/react": "catalog:"
-  }
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/birdcar/roost.git",
+    "directory": "packages/auth"
+  },
+  "homepage": "https://github.com/birdcar/roost/tree/main/packages/auth#readme",
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "src"
+  ]
 }

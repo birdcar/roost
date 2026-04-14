@@ -23,7 +23,7 @@ After this phase, a developer gets: login/signup pages (via WorkOS AuthKit), ses
 
 ## Functional Requirements
 
-### WorkOS Integration (@roost/auth)
+### WorkOS Integration (@roostjs/auth)
 
 - **FR-3.1**: WorkOS Node SDK wrapped in a Roost service provider, auto-configured from environment variables (WORKOS_API_KEY, WORKOS_CLIENT_ID)
 - **FR-3.2**: AuthKit redirect flow — login, callback, and logout routes auto-registered

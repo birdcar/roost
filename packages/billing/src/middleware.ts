@@ -1,4 +1,4 @@
-import type { Middleware } from '@roost/core';
+import type { Middleware } from '@roostjs/core';
 
 export class SubscribedMiddleware implements Middleware {
   async handle(

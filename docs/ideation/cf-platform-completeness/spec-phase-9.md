@@ -10,13 +10,13 @@
 
 ## Technical Approach
 
-Two new packages plus CLI generator additions. None of the four components depend on each other during development, but `@roost/broadcast` depends on `@roost/events` at runtime (a `BroadcastableEvent` extends `Event`).
+Two new packages plus CLI generator additions. None of the four components depend on each other during development, but `@roostjs/broadcast` depends on `@roostjs/events` at runtime (a `BroadcastableEvent` extends `Event`).
 
-1. **`@roost/events`** — Synchronous event dispatch with optional queued listeners. Modeled on `Job`'s fake/restore/assert pattern. `EventServiceProvider` wires listener registrations into the `Application` container. `ShouldQueue` listeners dispatch a `Job` to a CF Queue instead of running inline.
+1. **`@roostjs/events`** — Synchronous event dispatch with optional queued listeners. Modeled on `Job`'s fake/restore/assert pattern. `EventServiceProvider` wires listener registrations into the `Application` container. `ShouldQueue` listeners dispatch a `Job` to a CF Queue instead of running inline.
 
-2. **`@roost/broadcast`** — WebSocket broadcasting over Durable Objects. `ChannelDO` is the DO class that manages connections, presence, and authorization. `BroadcastManager` routes `BroadcastableEvent` dispatches to the right DO stub. `BroadcastServiceProvider` registers the DO namespace binding. Client helper ships as a separate entry point `@roost/broadcast/client`.
+2. **`@roostjs/broadcast`** — WebSocket broadcasting over Durable Objects. `ChannelDO` is the DO class that manages connections, presence, and authorization. `BroadcastManager` routes `BroadcastableEvent` dispatches to the right DO stub. `BroadcastServiceProvider` registers the DO namespace binding. Client helper ships as a separate entry point `@roostjs/broadcast/client`.
 
-3. **Client-side helper** (`@roost/broadcast/client`) — Minimal WebSocket client with auto-reconnect and channel subscription. Zero server-side imports. Bundled as a separate entry point so it can be imported from browser/edge without pulling in DO types.
+3. **Client-side helper** (`@roostjs/broadcast/client`) — Minimal WebSocket client with auto-reconnect and channel subscription. Zero server-side imports. Bundled as a separate entry point so it can be imported from browser/edge without pulling in DO types.
 
 4. **CLI generators** — `roost make:event`, `roost make:listener`, `roost make:channel` added to `packages/cli`.
 
@@ -26,8 +26,8 @@ Two new packages plus CLI generator additions. None of the four components depen
 
 Inner loop per component:
 
-- `@roost/events`: `bun test --filter events` after each class added
-- `@roost/broadcast` (server): `bun test --filter broadcast` after each class added; DO tests require `workerd` test runner
+- `@roostjs/events`: `bun test --filter events` after each class added
+- `@roostjs/broadcast` (server): `bun test --filter broadcast` after each class added; DO tests require `workerd` test runner
 - Client helper: `bun test --filter broadcast` (client entry point tests run in the same package)
 - CLI generators: `bun test --filter cli`
 
@@ -41,10 +41,10 @@ Full gate before any commit: `bun run typecheck` must pass clean.
 
 | Package | Location | Purpose |
 |---|---|---|
-| `@roost/events` | `packages/events/` | Event dispatch, listeners, fakes |
-| `@roost/broadcast` | `packages/broadcast/` | DO-backed WebSocket broadcasting |
+| `@roostjs/events` | `packages/events/` | Event dispatch, listeners, fakes |
+| `@roostjs/broadcast` | `packages/broadcast/` | DO-backed WebSocket broadcasting |
 
-### New Files — `@roost/events`
+### New Files — `@roostjs/events`
 
 | File | Purpose |
 |---|---|
@@ -63,7 +63,7 @@ Full gate before any commit: `bun run typecheck` must pass clean.
 | `packages/events/__tests__/subscriber.test.ts` | Tests for subscriber pattern |
 | `packages/events/__tests__/provider.test.ts` | Tests for `EventServiceProvider` boot integration |
 
-### New Files — `@roost/broadcast`
+### New Files — `@roostjs/broadcast`
 
 | File | Purpose |
 |---|---|
@@ -76,7 +76,7 @@ Full gate before any commit: `bun run typecheck` must pass clean.
 | `packages/broadcast/src/client.ts` | `createBroadcastClient` — client-side WebSocket helper |
 | `packages/broadcast/src/types.ts` | Shared types: `PresenceMember`, `ConnectionMeta`, `BroadcastMessage` |
 | `packages/broadcast/src/index.ts` | Server exports (excludes `client.ts`) |
-| `packages/broadcast/src/client-index.ts` | Client entry point (`@roost/broadcast/client`) |
+| `packages/broadcast/src/client-index.ts` | Client entry point (`@roostjs/broadcast/client`) |
 | `packages/broadcast/package.json` | Package manifest with `exports` map for client entry |
 | `packages/broadcast/tsconfig.json` | TypeScript config |
 | `packages/broadcast/__tests__/channel-do.test.ts` | DO WebSocket tests (workerd runner) |
@@ -88,8 +88,8 @@ Full gate before any commit: `bun run typecheck` must pass clean.
 
 | File | Package | Change |
 |---|---|---|
-| `packages/cli/src/commands/make.ts` | `@roost/cli` | Add `event`, `listener`, `channel` subcommands (or create `make.ts` if absent) |
-| `packages/cli/__tests__/make.test.ts` | `@roost/cli` | Tests for new generator commands |
+| `packages/cli/src/commands/make.ts` | `@roostjs/cli` | Add `event`, `listener`, `channel` subcommands (or create `make.ts` if absent) |
+| `packages/cli/__tests__/make.test.ts` | `@roostjs/cli` | Tests for new generator commands |
 
 ---
 
@@ -97,7 +97,7 @@ Full gate before any commit: `bun run typecheck` must pass clean.
 
 ---
 
-### Component 1: `@roost/events`
+### Component 1: `@roostjs/events`
 
 ---
 
@@ -299,8 +299,8 @@ export class EventDispatcher {
         const listener = new ListenerClass() as Listener & { shouldQueue?: true };
 
         if ('shouldQueue' in listener && listener.shouldQueue === true) {
-          // Import lazily to avoid circular dep; @roost/queue must be a peer dep
-          const { Job } = await import('@roost/queue');
+          // Import lazily to avoid circular dep; @roostjs/queue must be a peer dep
+          const { Job } = await import('@roostjs/queue');
           // The listener itself IS the job — it must extend Job<T>
           // Dispatch the listener class as a Job with the event as payload
           await (ListenerClass as unknown as typeof Job).dispatch(event);
@@ -314,7 +314,7 @@ export class EventDispatcher {
 }
 ```
 
-**Queued listener contract**: A listener that implements `ShouldQueue` must also extend `Job<T>`. Its `handle()` method on the Job side receives `this.payload` (the event). This is the same pattern Laravel uses: the listener class doubles as the Job class. The `EventDispatcher` calls `ListenerClass.dispatch(event)` treating the listener as a `Job` subclass. `@roost/queue` is declared as a `peerDependency` in `packages/events/package.json` — if not installed, the `ShouldQueue` path throws at runtime with a clear message.
+**Queued listener contract**: A listener that implements `ShouldQueue` must also extend `Job<T>`. Its `handle()` method on the Job side receives `this.payload` (the event). This is the same pattern Laravel uses: the listener class doubles as the Job class. The `EventDispatcher` calls `ListenerClass.dispatch(event)` treating the listener as a `Job` subclass. `@roostjs/queue` is declared as a `peerDependency` in `packages/events/package.json` — if not installed, the `ShouldQueue` path throws at runtime with a clear message.
 
 ---
 
@@ -325,7 +325,7 @@ export class EventDispatcher {
 ```typescript
 // packages/events/src/provider.ts
 
-import { ServiceProvider } from '@roost/core';
+import { ServiceProvider } from '@roostjs/core';
 import { EventDispatcher } from './dispatcher.js';
 import type { EventClass, ListenerClass, SubscriberClass } from './types.js';
 import type { Event } from './event.js';
@@ -418,7 +418,7 @@ export type ListenerMap = Map<EventClass<Event>, ListenerClass[]>;
 
 ---
 
-### Component 2: `@roost/broadcast`
+### Component 2: `@roostjs/broadcast`
 
 ---
 
@@ -485,7 +485,7 @@ The `EventDispatcher` calls `BroadcastManager.get().broadcast(event)` after runn
 ```typescript
 // packages/broadcast/src/manager.ts
 
-import { DurableObjectClient } from '@roost/cloudflare';
+import { DurableObjectClient } from '@roostjs/cloudflare';
 import type { BroadcastableEvent } from './event.js';
 import { PrivateChannel, PresenceChannel } from './channel.js';
 import type { BroadcastMessage } from './types.js';
@@ -794,8 +794,8 @@ export class BroadcastFake {
 ```typescript
 // packages/broadcast/src/provider.ts
 
-import { ServiceProvider } from '@roost/core';
-import { DurableObjectClient } from '@roost/cloudflare';
+import { ServiceProvider } from '@roostjs/core';
+import { DurableObjectClient } from '@roostjs/cloudflare';
 import { BroadcastManager } from './manager.js';
 
 export class BroadcastServiceProvider extends ServiceProvider {
@@ -844,7 +844,7 @@ export class BroadcastServiceProvider extends ServiceProvider {
 
 `ChannelDO` must be exported from the Worker's entry point:
 ```typescript
-export { ChannelDO } from '@roost/broadcast';
+export { ChannelDO } from '@roostjs/broadcast';
 ```
 
 ---
@@ -877,32 +877,32 @@ export interface BroadcastMessage {
 
 #### Integrating broadcast dispatch with `EventDispatcher`
 
-The `EventDispatcher` in `@roost/events` should check for `BroadcastableEvent` and delegate to `BroadcastManager` after running sync listeners. This is done by detecting the interface at runtime without a hard import dependency on `@roost/broadcast`:
+The `EventDispatcher` in `@roostjs/events` should check for `BroadcastableEvent` and delegate to `BroadcastManager` after running sync listeners. This is done by detecting the interface at runtime without a hard import dependency on `@roostjs/broadcast`:
 
 ```typescript
 // In EventDispatcher.dispatch(), after running all listeners:
 if ('broadcastOn' in event && typeof (event as Record<string, unknown>).broadcastOn === 'function') {
-  // Lazy import to avoid hard dep; @roost/broadcast is a peer dep
+  // Lazy import to avoid hard dep; @roostjs/broadcast is a peer dep
   try {
-    const { BroadcastManager } = await import('@roost/broadcast');
+    const { BroadcastManager } = await import('@roostjs/broadcast');
     await BroadcastManager.get().broadcast(
-      event as import('@roost/broadcast').BroadcastableEvent
+      event as import('@roostjs/broadcast').BroadcastableEvent
     );
   } catch {
-    // @roost/broadcast not installed or not configured — skip silently
+    // @roostjs/broadcast not installed or not configured — skip silently
   }
 }
 ```
 
-This keeps `@roost/events` usable without installing `@roost/broadcast`. Broadcasting only activates when the package is present and `BroadcastServiceProvider` has been registered.
+This keeps `@roostjs/events` usable without installing `@roostjs/broadcast`. Broadcasting only activates when the package is present and `BroadcastServiceProvider` has been registered.
 
 ---
 
-### Component 3: Client-side helper (`@roost/broadcast/client`)
+### Component 3: Client-side helper (`@roostjs/broadcast/client`)
 
 **File**: `packages/broadcast/src/client.ts`
 
-No server-side imports. This file must not import anything from `packages/broadcast/src/channel-do.ts`, `packages/broadcast/src/provider.ts`, or `@roost/cloudflare`. It only imports from `packages/broadcast/src/types.ts` for `BroadcastMessage`.
+No server-side imports. This file must not import anything from `packages/broadcast/src/channel-do.ts`, `packages/broadcast/src/provider.ts`, or `@roostjs/cloudflare`. It only imports from `packages/broadcast/src/types.ts` for `BroadcastMessage`.
 
 ```typescript
 // packages/broadcast/src/client.ts
@@ -1069,7 +1069,7 @@ Generates `src/events/{name}.ts`:
 
 ```typescript
 // Template output for: roost make:event OrderCreated
-import { Event } from '@roost/events';
+import { Event } from '@roostjs/events';
 
 export class OrderCreated extends Event {
   constructor(
@@ -1083,8 +1083,8 @@ export class OrderCreated extends Event {
 If the event should be broadcastable, the `--broadcast` flag generates:
 
 ```typescript
-import { Event } from '@roost/events';
-import { type BroadcastableEvent, PrivateChannel } from '@roost/broadcast';
+import { Event } from '@roostjs/events';
+import { type BroadcastableEvent, PrivateChannel } from '@roostjs/broadcast';
 
 export class OrderCreated extends Event implements BroadcastableEvent {
   constructor(readonly orderId: string) {
@@ -1107,7 +1107,7 @@ Generates `src/listeners/{name}.ts`:
 
 ```typescript
 // Template output for: roost make:listener SendOrderConfirmation --event OrderCreated
-import type { Listener } from '@roost/events';
+import type { Listener } from '@roostjs/events';
 import type { OrderCreated } from '../events/order-created.js';
 
 export class SendOrderConfirmation implements Listener<OrderCreated> {
@@ -1120,8 +1120,8 @@ export class SendOrderConfirmation implements Listener<OrderCreated> {
 With `--queued` flag, adds `ShouldQueue` and extends `Job`:
 
 ```typescript
-import { Job } from '@roost/queue';
-import type { Listener, ShouldQueue } from '@roost/events';
+import { Job } from '@roostjs/queue';
+import type { Listener, ShouldQueue } from '@roostjs/events';
 import type { OrderCreated } from '../events/order-created.js';
 
 export class SendOrderConfirmation extends Job<OrderCreated> implements Listener<OrderCreated>, ShouldQueue {
@@ -1168,7 +1168,7 @@ export class OrderChannel {
 
 ## Testing Requirements
 
-### `@roost/events` tests
+### `@roostjs/events` tests
 
 **`packages/events/__tests__/event.test.ts`**
 
@@ -1207,7 +1207,7 @@ export class OrderChannel {
 
 ---
 
-### `@roost/broadcast` tests
+### `@roostjs/broadcast` tests
 
 **`packages/broadcast/__tests__/channel-do.test.ts`** (workerd runner required)
 
@@ -1276,7 +1276,7 @@ export class OrderChannel {
 |---|---|
 | `EventDispatcher.get()` called before any `EventServiceProvider` registered | Returns a bare dispatcher with no listeners registered (silent no-op). Events dispatch successfully; they just have no listeners. This is intentional — early boot dispatch should not throw. |
 | `ShouldQueue` listener class does not extend `Job` | `(ListenerClass as typeof Job).dispatch(event)` will throw a TypeError at runtime. Document the contract clearly in the `ShouldQueue` JSDoc: classes implementing `ShouldQueue` must extend `Job<TEvent>`. |
-| `@roost/broadcast` not installed but event implements `BroadcastableEvent` | The lazy `import('@roost/broadcast')` fails. The catch block swallows the error silently. Events still dispatch to sync listeners. Add a warning in the catch: `console.warn('[roost/events] @roost/broadcast is not installed or BroadcastManager is not initialized.')`. |
+| `@roostjs/broadcast` not installed but event implements `BroadcastableEvent` | The lazy `import('@roostjs/broadcast')` fails. The catch block swallows the error silently. Events still dispatch to sync listeners. Add a warning in the catch: `console.warn('[roost/events] @roostjs/broadcast is not installed or BroadcastManager is not initialized.')`. |
 | `BroadcastManager.get()` called before `BroadcastServiceProvider` registered | Throw `Error('BroadcastManager not initialized. Register BroadcastServiceProvider.')` with a clear fix hint. |
 | `ChannelDO.handleUpgrade()`: `env.BROADCAST_DO` binding absent | Not applicable — the DO itself is the binding target. If the Worker's binding is misconfigured, the `BroadcastManager` will throw when constructing the stub, not inside the DO. |
 | WebSocket `send()` after client disconnects | Wrapped in `try/catch` in both `handleBroadcast` and `broadcastToAll`. The runtime throws on send to a closed socket; the catch prevents a single dead socket from aborting the broadcast to all other clients. |
@@ -1296,7 +1296,7 @@ export class OrderChannel {
 | `serializeAttachment` data exceeds 2 KB | Runtime throws | `ConnectionMeta` is small (userId string + two numbers + one short string). Document the 2 KB limit and advise against adding large metadata to the attachment. |
 | Max 32,768 concurrent WebSocket connections per DO | New connections are rejected by the runtime | One DO per channel. For channels expected to have massive audiences (public broadcast), document that DO sharding (multiple DOs per channel with fan-out) is the scaling pattern and is out of scope for this phase. |
 | Two Workers in the same account attempt to use different `ChannelDO` classes with the same binding name | DO migration tag conflict | Standard CF DO migration discipline. Document that `ChannelDO` must be exported from the Worker entry point and that the migration tag must be unique. |
-| `EventDispatcher` singleton reset between tests | Test isolation broken if `Event.dispatch` is called after `restore()` in a previous test | Tests using `EventServiceProvider` should call `EventDispatcher.set(new EventDispatcher())` in `afterEach` to reset the singleton. Document this in the testing guide for `@roost/events`. |
+| `EventDispatcher` singleton reset between tests | Test isolation broken if `Event.dispatch` is called after `restore()` in a previous test | Tests using `EventServiceProvider` should call `EventDispatcher.set(new EventDispatcher())` in `afterEach` to reset the singleton. Document this in the testing guide for `@roostjs/events`. |
 
 ---
 

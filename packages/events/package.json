@@ -1,5 +1,5 @@
 {
-  "name": "@roost/events",
+  "name": "@roostjs/events",
   "version": "0.1.0",
   "type": "module",
   "exports": {
@@ -13,25 +13,38 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@roost/core": "workspace:*"
+    "@roostjs/core": "workspace:*"
   },
   "peerDependencies": {
-    "@roost/queue": "workspace:*",
-    "@roost/broadcast": "workspace:*"
+    "@roostjs/queue": "workspace:*",
+    "@roostjs/broadcast": "workspace:*"
   },
   "peerDependenciesMeta": {
-    "@roost/queue": {
+    "@roostjs/queue": {
       "optional": true
     },
-    "@roost/broadcast": {
+    "@roostjs/broadcast": {
       "optional": true
     }
   },
   "devDependencies": {
-    "@roost/queue": "workspace:*",
-    "@roost/broadcast": "workspace:*",
+    "@roostjs/queue": "workspace:*",
+    "@roostjs/broadcast": "workspace:*",
     "@cloudflare/workers-types": "catalog:",
     "bun-types": "catalog:",
     "typescript": "catalog:"
-  }
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/birdcar/roost.git",
+    "directory": "packages/events"
+  },
+  "homepage": "https://github.com/birdcar/roost/tree/main/packages/events#readme",
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "src"
+  ]
 }

@@ -1,5 +1,5 @@
 ---
-title: "@roost/auth Guides"
+title: "@roostjs/auth Guides"
 description: Task-oriented instructions for authentication, authorization, sessions, and multi-tenancy.
 ---
 
@@ -8,9 +8,9 @@ description: Task-oriented instructions for authentication, authorization, sessi
 Add `AuthMiddleware` globally to require authentication on every route, or scope it to specific routes via a pipeline.
 
 ```ts src/app.ts
-import { Application } from '@roost/core';
-import { AuthMiddleware } from '@roost/auth';
-import { AuthServiceProvider } from '@roost/auth';
+import { Application } from '@roostjs/core';
+import { AuthMiddleware } from '@roostjs/auth';
+import { AuthServiceProvider } from '@roostjs/auth';
 
 const app = Application.create(env, {
   auth: { redirectUrl: 'https://myapp.com/auth/callback' },
@@ -47,7 +47,7 @@ export const Route = createFileRoute('/dashboard')({
 Use `RoleMiddleware` to gate access by organization role. Pass one or more allowed roles as middleware arguments.
 
 ```ts
-import { RoleMiddleware } from '@roost/auth';
+import { RoleMiddleware } from '@roostjs/auth';
 
 // Only 'admin' role can access
 app.useMiddleware(RoleMiddleware, 'admin');
@@ -75,7 +75,7 @@ if (!isAdmin) {
 Use `OrgResolver` to detect the tenant from the request. Pick a resolution strategy that fits your URL scheme.
 
 ```ts
-import { OrgResolver } from '@roost/auth';
+import { OrgResolver } from '@roostjs/auth';
 
 // Resolve from subdomain: acme.myapp.com → 'acme'
 const resolver = new OrgResolver(['subdomain']);
@@ -104,7 +104,7 @@ To direct a user to a specific organization's login, pass `organization_id` to t
 Sessions are stored in KV with a sliding TTL. Use `SessionManager` to create, resolve, and destroy sessions.
 
 ```ts
-import { SessionManager } from '@roost/auth';
+import { SessionManager } from '@roostjs/auth';
 
 const sessionManager = new SessionManager(env.SESSION_KV, env.SESSION_SECRET);
 
@@ -144,8 +144,8 @@ After the callback, the user is redirected to the URL in `return_to`, or to `/da
 ### 1. Register both service providers
 
 ```ts title="src/app.ts"
-import { AuthServiceProvider } from '@roost/auth';
-import { OrmServiceProvider } from '@roost/orm';
+import { AuthServiceProvider } from '@roostjs/auth';
+import { OrmServiceProvider } from '@roostjs/orm';
 import { Post, Organization } from './models';
 
 app.register(AuthServiceProvider);
@@ -157,8 +157,8 @@ app.register(
 ### 2. Add tenant-scoped middleware
 
 ```ts title="src/app.ts"
-import { OrgResolver } from '@roost/auth';
-import { TenantScopeMiddleware, TenantContext } from '@roost/orm';
+import { OrgResolver } from '@roostjs/auth';
+import { TenantScopeMiddleware, TenantContext } from '@roostjs/orm';
 import { Organization } from './models/Organization';
 
 const resolver = new OrgResolver(['subdomain']); // or 'path-prefix', 'header'
@@ -203,7 +203,7 @@ Strategies can be combined: `new OrgResolver(['subdomain', 'header'])` tries sub
 Add `CsrfMiddleware` globally. All POST/PUT/PATCH/DELETE requests must include the `_csrf` token.
 
 ```ts
-import { CsrfMiddleware } from '@roost/auth';
+import { CsrfMiddleware } from '@roostjs/auth';
 
 app.useMiddleware(CsrfMiddleware);
 ```

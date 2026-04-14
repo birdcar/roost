@@ -29,13 +29,13 @@ it belongs to.
 
 ## How MCP Tools Relate to AI Agent Tools
 
-At first glance, `@roost/mcp` tools and `@roost/ai` tools look
+At first glance, `@roostjs/mcp` tools and `@roostjs/ai` tools look
 similar: both define a description, a parameter schema, and a handle method. The distinction
 is the audience. AI agent tools are consumed by Roost agents running inside your application —
 they are called by the agentic loop inside `agent.prompt()`. MCP tools are
 consumed by external AI clients connecting to your application over HTTP.
 
-Both use `@roost/schema` for parameter definitions, which is the intentional
+Both use `@roostjs/schema` for parameter definitions, which is the intentional
 overlap. A tool that makes sense as an AI agent tool will often also make sense as an
 MCP tool. The schema package provides the shared vocabulary, but the two packages serve
 different integration points: one is internal to your application, the other is an
@@ -43,7 +43,7 @@ outward-facing API contract for AI clients you do not control.
 
 ## Further Reading
 
-- [@roost/ai concepts — agent tools and the agentic loop](/docs/concepts/ai.md)
-- [@roost/schema concepts — shared schema between AI and MCP tools](/docs/concepts/schema.md)
-- [@roost/mcp reference — McpServer, McpTool, McpResource, and McpPrompt API](/docs/packages/mcp.md)
+- [@roostjs/ai concepts — agent tools and the agentic loop](/docs/concepts/ai.md)
+- [@roostjs/schema concepts — shared schema between AI and MCP tools](/docs/concepts/schema.md)
+- [@roostjs/mcp reference — McpServer, McpTool, McpResource, and McpPrompt API](/docs/packages/mcp.md)
 - [Model Context Protocol Specification](https://modelcontextprotocol.io)

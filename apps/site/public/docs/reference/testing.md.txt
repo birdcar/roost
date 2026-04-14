@@ -1,7 +1,7 @@
 ## Installation
 
 ```bash title="terminal"
-bun add -D @roost/testing
+bun add -D @roostjs/testing
 ```
 
 ## TestClient API

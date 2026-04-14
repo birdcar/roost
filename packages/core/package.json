@@ -1,5 +1,5 @@
 {
-  "name": "@roost/core",
+  "name": "@roostjs/core",
   "version": "0.1.0",
   "type": "module",
   "exports": {
@@ -19,5 +19,18 @@
     "@cloudflare/workers-types": "catalog:",
     "bun-types": "catalog:",
     "typescript": "catalog:"
-  }
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/birdcar/roost.git",
+    "directory": "packages/core"
+  },
+  "homepage": "https://github.com/birdcar/roost/tree/main/packages/core#readme",
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "src"
+  ]
 }

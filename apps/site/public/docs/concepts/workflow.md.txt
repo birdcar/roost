@@ -94,6 +94,6 @@ time, fake mode is transparent to application code — the code that calls
 
 ## Further Reading
 
-- [@roost/workflow reference — Workflow, WorkflowClient, Compensable API](/docs/reference/workflow.md)
-- [@roost/queue concepts — When to use queue jobs vs workflows](/docs/concepts/queue.md)
+- [@roostjs/workflow reference — Workflow, WorkflowClient, Compensable API](/docs/reference/workflow.md)
+- [@roostjs/queue concepts — When to use queue jobs vs workflows](/docs/concepts/queue.md)
 - [Cloudflare Workflows Documentation](https://developers.cloudflare.com/workflows/)

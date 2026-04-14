@@ -10,7 +10,7 @@
 
 ## Overview
 
-Add `@roost/workflow` — a Roost abstraction over Cloudflare Workflows (durable execution on SQLite-backed Durable Objects). Follows the same fake/assert testing pattern as `@roost/queue`, the `ServiceProvider` registration pattern from `@roost/core`, and the `make:*` CLI generator pattern from `@roost/cli`.
+Add `@roostjs/workflow` — a Roost abstraction over Cloudflare Workflows (durable execution on SQLite-backed Durable Objects). Follows the same fake/assert testing pattern as `@roostjs/queue`, the `ServiceProvider` registration pattern from `@roostjs/core`, and the `make:*` CLI generator pattern from `@roostjs/cli`.
 
 Workflows differ from queue jobs: they are stateful, durable, multi-step executions with guaranteed progress (checkpoints after every step). Jobs are fire-and-forget; Workflows survive Worker restarts and resume from the last completed step.
 
@@ -68,7 +68,7 @@ Workflows differ from queue jobs: they are stateful, durable, multi-step executi
 
 ```json
 {
-  "name": "@roost/workflow",
+  "name": "@roostjs/workflow",
   "version": "0.1.0",
   "type": "module",
   "main": "./src/index.ts",
@@ -77,7 +77,7 @@ Workflows differ from queue jobs: they are stateful, durable, multi-step executi
   },
   "peerDependencies": {
     "@cloudflare/workers-types": "*",
-    "@roost/core": "workspace:*"
+    "@roostjs/core": "workspace:*"
   }
 }
 ```
@@ -123,7 +123,7 @@ export class WorkflowError extends Error {
 }
 ```
 
-`NonRetryableError` from `cloudflare:workers` immediately halts step retries. Re-exporting it here keeps consumer imports within `@roost/workflow` and avoids leaking CF internals.
+`NonRetryableError` from `cloudflare:workers` immediately halts step retries. Re-exporting it here keeps consumer imports within `@roostjs/workflow` and avoids leaking CF internals.
 
 ### `packages/workflow/src/workflow.ts`
 
@@ -161,7 +161,7 @@ export abstract class Workflow<Env = unknown, TParams = unknown>
 }
 ```
 
-Note on lazy import: to avoid bundling test utilities in production, `fake()` uses a dynamic import. Alternatively (and simpler), the fake import is a static top-level import behind a `/* @__PURE__ */` comment pattern — match whatever approach `@roost/queue` uses. The key constraint is that `fake()` and `restore()` only live in test contexts.
+Note on lazy import: to avoid bundling test utilities in production, `fake()` uses a dynamic import. Alternatively (and simpler), the fake import is a static top-level import behind a `/* @__PURE__ */` comment pattern — match whatever approach `@roostjs/queue` uses. The key constraint is that `fake()` and `restore()` only live in test contexts.
 
 Simpler alternative matching the Job pattern exactly (static imports, same file structure):
 
@@ -356,7 +356,7 @@ Note: `Compensable` is a plain class, not a mixin, because TypeScript mixins wit
 ### `packages/workflow/src/provider.ts`
 
 ```typescript
-import { ServiceProvider } from '@roost/core';
+import { ServiceProvider } from '@roostjs/core';
 import { WorkflowClient } from './client.js';
 import type { Workflow } from './workflow.js';
 
@@ -449,7 +449,7 @@ export async function makeWorkflow(name: string): Promise<void> {
   const pascal = toPascalCase(name);
   const kebab = toKebabCase(name);
 
-  const content = `import { Workflow, Compensable, NonRetryableError } from '@roost/workflow';
+  const content = `import { Workflow, Compensable, NonRetryableError } from '@roostjs/workflow';
 import type { WorkflowEvent, WorkflowStep } from 'cloudflare:workers';
 
 interface ${pascal}Params {
@@ -585,7 +585,7 @@ Cover all of the following:
 - Resolves real `WorkflowClient` when not faked (mock the CF binding)
 
 **`NonRetryableError`** re-export
-- Import from `@roost/workflow` resolves without error
+- Import from `@roostjs/workflow` resolves without error
 
 ---
 
@@ -604,7 +604,7 @@ await step.do('idempotent-op', { retries: { limit: 3, delay: '5 seconds', backof
 For permanent failures (invalid input, unrecoverable state), throw `NonRetryableError`:
 
 ```typescript
-import { NonRetryableError } from '@roost/workflow';
+import { NonRetryableError } from '@roostjs/workflow';
 
 throw new NonRetryableError('Order already fulfilled — cannot reprocess');
 ```
@@ -621,7 +621,7 @@ protected async compensate(): Promise<void> {
     try {
       await fn();
     } catch (err) {
-      // TODO: plug into @roost/observability logger once Phase 1 is complete
+      // TODO: plug into @roostjs/observability logger once Phase 1 is complete
       console.error('Compensation failed:', err);
     }
   }
@@ -684,4 +684,4 @@ Guidelines for step boundaries (derived from CF architecture guide):
 
 ## Dependencies
 
-No new external dependencies. The `cloudflare:workers` module is a virtual module provided by the Workers runtime — declare it as a `devDependency` via `@cloudflare/workers-types` peer dep. All other imports are from `@roost/core` (already a peer dep on all packages).
+No new external dependencies. The `cloudflare:workers` module is a virtual module provided by the Workers runtime — declare it as a `devDependency` via `@cloudflare/workers-types` peer dep. All other imports are from `@roostjs/core` (already a peer dep on all packages).

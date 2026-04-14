@@ -26,11 +26,11 @@ export async function newProject(name: string, flags: Record<string, boolean> = 
   await mkdir(join(dir, 'tests'), { recursive: true });
 
   const deps: Record<string, string> = {
-    '@roost/core': 'latest',
-    '@roost/cloudflare': 'latest',
-    '@roost/start': 'latest',
-    '@roost/auth': 'latest',
-    '@roost/orm': 'latest',
+    '@roostjs/core': 'latest',
+    '@roostjs/cloudflare': 'latest',
+    '@roostjs/start': 'latest',
+    '@roostjs/auth': 'latest',
+    '@roostjs/orm': 'latest',
     '@tanstack/react-router': 'latest',
     '@tanstack/react-start': 'latest',
     'react': '^19.0.0',
@@ -38,15 +38,15 @@ export async function newProject(name: string, flags: Record<string, boolean> = 
   };
 
   if (flags['with-ai']) {
-    deps['@roost/ai'] = 'latest';
-    deps['@roost/mcp'] = 'latest';
-    deps['@roost/schema'] = 'latest';
+    deps['@roostjs/ai'] = 'latest';
+    deps['@roostjs/mcp'] = 'latest';
+    deps['@roostjs/schema'] = 'latest';
   }
   if (flags['with-billing']) {
-    deps['@roost/billing'] = 'latest';
+    deps['@roostjs/billing'] = 'latest';
   }
   if (flags['with-queue']) {
-    deps['@roost/queue'] = 'latest';
+    deps['@roostjs/queue'] = 'latest';
   }
 
   const pkg = {
@@ -61,7 +61,7 @@ export async function newProject(name: string, flags: Record<string, boolean> = 
     },
     dependencies: deps,
     devDependencies: {
-      '@roost/testing': 'latest',
+      '@roostjs/testing': 'latest',
       '@types/react': '^19.0.0',
       '@types/react-dom': '^19.0.0',
       '@vitejs/plugin-react': '^4.5.0',

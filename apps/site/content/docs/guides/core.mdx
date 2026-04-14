@@ -1,5 +1,5 @@
 ---
-title: "@roost/core Guides"
+title: "@roostjs/core Guides"
 description: Task-oriented instructions for the container, config, middleware, and service providers.
 ---
 
@@ -8,7 +8,7 @@ description: Task-oriented instructions for the container, config, middleware, a
 Service providers are the correct place to register container bindings and run boot logic.
 
 ```ts src/providers/CacheServiceProvider.ts
-import { ServiceProvider } from '@roost/core';
+import { ServiceProvider } from '@roostjs/core';
 
 export class CacheServiceProvider extends ServiceProvider {
   async register(): Promise<void> {
@@ -25,7 +25,7 @@ export class CacheServiceProvider extends ServiceProvider {
 ```
 
 ```ts src/app.ts
-import { Application } from '@roost/core';
+import { Application } from '@roostjs/core';
 import { CacheServiceProvider } from './providers/CacheServiceProvider';
 
 const app = Application.create(env, config);
@@ -33,14 +33,14 @@ app.register(CacheServiceProvider);
 await app.boot();
 ```
 
-The `register()` method runs before all `boot()` calls, so you can safely resolve services registered by other providers inside `boot()`. See [@roost/core reference](/docs/packages/core) for full ServiceProvider API.
+The `register()` method runs before all `boot()` calls, so you can safely resolve services registered by other providers inside `boot()`. See [@roostjs/core reference](/docs/packages/core) for full ServiceProvider API.
 
 ## How to configure dependency injection bindings
 
 Use `singleton` for services that should be shared across the request, and `bind` for services that need a fresh instance each time.
 
 ```ts
-import { RoostContainer } from '@roost/core';
+import { RoostContainer } from '@roostjs/core';
 
 const container = new RoostContainer();
 
@@ -70,7 +70,7 @@ const requestContainer = appContainer.scoped();
 Middleware is a function or class that wraps the request/response cycle. Return early to short-circuit.
 
 ```ts src/middleware/RateLimitMiddleware.ts
-import type { Handler } from '@roost/core';
+import type { Handler } from '@roostjs/core';
 
 export async function rateLimitMiddleware(request: Request, next: Handler): Promise<Response> {
   const ip = request.headers.get('cf-connecting-ip') ?? 'unknown';
@@ -106,7 +106,7 @@ For class-based middleware, extend the framework's middleware class and use `wit
 Use `ConfigManager` with dot-notation keys. Pass a default to avoid throwing on missing keys.
 
 ```ts
-import { ConfigManager } from '@roost/core';
+import { ConfigManager } from '@roostjs/core';
 
 const config = new ConfigManager({
   app: { name: 'My App', debug: false },
@@ -135,7 +135,7 @@ In a service provider, resolve `ConfigManager` from the container rather than co
 Use `Pipeline` to compose multiple middleware functions in order. Each middleware calls `next` to pass control forward.
 
 ```ts
-import { Pipeline } from '@roost/core';
+import { Pipeline } from '@roostjs/core';
 
 const pipeline = new Pipeline()
   .use(loggerMiddleware)
@@ -165,8 +165,8 @@ the `cf-ray` header (or `crypto.randomUUID()`) and binds a `Logger` into the
 request-scoped container so every handler can resolve it.
 
 ```ts title="src/app.ts"
-import { Application } from '@roost/core';
-import { RequestIdMiddleware } from '@roost/core/middleware/request-id';
+import { Application } from '@roostjs/core';
+import { RequestIdMiddleware } from '@roostjs/core/middleware/request-id';
 
 const app = Application.create(env);
 app.useMiddleware(RequestIdMiddleware);
@@ -175,7 +175,7 @@ app.useMiddleware(RequestIdMiddleware);
 Resolve the logger inside a handler or downstream middleware:
 
 ```ts title="src/handlers/users.ts"
-import { Logger } from '@roost/core';
+import { Logger } from '@roostjs/core';
 
 export async function getUser(request: Request): Promise<Response> {
   const container = (request as any).__roostContainer;
@@ -203,7 +203,7 @@ Use `Logger.fake()` to get a `FakeLogger` that captures entries in memory instea
 writing to `console.log`.
 
 ```ts title="src/handlers/users.test.ts"
-import { Logger } from '@roost/core';
+import { Logger } from '@roostjs/core';
 
 test('logs a warning when user is not found', async () => {
   const logger = Logger.fake();
@@ -225,7 +225,7 @@ Use `app.defer()` to register a promise that should complete after the response 
 The Worker runtime will not terminate the isolate until all deferred promises settle.
 
 ```ts title="src/app.ts"
-import { Application } from '@roost/core';
+import { Application } from '@roostjs/core';
 
 const app = Application.create(env);
 
@@ -261,8 +261,8 @@ Most providers are covered by `WebhookPresets`. Override the `secret` field with
 signing key and pass the options to `WebhookMiddleware`.
 
 ```ts title="src/routes/webhooks/stripe.ts"
-import { WebhookMiddleware } from '@roost/core/webhooks/middleware';
-import { WebhookPresets } from '@roost/core/webhooks/verify';
+import { WebhookMiddleware } from '@roostjs/core/webhooks/middleware';
+import { WebhookPresets } from '@roostjs/core/webhooks/verify';
 
 const middleware = new WebhookMiddleware({
   ...WebhookPresets.stripe(),
@@ -281,7 +281,7 @@ For providers not covered by a preset, call `verifyWebhook` directly and supply 
 parsing logic.
 
 ```ts title="src/routes/webhooks/custom.ts"
-import { verifyWebhook, WebhookVerificationError } from '@roost/core/webhooks/verify';
+import { verifyWebhook, WebhookVerificationError } from '@roostjs/core/webhooks/verify';
 
 export async function handleCustomWebhook(request: Request): Promise<Response> {
   let body: string;

@@ -1,4 +1,4 @@
-import { Application } from '@roost/core';
+import { Application } from '@roostjs/core';
 import { TestClient } from './client.js';
 import { fakeAll, restoreAll } from './fakes.js';
 

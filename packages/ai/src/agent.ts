@@ -16,7 +16,7 @@ export interface HasTools {
 }
 
 export interface HasStructuredOutput {
-  schema(s: typeof import('@roost/schema').schema): Record<string, import('@roost/schema').SchemaBuilder>;
+  schema(s: typeof import('@roostjs/schema').schema): Record<string, import('@roostjs/schema').SchemaBuilder>;
 }
 
 export abstract class Agent implements AgentInterface {

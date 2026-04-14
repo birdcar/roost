@@ -53,6 +53,6 @@ appropriate. The middleware resolves the current user's subscription status thro
 
 ## Further Reading
 
-- [@roost/billing reference — BillingProvider, StripeProvider, FakeBillingProvider API](/docs/packages/billing.md)
+- [@roostjs/billing reference — BillingProvider, StripeProvider, FakeBillingProvider API](/docs/packages/billing.md)
 - [Testing Philosophy — fakes over mocks and how FakeBillingProvider fits the pattern](/docs/concepts/testing-philosophy.md)
 - [Stripe Documentation](https://stripe.com/docs)

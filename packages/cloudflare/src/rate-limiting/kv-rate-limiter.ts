@@ -1,4 +1,4 @@
-import type { Middleware } from '@roost/core';
+import type { Middleware } from '@roostjs/core';
 import type { RateLimiterConfig, WindowState } from './types.js';
 import { KVStore } from '../bindings/kv.js';
 import { getActiveRateLimiterFake } from './fake.js';

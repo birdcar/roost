@@ -1,4 +1,4 @@
-# Audit: @roost/cli
+# Audit: @roostjs/cli
 
 ## Status: FIXED
 

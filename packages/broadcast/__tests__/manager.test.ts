@@ -2,7 +2,7 @@ import { describe, test, expect, beforeEach, afterEach } from 'bun:test';
 import { BroadcastManager } from '../src/manager';
 import { PrivateChannel, PresenceChannel, Channel } from '../src/channel';
 import type { BroadcastableEvent } from '../src/event';
-import { DurableObjectClient } from '@roost/cloudflare';
+import { DurableObjectClient } from '@roostjs/cloudflare';
 
 class OrderShipped implements BroadcastableEvent {
   constructor(readonly orderId: string) {}

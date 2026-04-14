@@ -1,4 +1,4 @@
-# Audit: @roost/auth
+# Audit: @roostjs/auth
 
 ## Status: FIXED
 

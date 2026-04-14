@@ -1,9 +1,9 @@
 <Callout type="note">
   <p><strong>What you'll learn</strong></p>
   <ul>
-    <li>Create AI agents using <code>@roost/ai</code></li>
+    <li>Create AI agents using <code>@roostjs/ai</code></li>
     <li>Define tools that agents can call during a conversation</li>
-    <li>Store and retrieve data using the ORM (<code>@roost/orm</code>)</li>
+    <li>Store and retrieve data using the ORM (<code>@roostjs/orm</code>)</li>
   </ul>
   <p><strong>Time:</strong> ~30 minutes</p>
   <p>
@@ -12,14 +12,14 @@
   </p>
   <p>
     <strong>Packages used:</strong>{' '}
-    <code>@roost/ai</code>, <code>@roost/orm</code>, <code>@roost/start</code>, <code>@roost/schema</code>
+    <code>@roostjs/ai</code>, <code>@roostjs/orm</code>, <code>@roostjs/start</code>, <code>@roostjs/schema</code>
   </p>
 </Callout>
 
 ## Step 1: Create the Project — Scaffold with AI Support
 
 The `--with-ai` flag tells the Roost CLI to scaffold your project with the
-`@roost/ai` package pre-installed and the Cloudflare Workers AI binding already
+`@roostjs/ai` package pre-installed and the Cloudflare Workers AI binding already
 configured in `wrangler.jsonc`.
 
 ```terminal title="terminal"
@@ -416,13 +416,13 @@ at once. The typing indicator disappears only after the stream closes.
 You now have a fully working AI chat application on Cloudflare Workers that:
 
 - Accepts user messages via a React form
-- Persists every message to a D1 database using `@roost/orm`
+- Persists every message to a D1 database using `@roostjs/orm`
 - Runs an AI agent backed by `@cf/meta/llama-3.1-70b-instruct` on Cloudflare Workers AI — no API keys required
 - Exposes conversation history to the agent through a typed `SummarizeTool`
 - Streams tokens to the browser in real time
 
 ## Next Steps
 
-- [@roost/ai reference](/docs/reference/ai.md) — full API documentation for `Agent`, `Tool`, decorators, and the provider interface
+- [@roostjs/ai reference](/docs/reference/ai.md) — full API documentation for `Agent`, `Tool`, decorators, and the provider interface
 - [AI guides](/docs/guides/ai.md) — practical patterns: structured output, multi-agent pipelines, testing agents with fakes
 - [AI concepts](/docs/concepts/ai.md) — how the agent loop, tool resolution, and Cloudflare Workers AI provider work under the hood

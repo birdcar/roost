@@ -1,5 +1,5 @@
 ---
-title: "@roost/broadcast"
+title: "@roostjs/broadcast"
 description: How Durable Objects power per-channel WebSocket state, the three channel types and their authorization model, and how broadcast integrates with the events system.
 ---
 
@@ -66,8 +66,8 @@ routed through the DO.
 
 ## Events and Broadcast Integration
 
-`EventDispatcher` in `@roost/events` checks whether a dispatched event implements
-`BroadcastableEvent`. If it does, and if `@roost/broadcast` is installed, the
+`EventDispatcher` in `@roostjs/events` checks whether a dispatched event implements
+`BroadcastableEvent`. If it does, and if `@roostjs/broadcast` is installed, the
 dispatcher forwards the event to `BroadcastManager` after notifying in-process
 listeners. This means a single `dispatch()` call can:
 
@@ -105,7 +105,7 @@ transient state that does not need to round-trip through the server.
 
 ## Further Reading
 
-- [@roost/broadcast reference — Channel, ChannelDO, BroadcastManager, and client API](/docs/reference/broadcast)
-- [@roost/events concepts — How events and broadcast connect](/docs/concepts/events)
+- [@roostjs/broadcast reference — Channel, ChannelDO, BroadcastManager, and client API](/docs/reference/broadcast)
+- [@roostjs/events concepts — How events and broadcast connect](/docs/concepts/events)
 - [Cloudflare Durable Objects Documentation](https://developers.cloudflare.com/durable-objects/)
 - [WebSocket Hibernation API](https://developers.cloudflare.com/durable-objects/api/websockets/)

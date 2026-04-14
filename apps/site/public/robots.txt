@@ -16,4 +16,4 @@ Allow: /
 User-agent: PerplexityBot
 Allow: /
 
-Sitemap: https://roost.dev/sitemap.xml
+Sitemap: https://roost.birdcar.dev/sitemap.xml

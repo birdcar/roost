@@ -8,7 +8,7 @@
 
 Phase 10 is the proof. Three example apps — a todo app, an AI chat app, and a SaaS starter — each exercise a different slice of the framework. They serve as both validation (does the framework actually work end-to-end?) and documentation (how do you build a real app with Roost?).
 
-This phase depends on Phases 8 (CLI for scaffolding) and 9 (testing for test suites). Each app is scaffolded with `roost new`, built using framework conventions, and includes a test suite using @roost/testing.
+This phase depends on Phases 8 (CLI for scaffolding) and 9 (testing for test suites). Each app is scaffolded with `roost new`, built using framework conventions, and includes a test suite using @roostjs/testing.
 
 After this phase, the framework has been battle-tested against three real applications. Any rough edges in the DX have been found and fixed. The examples also become reference implementations for the documentation site.
 
@@ -27,7 +27,7 @@ After this phase, the framework has been battle-tested against three real applic
 - **FR-10.2**: WorkOS AuthKit login/signup
 - **FR-10.3**: Todo model with CRUD (create, read, update, delete, toggle complete)
 - **FR-10.4**: Server-rendered todo list with optimistic UI updates
-- **FR-10.5**: D1-backed storage via @roost/orm
+- **FR-10.5**: D1-backed storage via @roostjs/orm
 - **FR-10.6**: Tests covering auth flow, CRUD operations, and edge cases
 - **FR-10.7**: Deployable to Cloudflare Workers
 
@@ -47,7 +47,7 @@ After this phase, the framework has been battle-tested against three real applic
 - **FR-10.16**: Scaffolded with `roost new saas-starter --with-billing --with-queue`
 - **FR-10.17**: WorkOS AuthKit with organizations and roles
 - **FR-10.18**: Multi-tenant data scoping — each org sees only its data
-- **FR-10.19**: Stripe billing via @roost/billing — free trial, subscribe, upgrade, cancel
+- **FR-10.19**: Stripe billing via @roostjs/billing — free trial, subscribe, upgrade, cancel
 - **FR-10.20**: Background job processing — e.g., send welcome email on signup, generate reports
 - **FR-10.21**: Role-based access control — admin/member/viewer roles
 - **FR-10.22**: Dashboard with subscription status, team members, recent activity

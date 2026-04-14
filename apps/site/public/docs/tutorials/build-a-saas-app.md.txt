@@ -2,9 +2,9 @@
   <p><strong>What you'll learn</strong></p>
   <ul>
     <li>Protecting routes with WorkOS authentication via <code>AuthMiddleware</code></li>
-    <li>Gating premium features with <code>SubscribedMiddleware</code> from <code>@roost/billing</code></li>
+    <li>Gating premium features with <code>SubscribedMiddleware</code> from <code>@roostjs/billing</code></li>
     <li>Creating Stripe Checkout sessions and verifying webhooks</li>
-    <li>Dispatching background jobs with <code>@roost/queue</code></li>
+    <li>Dispatching background jobs with <code>@roostjs/queue</code></li>
   </ul>
   <p><strong>Time:</strong> ~45 minutes</p>
   <p><strong>Prerequisites:</strong></p>
@@ -13,13 +13,13 @@
     <li>A <a href="https://workos.com">WorkOS account</a> (free tier works)</li>
     <li>A <a href="https://stripe.com">Stripe account</a> (test mode works)</li>
   </ul>
-  <p><strong>Packages used:</strong> <code>@roost/auth</code>, <code>@roost/billing</code>, <code>@roost/orm</code>, <code>@roost/start</code>, <code>@roost/queue</code></p>
+  <p><strong>Packages used:</strong> <code>@roostjs/auth</code>, <code>@roostjs/billing</code>, <code>@roostjs/orm</code>, <code>@roostjs/start</code>, <code>@roostjs/queue</code></p>
 </Callout>
 
 ## Step 1: Create the Project
 
 Use the `--with-billing` flag to scaffold a project that includes
-Stripe billing wiring, the `@roost/queue` package, and the necessary
+Stripe billing wiring, the `@roostjs/queue` package, and the necessary
 Cloudflare Queue bindings in `wrangler.jsonc`.
 
 ```terminal title="terminal"
@@ -149,7 +149,7 @@ function DashboardPage() {
 
 ## Step 6: Add SubscribedMiddleware to Gate Premium Features
 
-`SubscribedMiddleware` from `@roost/billing` redirects to `/billing/checkout`
+`SubscribedMiddleware` from `@roostjs/billing` redirects to `/billing/checkout`
 when the current user's workspace does not have an active subscription. Add it
 after `AuthMiddleware` in the pipeline so auth is checked first:
 
@@ -314,7 +314,7 @@ export class SendWelcomeEmail extends Job<Payload> {
     const { organizationId } = this.payload;
 
     // Replace with your actual email-sending logic.
-    // @roost/ai, an HTTP client to Resend, or any transactional
+    // @roostjs/ai, an HTTP client to Resend, or any transactional
     // email service can go here.
     console.log(`Sending welcome email for organization: ${organizationId}`);
   }
@@ -392,6 +392,6 @@ In this tutorial you:
 
 ## Next Steps
 
-- [@roost/auth reference](/docs/reference/auth.md) — full API for `SessionManager`, `OrgResolver`, and role-based middleware
-- [@roost/billing guide](/docs/guides/billing.md) — subscription swaps, usage-based billing, the customer portal, and webhook event catalogue
+- [@roostjs/auth reference](/docs/reference/auth.md) — full API for `SessionManager`, `OrgResolver`, and role-based middleware
+- [@roostjs/billing guide](/docs/guides/billing.md) — subscription swaps, usage-based billing, the customer portal, and webhook event catalogue
 - [Auth concepts](/docs/concepts/auth.md) — how WorkOS AuthKit, the session layer, and organization membership fit together in Roost

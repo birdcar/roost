@@ -1,5 +1,5 @@
 ---
-title: "@roost/queue Guides"
+title: "@roostjs/queue Guides"
 description: Task-oriented instructions for defining jobs, dispatching, chaining, batching, and testing.
 ---
 
@@ -8,7 +8,7 @@ description: Task-oriented instructions for defining jobs, dispatching, chaining
 Extend `Job<TPayload>` with a typed payload interface and implement `handle()`.
 
 ```ts src/jobs/SendWelcomeEmail.ts
-import { Job, MaxRetries, Backoff } from '@roost/queue';
+import { Job, MaxRetries, Backoff } from '@roostjs/queue';
 
 interface SendWelcomeEmailPayload {
   userId: string;
@@ -69,7 +69,7 @@ await SendWelcomeEmail.dispatchAfter(600, {
 Use `Job.chain` for sequential jobs where each step depends on the previous one, and `Job.batch` for parallel independent work.
 
 ```ts
-import { Job } from '@roost/queue';
+import { Job } from '@roostjs/queue';
 import { ProcessOrder } from '../jobs/ProcessOrder';
 import { SendReceipt } from '../jobs/SendReceipt';
 import { UpdateInventory } from '../jobs/UpdateInventory';
@@ -98,7 +98,7 @@ const batchId = await Job.batch([
 Configure retry behavior with decorators. Implement `onFailure()` for cleanup or alerting after all retries are exhausted.
 
 ```ts
-import { Job, MaxRetries, Backoff, RetryAfter } from '@roost/queue';
+import { Job, MaxRetries, Backoff, RetryAfter } from '@roostjs/queue';
 
 @MaxRetries(5)
 @Backoff('exponential')   // Delays: 10s, 20s, 40s, 80s, 160s

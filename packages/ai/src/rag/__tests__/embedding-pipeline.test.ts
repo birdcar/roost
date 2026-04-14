@@ -1,7 +1,7 @@
 import { describe, test, expect, mock } from 'bun:test';
 import { EmbeddingPipeline } from '../embedding-pipeline.js';
 import { EmbeddingError } from '../types.js';
-import type { AIClient } from '@roost/cloudflare';
+import type { AIClient } from '@roostjs/cloudflare';
 
 function makeClient(result: unknown): AIClient {
   return {

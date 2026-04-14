@@ -49,4 +49,4 @@ CLI is never part of the deployed bundle.
 ## Further Reading
 
 - [Laravel Patterns — Artisan as the inspiration for Roost's CLI model](/docs/concepts/laravel-patterns.md)
-- [@roost/cli reference — available generators and their options](/docs/packages/cli.md)
+- [@roostjs/cli reference — available generators and their options](/docs/packages/cli.md)

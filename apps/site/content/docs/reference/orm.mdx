@@ -1,12 +1,12 @@
 ---
-title: "@roost/orm"
+title: "@roostjs/orm"
 description: Laravel-inspired ORM built on Drizzle for D1 databases. Model classes, query builder, relationships, lifecycle hooks, factories.
 ---
 
 ## Installation
 
 ```bash title="terminal"
-bun add @roost/orm
+bun add @roostjs/orm
 ```
 
 ## Model API
@@ -167,7 +167,7 @@ Inverse of `HasOneRelation` or `HasManyRelation`. `localKey` defaults to `'id'`.
 `load()` returns `Promise<RelatedModel | null>`.
 
 ```ts
-import { Model, HasManyRelation, BelongsToRelation } from '@roost/orm';
+import { Model, HasManyRelation, BelongsToRelation } from '@roostjs/orm';
 import { Post } from './Post';
 
 export class User extends Model {
@@ -235,7 +235,7 @@ Create and persist model instances.
 Create and persist a single model instance.
 
 ```ts
-import { Factory } from '@roost/orm';
+import { Factory } from '@roostjs/orm';
 import { Post } from '../../src/models/Post';
 
 class PostFactory extends Factory<typeof Post> {
@@ -289,7 +289,7 @@ Set `tenantColumn` to the column name that stores the tenant identifier (e.g. `'
 On `create()`, the tenant column value from the context overwrites any caller-supplied value for that column, ensuring rows can never be created outside the active tenant.
 
 ```ts title="src/models/Post.ts"
-import { Model } from '@roost/orm';
+import { Model } from '@roostjs/orm';
 
 export class Post extends Model {
   static tableName = 'posts';
@@ -377,7 +377,7 @@ Sets the active `TenantContext` from the incoming request using an `OrgResolvabl
 
 | Parameter | Description |
 |---|---|
-| `resolver` | Any object implementing `resolve(request: Request): { slug: string } \| null`. `OrgResolver` from `@roost/auth` satisfies this interface. |
+| `resolver` | Any object implementing `resolve(request: Request): { slug: string } \| null`. `OrgResolver` from `@roostjs/auth` satisfies this interface. |
 | `orgLookup` | Async function that returns `{ id: string }` for a known slug, or `null` if the org does not exist. |
 | `ctx` | The `TenantContext` instance to populate. Resolve from the DI container. |
 

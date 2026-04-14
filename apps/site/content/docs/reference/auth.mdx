@@ -1,12 +1,12 @@
 ---
-title: "@roost/auth"
+title: "@roostjs/auth"
 description: WorkOS-backed authentication with session management, middleware guards, CSRF protection, RBAC, and multi-tenancy support.
 ---
 
 ## Installation
 
 ```bash title="terminal"
-bun add @roost/auth
+bun add @roostjs/auth
 ```
 
 ## Configuration
@@ -31,7 +31,7 @@ Required application config:
 Register the service provider:
 
 ```ts title="src/app.ts"
-import { AuthServiceProvider } from '@roost/auth';
+import { AuthServiceProvider } from '@roostjs/auth';
 app.register(AuthServiceProvider);
 ```
 
@@ -199,7 +199,7 @@ Reads the `X-Org-Slug` request header.
 
 ## TenantScopeMiddleware
 
-`TenantScopeMiddleware` is exported from `@roost/orm`, not `@roost/auth`, but it is designed to be wired together with `OrgResolver` from `@roost/auth`. See the full API reference in the [@roost/orm reference — TenantScopeMiddleware](/docs/reference/orm#tenantscopemiddleware).
+`TenantScopeMiddleware` is exported from `@roostjs/orm`, not `@roostjs/auth`, but it is designed to be wired together with `OrgResolver` from `@roostjs/auth`. See the full API reference in the [@roostjs/orm reference — TenantScopeMiddleware](/docs/reference/orm#tenantscopemiddleware).
 
 `OrgResolver` satisfies the `OrgResolvable` interface required by `TenantScopeMiddleware`:
 
@@ -208,8 +208,8 @@ Reads the `X-Org-Slug` request header.
 // TenantScopeMiddleware expects OrgResolvable: { resolve(request: Request): { slug: string } | null }
 // These are structurally compatible — no adapter needed.
 
-import { OrgResolver } from '@roost/auth';
-import { TenantScopeMiddleware, TenantContext } from '@roost/orm';
+import { OrgResolver } from '@roostjs/auth';
+import { TenantScopeMiddleware, TenantContext } from '@roostjs/orm';
 
 const resolver = new OrgResolver(['subdomain']);
 const middleware = new TenantScopeMiddleware(

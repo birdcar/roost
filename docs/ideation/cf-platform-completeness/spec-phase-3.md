@@ -2,14 +2,14 @@
 
 **Created**: 2026-04-14
 **Status**: Draft
-**Blocked By**: Phase 2 (requires `AIClient` from `@roost/cloudflare` and `VectorStore` from `@roost/cloudflare`)
-**Packages Modified**: `@roost/ai`, `@roost/mcp`
+**Blocked By**: Phase 2 (requires `AIClient` from `@roostjs/cloudflare` and `VectorStore` from `@roostjs/cloudflare`)
+**Packages Modified**: `@roostjs/ai`, `@roostjs/mcp`
 
 ---
 
 ## Overview
 
-Phase 3 delivers two things: a `RAGPipeline` class in `@roost/ai` that handles the full document-to-retrieval lifecycle (chunking, embedding, vector storage, query), and an `AiSearchResource` in `@roost/mcp` that wraps a Cloudflare AI Search binding as an MCP-queryable resource.
+Phase 3 delivers two things: a `RAGPipeline` class in `@roostjs/ai` that handles the full document-to-retrieval lifecycle (chunking, embedding, vector storage, query), and an `AiSearchResource` in `@roostjs/mcp` that wraps a Cloudflare AI Search binding as an MCP-queryable resource.
 
 Neither feature requires changes to existing classes. Both follow patterns already established in the codebase.
 
@@ -465,7 +465,7 @@ No silent swallowing anywhere. Errors that originate in CF bindings surface to t
 Scaffold comment to add in `wrangler.jsonc` template (not added by this phase — document for users):
 
 ```jsonc
-// AI Search (optional — required for AiSearchResource in @roost/mcp)
+// AI Search (optional — required for AiSearchResource in @roostjs/mcp)
 // "ai_search": [
 //   { "binding": "AI_SEARCH", "index_name": "your-index-name" }
 // ]

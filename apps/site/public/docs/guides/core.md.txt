@@ -25,7 +25,7 @@ app.register(CacheServiceProvider);
 await app.boot();
 ```
 
-The `register()` method runs before all `boot()` calls, so you can safely resolve services registered by other providers inside `boot()`. See [@roost/core reference](/docs/packages/core.md) for full ServiceProvider API.
+The `register()` method runs before all `boot()` calls, so you can safely resolve services registered by other providers inside `boot()`. See [@roostjs/core reference](/docs/packages/core.md) for full ServiceProvider API.
 
 ## How to configure dependency injection bindings
 

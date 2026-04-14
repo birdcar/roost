@@ -1,4 +1,4 @@
-# Audit: @roost/schema
+# Audit: @roostjs/schema
 
 ## Status: CLEAN
 

@@ -23,7 +23,7 @@ export class AppServer extends McpServer {
 }
 ```
 
-Mount the server on a route to accept MCP connections from clients like Claude or Cursor. See [@roost/mcp reference](/docs/packages/mcp.md) for mounting details.
+Mount the server on a route to accept MCP connections from clients like Claude or Cursor. See [@roostjs/mcp reference](/docs/packages/mcp.md) for mounting details.
 
 ## How to define MCP tools
 

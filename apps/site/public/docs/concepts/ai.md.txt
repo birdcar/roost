@@ -111,7 +111,7 @@ Choose `TextChunker` for unstructured prose, dense text, or content without head
 
 ## Further Reading
 
-- [@roost/cloudflare concepts — AIClient and the Workers AI binding](/docs/concepts/cloudflare.md)
-- [@roost/mcp concepts — how MCP tools relate to AI agent tools](/docs/concepts/mcp.md)
-- [@roost/schema concepts — how tool schemas are defined](/docs/concepts/schema.md)
-- [@roost/ai reference — Agent, Tool, and decorator API](/docs/packages/ai.md)
+- [@roostjs/cloudflare concepts — AIClient and the Workers AI binding](/docs/concepts/cloudflare.md)
+- [@roostjs/mcp concepts — how MCP tools relate to AI agent tools](/docs/concepts/mcp.md)
+- [@roostjs/schema concepts — how tool schemas are defined](/docs/concepts/schema.md)
+- [@roostjs/ai reference — Agent, Tool, and decorator API](/docs/packages/ai.md)

@@ -12,8 +12,8 @@ function HomePage() {
       <p>This is a development harness for the Roost framework.</p>
       <ul>
         <li>TanStack Start for routing and SSR</li>
-        <li>@roost/core for service container, config, middleware</li>
-        <li>@roost/cloudflare for typed CF bindings</li>
+        <li>@roostjs/core for service container, config, middleware</li>
+        <li>@roostjs/cloudflare for typed CF bindings</li>
       </ul>
     </div>
   );

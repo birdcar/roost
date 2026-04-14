@@ -1,7 +1,7 @@
 ## Installation
 
 ```bash title="terminal"
-bun add @roost/feature-flags
+bun add @roostjs/feature-flags
 ```
 
 ## Configuration
@@ -91,7 +91,7 @@ Bootstraps `FeatureFlag` with a `KVStore` backed by the configured binding.
 
 Resolves the KV binding from `app.env` using the name from `app.config.get('flags.kv', 'FLAGS_KV')`.
 Calls `FeatureFlag.configure()` with a `FlagStore` that reads and writes JSON
-values via `@roost/cloudflare`'s `KVStore`. Logs a warning and returns without
+values via `@roostjs/cloudflare`'s `KVStore`. Logs a warning and returns without
 configuring if the binding is not found.
 
 ## Types

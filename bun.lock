@@ -7,9 +7,9 @@
     "apps/playground": {
       "name": "roost-playground",
       "dependencies": {
-        "@roost/cloudflare": "workspace:*",
-        "@roost/core": "workspace:*",
-        "@roost/start": "workspace:*",
+        "@roostjs/cloudflare": "workspace:*",
+        "@roostjs/core": "workspace:*",
+        "@roostjs/start": "workspace:*",
         "@tanstack/react-router": "catalog:",
         "@tanstack/react-start": "catalog:",
         "react": "catalog:",
@@ -29,8 +29,8 @@
       "dependencies": {
         "@mdx-js/react": "^3.1.0",
         "@mdx-js/rollup": "^3.1.0",
-        "@roost/core": "workspace:*",
-        "@roost/start": "workspace:*",
+        "@roostjs/core": "workspace:*",
+        "@roostjs/start": "workspace:*",
         "@tanstack/react-router": "catalog:",
         "@tanstack/react-start": "catalog:",
         "react": "catalog:",
@@ -54,20 +54,20 @@
     "examples/ai-chat": {
       "name": "roost-example-ai-chat",
       "dependencies": {
-        "@roost/ai": "workspace:*",
-        "@roost/auth": "workspace:*",
-        "@roost/cloudflare": "workspace:*",
-        "@roost/core": "workspace:*",
-        "@roost/mcp": "workspace:*",
-        "@roost/schema": "workspace:*",
-        "@roost/start": "workspace:*",
+        "@roostjs/ai": "workspace:*",
+        "@roostjs/auth": "workspace:*",
+        "@roostjs/cloudflare": "workspace:*",
+        "@roostjs/core": "workspace:*",
+        "@roostjs/mcp": "workspace:*",
+        "@roostjs/schema": "workspace:*",
+        "@roostjs/start": "workspace:*",
         "@tanstack/react-router": "catalog:",
         "@tanstack/react-start": "catalog:",
         "react": "catalog:",
         "react-dom": "catalog:",
       },
       "devDependencies": {
-        "@roost/testing": "workspace:*",
+        "@roostjs/testing": "workspace:*",
         "bun-types": "catalog:",
         "typescript": "catalog:",
         "vite": "catalog:",
@@ -76,20 +76,20 @@
     "examples/saas-starter": {
       "name": "roost-example-saas-starter",
       "dependencies": {
-        "@roost/auth": "workspace:*",
-        "@roost/billing": "workspace:*",
-        "@roost/cloudflare": "workspace:*",
-        "@roost/core": "workspace:*",
-        "@roost/orm": "workspace:*",
-        "@roost/queue": "workspace:*",
-        "@roost/start": "workspace:*",
+        "@roostjs/auth": "workspace:*",
+        "@roostjs/billing": "workspace:*",
+        "@roostjs/cloudflare": "workspace:*",
+        "@roostjs/core": "workspace:*",
+        "@roostjs/orm": "workspace:*",
+        "@roostjs/queue": "workspace:*",
+        "@roostjs/start": "workspace:*",
         "@tanstack/react-router": "catalog:",
         "@tanstack/react-start": "catalog:",
         "react": "catalog:",
         "react-dom": "catalog:",
       },
       "devDependencies": {
-        "@roost/testing": "workspace:*",
+        "@roostjs/testing": "workspace:*",
         "bun-types": "catalog:",
         "typescript": "catalog:",
         "vite": "catalog:",
@@ -98,30 +98,30 @@
     "examples/todo": {
       "name": "roost-example-todo",
       "dependencies": {
-        "@roost/auth": "workspace:*",
-        "@roost/cloudflare": "workspace:*",
-        "@roost/core": "workspace:*",
-        "@roost/orm": "workspace:*",
-        "@roost/start": "workspace:*",
+        "@roostjs/auth": "workspace:*",
+        "@roostjs/cloudflare": "workspace:*",
+        "@roostjs/core": "workspace:*",
+        "@roostjs/orm": "workspace:*",
+        "@roostjs/start": "workspace:*",
         "@tanstack/react-router": "catalog:",
         "@tanstack/react-start": "catalog:",
         "react": "catalog:",
         "react-dom": "catalog:",
       },
       "devDependencies": {
-        "@roost/testing": "workspace:*",
+        "@roostjs/testing": "workspace:*",
         "bun-types": "catalog:",
         "typescript": "catalog:",
         "vite": "catalog:",
       },
     },
     "packages/ai": {
-      "name": "@roost/ai",
+      "name": "@roostjs/ai",
       "version": "0.1.0",
       "dependencies": {
-        "@roost/cloudflare": "workspace:*",
-        "@roost/core": "workspace:*",
-        "@roost/schema": "workspace:*",
+        "@roostjs/cloudflare": "workspace:*",
+        "@roostjs/core": "workspace:*",
+        "@roostjs/schema": "workspace:*",
       },
       "devDependencies": {
         "@cloudflare/workers-types": "catalog:",
@@ -130,12 +130,12 @@
       },
     },
     "packages/auth": {
-      "name": "@roost/auth",
+      "name": "@roostjs/auth",
       "version": "0.1.0",
       "dependencies": {
-        "@roost/cloudflare": "workspace:*",
-        "@roost/core": "workspace:*",
-        "@roost/start": "workspace:*",
+        "@roostjs/cloudflare": "workspace:*",
+        "@roostjs/core": "workspace:*",
+        "@roostjs/start": "workspace:*",
         "@workos-inc/node": "^7.0.0",
       },
       "devDependencies": {
@@ -153,11 +153,11 @@
       },
     },
     "packages/billing": {
-      "name": "@roost/billing",
+      "name": "@roostjs/billing",
       "version": "0.1.0",
       "dependencies": {
-        "@roost/core": "workspace:*",
-        "@roost/orm": "workspace:*",
+        "@roostjs/core": "workspace:*",
+        "@roostjs/orm": "workspace:*",
       },
       "devDependencies": {
         "@cloudflare/workers-types": "catalog:",
@@ -166,12 +166,12 @@
       },
     },
     "packages/broadcast": {
-      "name": "@roost/broadcast",
+      "name": "@roostjs/broadcast",
       "version": "0.1.0",
       "dependencies": {
-        "@roost/cloudflare": "workspace:*",
-        "@roost/core": "workspace:*",
-        "@roost/events": "workspace:*",
+        "@roostjs/cloudflare": "workspace:*",
+        "@roostjs/core": "workspace:*",
+        "@roostjs/events": "workspace:*",
       },
       "devDependencies": {
         "@cloudflare/workers-types": "catalog:",
@@ -180,7 +180,7 @@
       },
     },
     "packages/cli": {
-      "name": "@roost/cli",
+      "name": "@roostjs/cli",
       "version": "0.1.0",
       "bin": {
         "roost": "./src/index.ts",
@@ -191,10 +191,10 @@
       },
     },
     "packages/cloudflare": {
-      "name": "@roost/cloudflare",
+      "name": "@roostjs/cloudflare",
       "version": "0.1.0",
       "dependencies": {
-        "@roost/core": "workspace:*",
+        "@roostjs/core": "workspace:*",
       },
       "devDependencies": {
         "@cloudflare/workers-types": "catalog:",
@@ -206,7 +206,7 @@
       },
     },
     "packages/core": {
-      "name": "@roost/core",
+      "name": "@roostjs/core",
       "version": "0.1.0",
       "devDependencies": {
         "@cloudflare/workers-types": "catalog:",
@@ -218,33 +218,33 @@
       },
     },
     "packages/events": {
-      "name": "@roost/events",
+      "name": "@roostjs/events",
       "version": "0.1.0",
       "dependencies": {
-        "@roost/core": "workspace:*",
+        "@roostjs/core": "workspace:*",
       },
       "devDependencies": {
         "@cloudflare/workers-types": "catalog:",
-        "@roost/broadcast": "workspace:*",
-        "@roost/queue": "workspace:*",
+        "@roostjs/broadcast": "workspace:*",
+        "@roostjs/queue": "workspace:*",
         "bun-types": "catalog:",
         "typescript": "catalog:",
       },
       "peerDependencies": {
-        "@roost/broadcast": "workspace:*",
-        "@roost/queue": "workspace:*",
+        "@roostjs/broadcast": "workspace:*",
+        "@roostjs/queue": "workspace:*",
       },
       "optionalPeers": [
-        "@roost/broadcast",
-        "@roost/queue",
+        "@roostjs/broadcast",
+        "@roostjs/queue",
       ],
     },
     "packages/feature-flags": {
-      "name": "@roost/feature-flags",
+      "name": "@roostjs/feature-flags",
       "version": "0.1.0",
       "dependencies": {
-        "@roost/cloudflare": "workspace:*",
-        "@roost/core": "workspace:*",
+        "@roostjs/cloudflare": "workspace:*",
+        "@roostjs/core": "workspace:*",
         "@workos-inc/node": "^7.0.0",
       },
       "devDependencies": {
@@ -254,11 +254,11 @@
       },
     },
     "packages/mcp": {
-      "name": "@roost/mcp",
+      "name": "@roostjs/mcp",
       "version": "0.1.0",
       "dependencies": {
-        "@roost/core": "workspace:*",
-        "@roost/schema": "workspace:*",
+        "@roostjs/core": "workspace:*",
+        "@roostjs/schema": "workspace:*",
       },
       "devDependencies": {
         "bun-types": "catalog:",
@@ -266,11 +266,11 @@
       },
     },
     "packages/orm": {
-      "name": "@roost/orm",
+      "name": "@roostjs/orm",
       "version": "0.1.0",
       "dependencies": {
-        "@roost/cloudflare": "workspace:*",
-        "@roost/core": "workspace:*",
+        "@roostjs/cloudflare": "workspace:*",
+        "@roostjs/core": "workspace:*",
         "drizzle-orm": "catalog:",
       },
       "devDependencies": {
@@ -282,11 +282,11 @@
       },
     },
     "packages/queue": {
-      "name": "@roost/queue",
+      "name": "@roostjs/queue",
       "version": "0.1.0",
       "dependencies": {
-        "@roost/cloudflare": "workspace:*",
-        "@roost/core": "workspace:*",
+        "@roostjs/cloudflare": "workspace:*",
+        "@roostjs/core": "workspace:*",
       },
       "devDependencies": {
         "@cloudflare/workers-types": "catalog:",
@@ -295,7 +295,7 @@
       },
     },
     "packages/roost-skills": {
-      "name": "@roost/skills",
+      "name": "@roostjs/skills",
       "version": "0.1.0",
       "bin": {
         "roost-new": "./dist/skills/roost-new.js",
@@ -309,7 +309,7 @@
       },
     },
     "packages/schema": {
-      "name": "@roost/schema",
+      "name": "@roostjs/schema",
       "version": "0.1.0",
       "devDependencies": {
         "bun-types": "catalog:",
@@ -317,10 +317,10 @@
       },
     },
     "packages/start": {
-      "name": "@roost/start",
+      "name": "@roostjs/start",
       "version": "0.1.0",
       "dependencies": {
-        "@roost/core": "workspace:*",
+        "@roostjs/core": "workspace:*",
       },
       "devDependencies": {
         "@cloudflare/workers-types": "catalog:",
@@ -337,37 +337,37 @@
       },
     },
     "packages/testing": {
-      "name": "@roost/testing",
+      "name": "@roostjs/testing",
       "version": "0.1.0",
       "dependencies": {
-        "@roost/core": "workspace:*",
+        "@roostjs/core": "workspace:*",
       },
       "devDependencies": {
-        "@roost/ai": "workspace:*",
-        "@roost/billing": "workspace:*",
-        "@roost/orm": "workspace:*",
-        "@roost/queue": "workspace:*",
+        "@roostjs/ai": "workspace:*",
+        "@roostjs/billing": "workspace:*",
+        "@roostjs/orm": "workspace:*",
+        "@roostjs/queue": "workspace:*",
         "bun-types": "catalog:",
         "typescript": "catalog:",
       },
       "peerDependencies": {
-        "@roost/ai": "workspace:*",
-        "@roost/billing": "workspace:*",
-        "@roost/orm": "workspace:*",
-        "@roost/queue": "workspace:*",
+        "@roostjs/ai": "workspace:*",
+        "@roostjs/billing": "workspace:*",
+        "@roostjs/orm": "workspace:*",
+        "@roostjs/queue": "workspace:*",
       },
       "optionalPeers": [
-        "@roost/ai",
-        "@roost/billing",
-        "@roost/orm",
-        "@roost/queue",
+        "@roostjs/ai",
+        "@roostjs/billing",
+        "@roostjs/orm",
+        "@roostjs/queue",
       ],
     },
     "packages/workflow": {
-      "name": "@roost/workflow",
+      "name": "@roostjs/workflow",
       "version": "0.1.0",
       "dependencies": {
-        "@roost/core": "workspace:*",
+        "@roostjs/core": "workspace:*",
       },
       "devDependencies": {
         "@cloudflare/workers-types": "catalog:",
@@ -633,39 +633,39 @@
 
     "@rollup/rollup-win32-x64-msvc": ["@rollup/rollup-win32-x64-msvc@4.60.1", "", { "os": "win32", "cpu": "x64" }, "sha512-lWMnixq/QzxyhTV6NjQJ4SFo1J6PvOX8vUx5Wb4bBPsEb+8xZ89Bz6kOXpfXj9ak9AHTQVQzlgzBEc1SyM27xQ=="],
 
-    "@roost/ai": ["@roost/ai@workspace:packages/ai"],
+    "@roostjs/ai": ["@roostjs/ai@workspace:packages/ai"],
 
-    "@roost/auth": ["@roost/auth@workspace:packages/auth"],
+    "@roostjs/auth": ["@roostjs/auth@workspace:packages/auth"],
 
-    "@roost/billing": ["@roost/billing@workspace:packages/billing"],
+    "@roostjs/billing": ["@roostjs/billing@workspace:packages/billing"],
 
-    "@roost/broadcast": ["@roost/broadcast@workspace:packages/broadcast"],
+    "@roostjs/broadcast": ["@roostjs/broadcast@workspace:packages/broadcast"],
 
-    "@roost/cli": ["@roost/cli@workspace:packages/cli"],
+    "@roostjs/cli": ["@roostjs/cli@workspace:packages/cli"],
 
-    "@roost/cloudflare": ["@roost/cloudflare@workspace:packages/cloudflare"],
+    "@roostjs/cloudflare": ["@roostjs/cloudflare@workspace:packages/cloudflare"],
 
-    "@roost/core": ["@roost/core@workspace:packages/core"],
+    "@roostjs/core": ["@roostjs/core@workspace:packages/core"],
 
-    "@roost/events": ["@roost/events@workspace:packages/events"],
+    "@roostjs/events": ["@roostjs/events@workspace:packages/events"],
 
-    "@roost/feature-flags": ["@roost/feature-flags@workspace:packages/feature-flags"],
+    "@roostjs/feature-flags": ["@roostjs/feature-flags@workspace:packages/feature-flags"],
 
-    "@roost/mcp": ["@roost/mcp@workspace:packages/mcp"],
+    "@roostjs/mcp": ["@roostjs/mcp@workspace:packages/mcp"],
 
-    "@roost/orm": ["@roost/orm@workspace:packages/orm"],
+    "@roostjs/orm": ["@roostjs/orm@workspace:packages/orm"],
 
-    "@roost/queue": ["@roost/queue@workspace:packages/queue"],
+    "@roostjs/queue": ["@roostjs/queue@workspace:packages/queue"],
 
-    "@roost/schema": ["@roost/schema@workspace:packages/schema"],
+    "@roostjs/schema": ["@roostjs/schema@workspace:packages/schema"],
 
-    "@roost/skills": ["@roost/skills@workspace:packages/roost-skills"],
+    "@roostjs/skills": ["@roostjs/skills@workspace:packages/roost-skills"],
 
-    "@roost/start": ["@roost/start@workspace:packages/start"],
+    "@roostjs/start": ["@roostjs/start@workspace:packages/start"],
 
-    "@roost/testing": ["@roost/testing@workspace:packages/testing"],
+    "@roostjs/testing": ["@roostjs/testing@workspace:packages/testing"],
 
-    "@roost/workflow": ["@roost/workflow@workspace:packages/workflow"],
+    "@roostjs/workflow": ["@roostjs/workflow@workspace:packages/workflow"],
 
     "@tanstack/history": ["@tanstack/history@1.161.6", "", {}, "sha512-NaOGLRrddszbQj9upGat6HG/4TKvXLvu+osAIgfxPYA+eIvYKv8GKDJOrY2D3/U9MRnKfMWD7bU4jeD4xmqyIg=="],
 

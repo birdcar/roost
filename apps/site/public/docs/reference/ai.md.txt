@@ -1,7 +1,7 @@
 ## Installation
 
 ```bash title="terminal"
-bun add @roost/ai @roost/schema
+bun add @roostjs/ai @roostjs/schema
 ```
 
 ## Configuration
@@ -125,7 +125,7 @@ Retrieve a typed parameter value from the tool call arguments.
 ## CloudflareAIProvider
 
 The only built-in `AIProvider` implementation. Wraps `AIClient`
-from `@roost/cloudflare`, which in turn wraps the Cloudflare Workers
+from `@roostjs/cloudflare`, which in turn wraps the Cloudflare Workers
 `Ai` binding. Registered automatically by `AiServiceProvider`.
 
 #### `constructor(client: AIClient)`
@@ -290,7 +290,7 @@ if (result.queued) {
 
 ## AIClient.poll()
 
-Check the status of a queued async inference task via the Cloudflare REST API. Located in `@roost/cloudflare`.
+Check the status of a queued async inference task via the Cloudflare REST API. Located in `@roostjs/cloudflare`.
 
 #### `async poll<T = string>(taskId: string, fetcher: typeof fetch, accountId: string): Promise<{ status: 'running' } | { status: 'done'; result: T }>`
 
@@ -308,7 +308,7 @@ if (poll.status === 'done') {
 
 ## RAG Pipeline
 
-Import from `@roost/ai/rag`.
+Import from `@roostjs/ai/rag`.
 
 ### Chunkers
 

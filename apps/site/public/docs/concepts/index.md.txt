@@ -16,15 +16,15 @@ These pages explain how Roost's parts fit together and the broader decisions tha
 
 Each package has its own design rationale. These pages explain why each package is built the way it is.
 
-- [@roost/core](/docs/concepts/core.md) — Why a DI container for Workers, pipeline middleware design
-- [@roost/cloudflare](/docs/concepts/cloudflare.md) — Typed binding wrappers, name resolution, AIClient design
-- [@roost/start](/docs/concepts/start.md) — TanStack Start integration, the context bridge, SSR on Workers
-- [@roost/auth](/docs/concepts/auth.md) — Why WorkOS, session storage on KV, organization model
-- [@roost/orm](/docs/concepts/orm.md) — Active Record on D1, why not Prisma, migration design
-- [@roost/ai](/docs/concepts/ai.md) — Class-based agents, the agentic loop, Workers AI and no API keys
-- [@roost/mcp](/docs/concepts/mcp.md) — What MCP is, server-side tool exposure, MCP vs AI tools
-- [@roost/billing](/docs/concepts/billing.md) — Abstract billing interface, adapter pattern, webhook verification
-- [@roost/queue](/docs/concepts/queue.md) — CF Queues model, job lifecycle, retry and backoff
-- [@roost/cli](/docs/concepts/cli.md) — Code generation philosophy, scaffolding, convention enforcement
-- [@roost/testing](/docs/concepts/testing.md) — TestClient, test application setup, connection to testing philosophy
-- [@roost/schema](/docs/concepts/schema.md) — Fluent schema builder, JSON Schema output, shared AI and MCP schemas
+- [@roostjs/core](/docs/concepts/core.md) — Why a DI container for Workers, pipeline middleware design
+- [@roostjs/cloudflare](/docs/concepts/cloudflare.md) — Typed binding wrappers, name resolution, AIClient design
+- [@roostjs/start](/docs/concepts/start.md) — TanStack Start integration, the context bridge, SSR on Workers
+- [@roostjs/auth](/docs/concepts/auth.md) — Why WorkOS, session storage on KV, organization model
+- [@roostjs/orm](/docs/concepts/orm.md) — Active Record on D1, why not Prisma, migration design
+- [@roostjs/ai](/docs/concepts/ai.md) — Class-based agents, the agentic loop, Workers AI and no API keys
+- [@roostjs/mcp](/docs/concepts/mcp.md) — What MCP is, server-side tool exposure, MCP vs AI tools
+- [@roostjs/billing](/docs/concepts/billing.md) — Abstract billing interface, adapter pattern, webhook verification
+- [@roostjs/queue](/docs/concepts/queue.md) — CF Queues model, job lifecycle, retry and backoff
+- [@roostjs/cli](/docs/concepts/cli.md) — Code generation philosophy, scaffolding, convention enforcement
+- [@roostjs/testing](/docs/concepts/testing.md) — TestClient, test application setup, connection to testing philosophy
+- [@roostjs/schema](/docs/concepts/schema.md) — Fluent schema builder, JSON Schema output, shared AI and MCP schemas

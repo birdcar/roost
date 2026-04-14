@@ -135,29 +135,29 @@ function Page() {
 
 Each per-package concept page explains the *design thinking* behind that package. Key topics per package:
 
-**@roost/core**: Why a service container for Workers? How does DI work without a long-lived process? Why pipeline middleware instead of nested function calls?
+**@roostjs/core**: Why a service container for Workers? How does DI work without a long-lived process? Why pipeline middleware instead of nested function calls?
 
-**@roost/cloudflare**: Why wrap native bindings? The typed client pattern. How binding names are resolved from config. Why a single `AIClient.run()` instead of per-model methods.
+**@roostjs/cloudflare**: Why wrap native bindings? The typed client pattern. How binding names are resolved from config. Why a single `AIClient.run()` instead of per-model methods.
 
-**@roost/start**: Why TanStack Start over Next.js/Remix? How the context bridge connects server and client. SSR on Workers — what's different from Node.js SSR.
+**@roostjs/start**: Why TanStack Start over Next.js/Remix? How the context bridge connects server and client. SSR on Workers — what's different from Node.js SSR.
 
-**@roost/auth**: Why WorkOS instead of rolling auth? Enterprise-first design. Session storage on KV. The organization model and multi-tenancy. RBAC design.
+**@roostjs/auth**: Why WorkOS instead of rolling auth? Enterprise-first design. Session storage on KV. The organization model and multi-tenancy. RBAC design.
 
-**@roost/orm**: Active Record on SQLite/D1. Why not Prisma? Query builder vs raw SQL. Migration design: up/down with rollback safety. Relationship loading strategies.
+**@roostjs/orm**: Active Record on SQLite/D1. Why not Prisma? Query builder vs raw SQL. Migration design: up/down with rollback safety. Relationship loading strategies.
 
-**@roost/ai**: Why class-based agents? The agentic loop: prompt → tool calls → resolution. Why CF Workers AI instead of direct API keys — no external API calls, runs on Cloudflare's infrastructure. The `AIProvider` interface: extensibility without complexity. Default model choice rationale.
+**@roostjs/ai**: Why class-based agents? The agentic loop: prompt → tool calls → resolution. Why CF Workers AI instead of direct API keys — no external API calls, runs on Cloudflare's infrastructure. The `AIProvider` interface: extensibility without complexity. Default model choice rationale.
 
-**@roost/mcp**: What MCP is and why Roost supports it. Server-side tool exposure for AI integrations. How MCP tools relate to AI agent tools.
+**@roostjs/mcp**: What MCP is and why Roost supports it. Server-side tool exposure for AI integrations. How MCP tools relate to AI agent tools.
 
-**@roost/billing**: Why an abstract billing interface? The adapter pattern for payment providers. Webhook signature verification. Subscription lifecycle state machine.
+**@roostjs/billing**: Why an abstract billing interface? The adapter pattern for payment providers. Webhook signature verification. Subscription lifecycle state machine.
 
-**@roost/queue**: How CF Queues work (consumer Workers, batching). Job lifecycle: dispatch → queue → consume → handle → success/failure. Retry with backoff. Why not cron triggers for recurring work.
+**@roostjs/queue**: How CF Queues work (consumer Workers, batching). Job lifecycle: dispatch → queue → consume → handle → success/failure. Retry with backoff. Why not cron triggers for recurring work.
 
-**@roost/cli**: Code generation philosophy: generate once, own forever. Why scaffolding reduces decision fatigue. Convention enforcement through generators.
+**@roostjs/cli**: Code generation philosophy: generate once, own forever. Why scaffolding reduces decision fatigue. Convention enforcement through generators.
 
-**@roost/testing**: See cross-cutting Testing Philosophy page — per-package page links there and adds package-specific testing context.
+**@roostjs/testing**: See cross-cutting Testing Philosophy page — per-package page links there and adds package-specific testing context.
 
-**@roost/schema**: Why a fluent builder instead of raw JSON Schema? Type inference from schema definitions. Shared schema between AI tools and MCP.
+**@roostjs/schema**: Why a fluent builder instead of raw JSON Schema? Type inference from schema definitions. Shared schema between AI tools and MCP.
 
 ### Sidebar and Search
 

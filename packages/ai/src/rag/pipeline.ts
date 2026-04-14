@@ -1,4 +1,4 @@
-import type { VectorStore } from '@roost/cloudflare';
+import type { VectorStore } from '@roostjs/cloudflare';
 import type { Document, Chunk, QueryResult, RAGPipelineConfig } from './types.js';
 import type { EmbeddingPipeline } from './embedding-pipeline.js';
 import type { Chunker } from './chunker.js';

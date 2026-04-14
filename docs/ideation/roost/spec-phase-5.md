@@ -6,15 +6,15 @@
 
 ## Technical Approach
 
-Phase 5 delivers two packages: `@roost/ai` and `@roost/mcp`. They share a single `@roost/schema` utility package (a fluent JSON Schema builder) and are modeled directly after Laravel 13's AI SDK and MCP server implementations, adapted for TypeScript strict mode and Cloudflare Workers.
+Phase 5 delivers two packages: `@roostjs/ai` and `@roostjs/mcp`. They share a single `@roostjs/schema` utility package (a fluent JSON Schema builder) and are modeled directly after Laravel 13's AI SDK and MCP server implementations, adapted for TypeScript strict mode and Cloudflare Workers.
 
 The central design decisions:
 
-**@roost/ai** wraps Cloudflare AI (and eventually any AI provider) behind a class-based `Agent` abstraction. Agents are decorated classes — `@Provider`, `@Model`, `@MaxSteps`, etc. configure behavior at the class level without polluting instance code. The `Promptable` mixin provides `prompt()`, `stream()`, and `queue()` methods. Internally, agent execution delegates to a `Runner` that manages the step loop, tool call resolution, and response streaming. The `Runner` is the internal engine — never exposed to users.
+**@roostjs/ai** wraps Cloudflare AI (and eventually any AI provider) behind a class-based `Agent` abstraction. Agents are decorated classes — `@Provider`, `@Model`, `@MaxSteps`, etc. configure behavior at the class level without polluting instance code. The `Promptable` mixin provides `prompt()`, `stream()`, and `queue()` methods. Internally, agent execution delegates to a `Runner` that manages the step loop, tool call resolution, and response streaming. The `Runner` is the internal engine — never exposed to users.
 
-**@roost/mcp** builds an MCP (Model Context Protocol) server as a class. `Server` subclasses declare their `tools`, `resources`, and `prompts` arrays. The `Mcp.web('/mcp/server', MyServer)` helper wires the server to a Roost route, handling SSE transport and protocol handshaking. MCP tools mirror the `@roost/ai` Tool interface but return MCP `Response` factory objects instead of arbitrary values.
+**@roostjs/mcp** builds an MCP (Model Context Protocol) server as a class. `Server` subclasses declare their `tools`, `resources`, and `prompts` arrays. The `Mcp.web('/mcp/server', MyServer)` helper wires the server to a Roost route, handling SSE transport and protocol handshaking. MCP tools mirror the `@roostjs/ai` Tool interface but return MCP `Response` factory objects instead of arbitrary values.
 
-**@roost/schema** (shared) is a tiny fluent builder that produces valid JSON Schema 2020-12 objects. Both `@roost/ai` tools and `@roost/mcp` tools declare their schemas using the same builder, so there is one place to learn the API.
+**@roostjs/schema** (shared) is a tiny fluent builder that produces valid JSON Schema 2020-12 objects. Both `@roostjs/ai` tools and `@roostjs/mcp` tools declare their schemas using the same builder, so there is one place to learn the API.
 
 This is explicitly NOT a Vercel AI SDK wrapper. The agent class pattern compiles down to Cloudflare AI `binding.run()` calls (for simple prompts) and a custom step loop (for multi-step tool calls). Future providers implement the `Provider` interface and slot in without changing agent class code.
 
@@ -32,13 +32,13 @@ This is explicitly NOT a Vercel AI SDK wrapper. The agent class pattern compiles
 
 | File Path | Purpose |
 |---|---|
-| `packages/schema/package.json` | @roost/schema package manifest |
+| `packages/schema/package.json` | @roostjs/schema package manifest |
 | `packages/schema/tsconfig.json` | Extends base TS config |
 | `packages/schema/src/index.ts` | Public API barrel export |
 | `packages/schema/src/builder.ts` | Fluent JsonSchema builder |
 | `packages/schema/src/types.ts` | JsonSchema type definitions |
 | `packages/schema/__tests__/builder.test.ts` | Schema builder output validation |
-| `packages/ai/package.json` | @roost/ai package manifest |
+| `packages/ai/package.json` | @roostjs/ai package manifest |
 | `packages/ai/tsconfig.json` | Extends base TS config |
 | `packages/ai/src/index.ts` | Public API barrel export |
 | `packages/ai/src/agent.ts` | Agent base class + Promptable mixin |
@@ -62,7 +62,7 @@ This is explicitly NOT a Vercel AI SDK wrapper. The agent class pattern compiles
 | `packages/ai/__tests__/middleware.test.ts` | Agent middleware tests |
 | `packages/ai/__tests__/streaming.test.ts` | SSE stream output tests |
 | `packages/ai/__tests__/fake.test.ts` | Agent.fake() and assertion tests |
-| `packages/mcp/package.json` | @roost/mcp package manifest |
+| `packages/mcp/package.json` | @roostjs/mcp package manifest |
 | `packages/mcp/tsconfig.json` | Extends base TS config |
 | `packages/mcp/src/index.ts` | Public API barrel export |
 | `packages/mcp/src/server.ts` | MCP Server base class |
@@ -94,9 +94,9 @@ This is explicitly NOT a Vercel AI SDK wrapper. The agent class pattern compiles
 
 ---
 
-### 1. Package Setup: @roost/schema
+### 1. Package Setup: @roostjs/schema
 
-**Overview**: A zero-dependency, 200-line utility that builds JSON Schema 2020-12 objects via a fluent API. Used by `@roost/ai` tool schemas, `@roost/ai` structured output schemas, and `@roost/mcp` tool schemas. Living in its own package prevents a circular dependency between `@roost/ai` and `@roost/mcp`.
+**Overview**: A zero-dependency, 200-line utility that builds JSON Schema 2020-12 objects via a fluent API. Used by `@roostjs/ai` tool schemas, `@roostjs/ai` structured output schemas, and `@roostjs/mcp` tool schemas. Living in its own package prevents a circular dependency between `@roostjs/ai` and `@roostjs/mcp`.
 
 ```typescript
 // packages/schema/src/builder.ts
@@ -329,13 +329,13 @@ export type StreamEvent =
 
 ### 3. Provider Interface and Cloudflare AI Provider
 
-**Overview**: `Provider` interface defines the contract for executing a conversation and returning a response. The `CloudflareAIProvider` implements it using `@roost/cloudflare`'s `AIClient`. Future providers (OpenAI, Anthropic direct) implement the same interface.
+**Overview**: `Provider` interface defines the contract for executing a conversation and returning a response. The `CloudflareAIProvider` implements it using `@roostjs/cloudflare`'s `AIClient`. Future providers (OpenAI, Anthropic direct) implement the same interface.
 
 ```typescript
 // packages/ai/src/providers/interface.ts
 
 import type { ConversationMessage, AgentResponse, StreamEvent } from '../types.ts';
-import type { JsonSchemaOutput } from '@roost/schema';
+import type { JsonSchemaOutput } from '@roostjs/schema';
 
 export interface AIProvider {
   /**
@@ -377,7 +377,7 @@ export type ToolDefinition = {
 ```typescript
 // packages/ai/src/providers/cloudflare.ts
 
-import type { AIClient } from '@roost/cloudflare';
+import type { AIClient } from '@roostjs/cloudflare';
 import type { AIProvider, CompletionOptions, CompletionResult } from './interface.ts';
 import type { StreamEvent } from '../types.ts';
 
@@ -455,7 +455,7 @@ export class CloudflareAIProvider implements AIProvider {
 import type { Tool } from './tool.ts';
 import type { AgentMiddleware } from './middleware.ts';
 import type { ConversationMessage, AgentResponse } from './types.ts';
-import type { JsonSchemaOutput } from '@roost/schema';
+import type { JsonSchemaOutput } from '@roostjs/schema';
 
 export abstract class Agent {
   /**
@@ -560,8 +560,8 @@ type ConversationAgent = {
 **Usage**:
 
 ```typescript
-import { Agent, Promptable } from '@roost/ai';
-import { Provider, Model, MaxSteps, Temperature } from '@roost/ai/decorators';
+import { Agent, Promptable } from '@roostjs/ai';
+import { Provider, Model, MaxSteps, Temperature } from '@roostjs/ai/decorators';
 
 @Provider('cloudflare')
 @Model('@cf/meta/llama-3.1-8b-instruct')
@@ -607,7 +607,7 @@ const stream = coach.stream('What objections should I expect?');
 
 ### 5. Runner (Internal Step Loop)
 
-**Overview**: `Runner` is the internal engine. It manages the multi-step tool call loop, applies agent middleware, and returns the final `AgentResponse`. It is never exported from `@roost/ai` — it's an implementation detail.
+**Overview**: `Runner` is the internal engine. It manages the multi-step tool call loop, applies agent middleware, and returns the final `AgentResponse`. It is never exported from `@roostjs/ai` — it's an implementation detail.
 
 ```typescript
 // packages/ai/src/runner.ts
@@ -741,12 +741,12 @@ export class Runner {
 
 ### 6. Tool Interface
 
-**Overview**: `Tool` is an interface (not a class) that agents declare in their `tools()` array. Subclasses implement `name()`, `description()`, `schema()`, and `handle()`. The schema uses the shared `@roost/schema` builder.
+**Overview**: `Tool` is an interface (not a class) that agents declare in their `tools()` array. Subclasses implement `name()`, `description()`, `schema()`, and `handle()`. The schema uses the shared `@roostjs/schema` builder.
 
 ```typescript
 // packages/ai/src/tool.ts
 
-import type { SchemaBuilder } from '@roost/schema';
+import type { SchemaBuilder } from '@roostjs/schema';
 
 export interface Tool {
   /** The function name exposed to the LLM. Must be unique within an agent. */
@@ -757,7 +757,7 @@ export interface Tool {
 
   /**
    * Input schema for this tool's parameters.
-   * Use the schema builder from @roost/schema.
+   * Use the schema builder from @roostjs/schema.
    */
   schema(): SchemaBuilder;
 
@@ -780,8 +780,8 @@ export abstract class BaseTool implements Tool {
 **Example tool**:
 
 ```typescript
-import { BaseTool } from '@roost/ai';
-import { schema } from '@roost/schema';
+import { BaseTool } from '@roostjs/ai';
+import { schema } from '@roostjs/schema';
 import type { CrmService } from '../services/crm.ts';
 
 export class SearchCrmTool extends BaseTool {
@@ -831,7 +831,7 @@ export class SearchCrmTool extends BaseTool {
 ```typescript
 // packages/ai/src/structured.ts
 
-import type { SchemaBuilder, JsonSchemaOutput } from '@roost/schema';
+import type { SchemaBuilder, JsonSchemaOutput } from '@roostjs/schema';
 
 /**
  * Mixin interface for agents that return structured output.
@@ -866,9 +866,9 @@ export function parseStructuredOutput<T>(
 **Usage**:
 
 ```typescript
-import { Agent, Promptable } from '@roost/ai';
-import type { HasStructuredOutput } from '@roost/ai';
-import { schema } from '@roost/schema';
+import { Agent, Promptable } from '@roostjs/ai';
+import type { HasStructuredOutput } from '@roostjs/ai';
+import { schema } from '@roostjs/schema';
 
 interface SentimentResult {
   score: number;
@@ -1004,7 +1004,7 @@ export function RemembersConversations<TBase extends new (...args: unknown[]) =>
 }
 ```
 
-**Database schema** (created via migration, not via `@roost/orm` — Phase 5 runs before ORM is required):
+**Database schema** (created via migration, not via `@roostjs/orm` — Phase 5 runs before ORM is required):
 
 ```sql
 CREATE TABLE conversations (
@@ -1185,7 +1185,7 @@ class TokenCounterMiddleware implements AgentMiddleware {
 
 import { Agent, Promptable } from './agent.ts';
 import type { Tool } from './tool.ts';
-import type { SchemaBuilder } from '@roost/schema';
+import type { SchemaBuilder } from '@roostjs/schema';
 
 type AgentConfig = {
   instructions: string;
@@ -1417,8 +1417,8 @@ export abstract class Server {
 **Decorator usage**:
 
 ```typescript
-import { Server } from '@roost/mcp';
-import { Name, Version, Instructions } from '@roost/mcp/decorators';
+import { Server } from '@roostjs/mcp';
+import { Name, Version, Instructions } from '@roostjs/mcp/decorators';
 
 @Name('my-crm')
 @Version('1.0.0')
@@ -1444,7 +1444,7 @@ class CrmServer extends Server {
 ```typescript
 // packages/mcp/src/tool.ts
 
-import type { SchemaBuilder } from '@roost/schema';
+import type { SchemaBuilder } from '@roostjs/schema';
 import type { McpResponse } from './response.ts';
 import type { McpRequest } from './request.ts';
 
@@ -1504,7 +1504,7 @@ export abstract class DynamicResource extends McpResource {
 // packages/mcp/src/prompt.ts
 
 import type { McpResponse } from './response.ts';
-import type { SchemaBuilder } from '@roost/schema';
+import type { SchemaBuilder } from '@roostjs/schema';
 
 export type PromptMessage = {
   role: 'user' | 'assistant';
@@ -1688,14 +1688,14 @@ Index: `idx_messages_conversation_id` on `conversation_messages(conversation_id)
 
 ## API Design
 
-### @roost/schema public API
+### @roostjs/schema public API
 
 ```typescript
 export { schema } from './builder.ts';
 export type { JsonSchemaOutput, SchemaBuilder } from './types.ts';
 ```
 
-### @roost/ai public API
+### @roostjs/ai public API
 
 ```typescript
 export { Agent, Promptable } from './agent.ts';
@@ -1709,11 +1709,11 @@ export { toSSE, toVercelStream } from './streaming.ts';
 export { AiServiceProvider } from './provider.ts';
 export type { AgentResponse, StreamEvent, ConversationMessage } from './types.ts';
 // Decorators are a separate sub-path to avoid polluting the main import
-// import { Provider, Model } from '@roost/ai/decorators'
+// import { Provider, Model } from '@roostjs/ai/decorators'
 export { Provider, Model, MaxSteps, MaxTokens, Temperature, Timeout } from './decorators.ts';
 ```
 
-### @roost/mcp public API
+### @roostjs/mcp public API
 
 ```typescript
 export { Server } from './server.ts';
@@ -1811,9 +1811,9 @@ response.assertOk().assertSee('Acme Corp');
 
 ```bash
 # Type checking
-bun run tsc --noEmit --filter '@roost/schema'
-bun run tsc --noEmit --filter '@roost/ai'
-bun run tsc --noEmit --filter '@roost/mcp'
+bun run tsc --noEmit --filter '@roostjs/schema'
+bun run tsc --noEmit --filter '@roostjs/ai'
+bun run tsc --noEmit --filter '@roostjs/mcp'
 
 # Unit tests
 bun test --filter packages/schema
@@ -1821,9 +1821,9 @@ bun test --filter packages/ai
 bun test --filter packages/mcp
 
 # Build all three packages
-bun run build --filter '@roost/schema'
-bun run build --filter '@roost/ai'
-bun run build --filter '@roost/mcp'
+bun run build --filter '@roostjs/schema'
+bun run build --filter '@roostjs/ai'
+bun run build --filter '@roostjs/mcp'
 
 # Integration smoke test (requires wrangler dev running)
 # Verify a decorated agent class compiles and prompts without error

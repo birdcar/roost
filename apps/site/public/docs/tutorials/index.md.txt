@@ -7,10 +7,10 @@ succeed — follow along and learn by doing.
 
 ## Build Something Real
 
-- [**Build an AI Chat App**](/docs/tutorials/build-a-chat-app.md) — Create a chat interface powered by Cloudflare Workers AI with conversation history stored in D1. _~30 minutes. Uses @roost/ai, @roost/orm, @roost/start, @roost/schema._
-- [**Build a REST API**](/docs/tutorials/build-a-task-api.md) — Create a CRUD API with database models, validation, and tests. _~35 minutes. Uses @roost/orm, @roost/core, @roost/testing, @roost/start._
-- [**Build a SaaS App**](/docs/tutorials/build-a-saas-app.md) — Add authentication, subscription billing, and background jobs. _~45 minutes. Uses @roost/auth, @roost/billing, @roost/orm, @roost/start, @roost/queue._
+- [**Build an AI Chat App**](/docs/tutorials/build-a-chat-app.md) — Create a chat interface powered by Cloudflare Workers AI with conversation history stored in D1. _~30 minutes. Uses @roostjs/ai, @roostjs/orm, @roostjs/start, @roostjs/schema._
+- [**Build a REST API**](/docs/tutorials/build-a-task-api.md) — Create a CRUD API with database models, validation, and tests. _~35 minutes. Uses @roostjs/orm, @roostjs/core, @roostjs/testing, @roostjs/start._
+- [**Build a SaaS App**](/docs/tutorials/build-a-saas-app.md) — Add authentication, subscription billing, and background jobs. _~45 minutes. Uses @roostjs/auth, @roostjs/billing, @roostjs/orm, @roostjs/start, @roostjs/queue._
 
 ## Deploy
 
-- [**Deploy to Cloudflare**](/docs/tutorials/deploy-to-cloudflare.md) — Take your app from local development to production on Cloudflare Workers. _~20 minutes. Uses @roost/cloudflare, @roost/start, @roost/cli._
+- [**Deploy to Cloudflare**](/docs/tutorials/deploy-to-cloudflare.md) — Take your app from local development to production on Cloudflare Workers. _~20 minutes. Uses @roostjs/cloudflare, @roostjs/start, @roostjs/cli._

@@ -1,6 +1,6 @@
 import { describe, test, expect } from 'bun:test';
 import { StartServiceProvider } from '../src/provider';
-import { Application } from '@roost/core';
+import { Application } from '@roostjs/core';
 
 describe('StartServiceProvider', () => {
   test('registers without error', async () => {

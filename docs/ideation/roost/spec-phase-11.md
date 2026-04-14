@@ -27,7 +27,7 @@ The marketing page is a single-page app with a hero, feature sections, and code 
 | File Path | Purpose |
 |---|---|
 | `apps/docs/` | Documentation site (full Roost app) |
-| `apps/docs/package.json` | App manifest with @roost/* deps |
+| `apps/docs/package.json` | App manifest with @roostjs/* deps |
 | `apps/docs/wrangler.toml` | CF Workers deployment config |
 | `apps/docs/app.config.ts` | TanStack Start config |
 | `apps/docs/app/routes/__root.tsx` | Docs layout with sidebar nav |
@@ -40,16 +40,16 @@ The marketing page is a single-page app with a hero, feature sections, and code 
 | `apps/docs/app/lib/mdx.ts` | MDX loader and processor |
 | `apps/docs/content/` | MDX content files |
 | `apps/docs/content/getting-started.mdx` | Getting started guide |
-| `apps/docs/content/core/` | @roost/core docs |
-| `apps/docs/content/auth/` | @roost/auth docs |
-| `apps/docs/content/orm/` | @roost/orm docs |
-| `apps/docs/content/ai/` | @roost/ai docs |
-| `apps/docs/content/mcp/` | @roost/mcp docs |
-| `apps/docs/content/billing/` | @roost/billing docs |
-| `apps/docs/content/queue/` | @roost/queue docs |
-| `apps/docs/content/cloudflare/` | @roost/cloudflare docs |
-| `apps/docs/content/testing/` | @roost/testing docs |
-| `apps/docs/content/cli/` | @roost/cli docs |
+| `apps/docs/content/core/` | @roostjs/core docs |
+| `apps/docs/content/auth/` | @roostjs/auth docs |
+| `apps/docs/content/orm/` | @roostjs/orm docs |
+| `apps/docs/content/ai/` | @roostjs/ai docs |
+| `apps/docs/content/mcp/` | @roostjs/mcp docs |
+| `apps/docs/content/billing/` | @roostjs/billing docs |
+| `apps/docs/content/queue/` | @roostjs/queue docs |
+| `apps/docs/content/cloudflare/` | @roostjs/cloudflare docs |
+| `apps/docs/content/testing/` | @roostjs/testing docs |
+| `apps/docs/content/cli/` | @roostjs/cli docs |
 | `apps/docs/content/ai-reference/` | LLM/AI conventions guide |
 | `apps/marketing/` | Marketing site (full Roost app) |
 | `apps/marketing/package.json` | App manifest |

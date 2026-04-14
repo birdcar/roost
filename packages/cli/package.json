@@ -1,5 +1,5 @@
 {
-  "name": "@roost/cli",
+  "name": "@roostjs/cli",
   "version": "0.1.0",
   "type": "module",
   "bin": {
@@ -18,5 +18,18 @@
   "devDependencies": {
     "bun-types": "catalog:",
     "typescript": "catalog:"
-  }
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/birdcar/roost.git",
+    "directory": "packages/cli"
+  },
+  "homepage": "https://github.com/birdcar/roost/tree/main/packages/cli#readme",
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "src"
+  ]
 }

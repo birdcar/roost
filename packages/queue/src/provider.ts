@@ -1,5 +1,5 @@
-import { ServiceProvider } from '@roost/core';
-import { QueueSender } from '@roost/cloudflare';
+import { ServiceProvider } from '@roostjs/core';
+import { QueueSender } from '@roostjs/cloudflare';
 import { JobRegistry } from './registry.js';
 import { Dispatcher } from './dispatcher.js';
 import { JobConsumer } from './consumer.js';

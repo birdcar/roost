@@ -1,4 +1,4 @@
-import { KVStore } from '@roost/cloudflare';
+import { KVStore } from '@roostjs/cloudflare';
 import type { FlagContext, FlagProvider, FlagValue } from '../types.js';
 
 function cacheKey(key: string, context?: FlagContext): string {

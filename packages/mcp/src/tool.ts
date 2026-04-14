@@ -1,4 +1,4 @@
-import { schema as schemaBuilder, type SchemaBuilder } from '@roost/schema';
+import { schema as schemaBuilder, type SchemaBuilder } from '@roostjs/schema';
 import type { McpRequest, McpToolDefinition } from './types.js';
 import type { McpResponse } from './response.js';
 

@@ -1,4 +1,4 @@
-import type { KVStore } from '@roost/cloudflare';
+import type { KVStore } from '@roostjs/cloudflare';
 import type { SessionData } from './types.js';
 
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 7; // 7 days

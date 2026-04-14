@@ -1,4 +1,4 @@
-import type { Application } from '@roost/core';
+import type { Application } from '@roostjs/core';
 
 export class TestResponse {
   constructor(private response: Response) {}

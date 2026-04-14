@@ -27,7 +27,7 @@ This matters because Roost's pitch is "Laravel for the edge." Without working mi
 
 4. **Laravel-like CLI experience**: `roost migrate`, `roost migrate:generate`, `roost migrate:rollback`, `roost migrate:status` feel like `php artisan migrate` commands but use Drizzle under the hood.
 
-5. **Updated docs**: All MDX files referencing the ORM accurately reflect the new APIs. The `@roost/skills` conventions file is updated.
+5. **Updated docs**: All MDX files referencing the ORM accurately reflect the new APIs. The `@roostjs/skills` conventions file is updated.
 
 ## Success Criteria
 
@@ -42,7 +42,7 @@ This matters because Roost's pitch is "Laravel for the edge." Without working mi
 - [ ] Complex queries can drop to raw Drizzle: `User.drizzle().select().from(users).where(...)`
 - [ ] All existing ORM tests still pass
 - [ ] `bun run --filter roost-site build` succeeds with updated docs
-- [ ] `bun run --filter @roost/orm typecheck` passes
+- [ ] `bun run --filter @roostjs/orm typecheck` passes
 
 ## Scope Boundaries
 
@@ -56,7 +56,7 @@ This matters because Roost's pitch is "Laravel for the edge." Without working mi
 - Escape hatch to raw Drizzle builder
 - Update `make:model` template to generate static schema + relations
 - Update ORM docs (reference, guide, concepts MDX files)
-- Update `@roost/skills` conventions content
+- Update `@roostjs/skills` conventions content
 - Fix `QueryBuilder.orWhere()` to support operators
 
 ### Out of Scope
@@ -65,7 +65,7 @@ This matters because Roost's pitch is "Laravel for the edge." Without working mi
 - `BelongsToMany` / many-to-many relations — complex, defer to future
 - Migration seeding beyond `db:seed` — current approach is sufficient
 - PostgreSQL/MySQL support — D1 (SQLite) only for now
-- `@roost/schema` changes — it's a JSON Schema package, not database-related
+- `@roostjs/schema` changes — it's a JSON Schema package, not database-related
 
 ### Future Considerations
 

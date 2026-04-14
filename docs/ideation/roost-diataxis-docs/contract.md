@@ -9,7 +9,7 @@
 
 Roost's documentation site is a flat collection of package reference pages that blend tutorials, API descriptions, how-to guidance, and explanations into single monolithic pages per package. This violates every principle of the Diataxis framework — a beginner looking for a guided tutorial gets buried in API signatures, while a practitioner looking up a method signature has to scroll past setup instructions they already know.
 
-Additionally, the AI package docs contain factually incorrect claims. The getting-started page references an `ANTHROPIC_API_KEY` environment variable, the AI page subtitle claims multi-provider support ("Works with Cloudflare AI, Anthropic, and other providers"), and the getting-started prerequisites list an "Anthropic API key" — but the actual `@roost/ai` implementation uses **exclusively** Cloudflare Workers AI via the native `Ai` binding. There is no Anthropic provider, no API key, and no multi-provider support in the shipped code. The only provider is `CloudflareAIProvider`, which wraps `AIClient` → `Ai` (the CF Workers runtime binding), with a default model of `@cf/meta/llama-3.1-8b-instruct`.
+Additionally, the AI package docs contain factually incorrect claims. The getting-started page references an `ANTHROPIC_API_KEY` environment variable, the AI page subtitle claims multi-provider support ("Works with Cloudflare AI, Anthropic, and other providers"), and the getting-started prerequisites list an "Anthropic API key" — but the actual `@roostjs/ai` implementation uses **exclusively** Cloudflare Workers AI via the native `Ai` binding. There is no Anthropic provider, no API key, and no multi-provider support in the shipped code. The only provider is `CloudflareAIProvider`, which wraps `AIClient` → `Ai` (the CF Workers runtime binding), with a default model of `@cf/meta/llama-3.1-8b-instruct`.
 
 ## Goals
 
@@ -61,7 +61,7 @@ Additionally, the AI package docs contain factually incorrect claims. The gettin
 ### Future Considerations
 
 - Auto-generated API reference from TSDoc comments once the package APIs stabilize
-- Search powered by AI (semantic search over docs content via `@roost/ai`)
+- Search powered by AI (semantic search over docs content via `@roostjs/ai`)
 - Community-contributed tutorials and guides
 - Video tutorials alongside written ones
 

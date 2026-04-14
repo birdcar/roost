@@ -1,4 +1,4 @@
-import { ServiceProvider } from '@roost/core';
+import { ServiceProvider } from '@roostjs/core';
 import { KVStore } from './bindings/kv.js';
 import { R2Storage } from './bindings/r2.js';
 import { QueueSender } from './bindings/queues.js';

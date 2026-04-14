@@ -14,7 +14,7 @@ export function errorResponse(message: string, status: number, details?: unknown
 ```
 
 ```ts src/routes/api/users/$id.ts
-import { ModelNotFoundError } from '@roost/orm';
+import { ModelNotFoundError } from '@roostjs/orm';
 import { errorResponse } from '../../lib/errors';
 
 export async function GET(request: Request, { params }) {
@@ -54,7 +54,7 @@ export const Route = createFileRoute('/dashboard')({
 Throw from `handle()` to trigger the retry flow. Implement `onFailure()` for cleanup after all retries are exhausted.
 
 ```ts src/jobs/ProcessPayment.ts
-import { Job, MaxRetries, Backoff } from '@roost/queue';
+import { Job, MaxRetries, Backoff } from '@roostjs/queue';
 
 @MaxRetries(3)
 @Backoff('exponential')
@@ -161,7 +161,7 @@ export class ForbiddenError extends HttpError {
 
 ```ts src/middleware/error-handler.ts
 import { HttpError, ValidationError } from '../lib/errors';
-import type { Handler } from '@roost/core';
+import type { Handler } from '@roostjs/core';
 
 export async function errorHandlerMiddleware(
   request: Request,
@@ -196,4 +196,4 @@ import { errorHandlerMiddleware } from './middleware/error-handler';
 app.useMiddleware(errorHandlerMiddleware); // Register first — runs outermost
 ```
 
-Related: [@roost/core reference](/docs/packages/core) for middleware pipeline details, [@roost/queue reference](/docs/packages/queue) for job retry configuration.
+Related: [@roostjs/core reference](/docs/packages/core) for middleware pipeline details, [@roostjs/queue reference](/docs/packages/queue) for job retry configuration.

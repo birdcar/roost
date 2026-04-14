@@ -1,4 +1,4 @@
-import { Job } from '@roost/queue';
+import { Job } from '@roostjs/queue';
 
 interface WelcomeEmailPayload {
   email: string;

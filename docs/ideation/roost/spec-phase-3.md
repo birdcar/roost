@@ -30,7 +30,7 @@ CSRF protection is a standalone middleware that validates a double-submit cookie
 
 | File Path | Purpose |
 |---|---|
-| `packages/auth/package.json` | @roost/auth package manifest |
+| `packages/auth/package.json` | @roostjs/auth package manifest |
 | `packages/auth/tsconfig.json` | Extends base TS config |
 | `packages/auth/src/index.ts` | Public API barrel export |
 | `packages/auth/src/provider.ts` | AuthServiceProvider — registers all auth services |
@@ -333,7 +333,7 @@ export interface Session {
 
 // packages/auth/src/session/store.ts
 
-import type { KVStore } from '@roost/cloudflare';
+import type { KVStore } from '@roostjs/cloudflare';
 import type { SessionData } from './types.js';
 
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 7; // 7 days
@@ -589,7 +589,7 @@ function parseJwtExpiry(token: string): number {
 // packages/auth/src/user.ts
 import { getRequestEvent } from '@tanstack/start/server';
 import type { H3Event } from 'h3';
-import { getRoostContext } from '@roost/start';
+import { getRoostContext } from '@roostjs/start';
 import { SessionManager } from './session/manager.js';
 
 /** The authenticated user available in server functions and loaders. */
@@ -675,7 +675,7 @@ export async function requireUser(): Promise<RoostUser> {
 // packages/auth/src/routes/login.ts
 import type { H3Event } from 'h3';
 import { sendRedirect } from 'h3';
-import { getRoostContext } from '@roost/start';
+import { getRoostContext } from '@roostjs/start';
 import { RoostWorkOSClientToken } from '../provider.js';
 import type { WorkOSClient } from '../workos-client.js';
 
@@ -702,7 +702,7 @@ export async function handleLogin(event: H3Event): Promise<void> {
 // packages/auth/src/routes/callback.ts
 import type { H3Event } from 'h3';
 import { getQuery, sendRedirect } from 'h3';
-import { getRoostContext } from '@roost/start';
+import { getRoostContext } from '@roostjs/start';
 import { SessionManager } from '../session/manager.js';
 import { RoostWorkOSClientToken } from '../provider.js';
 import type { WorkOSClient } from '../workos-client.js';
@@ -744,7 +744,7 @@ export async function handleCallback(event: H3Event): Promise<void> {
 // packages/auth/src/routes/logout.ts
 import type { H3Event } from 'h3';
 import { sendRedirect } from 'h3';
-import { getRoostContext } from '@roost/start';
+import { getRoostContext } from '@roostjs/start';
 import { SessionManager } from '../session/manager.js';
 
 /**
@@ -779,7 +779,7 @@ Pattern to follow: `packages/core/src/middleware.ts` — the `Middleware` interf
 
 ```typescript
 // packages/auth/src/middleware/auth.ts
-import type { Middleware } from '@roost/core';
+import type { Middleware } from '@roostjs/core';
 import type { H3Event } from 'h3';
 import { sendRedirect } from 'h3';
 import { SessionManager } from '../session/manager.js';
@@ -822,7 +822,7 @@ export class AuthMiddleware implements Middleware {
 }
 
 // packages/auth/src/middleware/role.ts
-import type { Middleware } from '@roost/core';
+import type { Middleware } from '@roostjs/core';
 import type { H3Event } from 'h3';
 import { SessionManager } from '../session/manager.js';
 
@@ -888,7 +888,7 @@ export class RoleMiddleware implements Middleware {
 import { redirect } from '@tanstack/react-router';
 import { getRequestEvent } from '@tanstack/start/server';
 import type { H3Event } from 'h3';
-import { getRoostContext } from '@roost/start';
+import { getRoostContext } from '@roostjs/start';
 import { SessionManager } from './session/manager.js';
 import type { RoostUser } from './user.js';
 
@@ -954,7 +954,7 @@ export function requireRoleBeforeLoad(role: string) {
 
 ```typescript
 // packages/auth/src/middleware/csrf.ts
-import type { Middleware } from '@roost/core';
+import type { Middleware } from '@roostjs/core';
 import { getCookie, setCookie, getHeader } from 'h3';
 import type { H3Event } from 'h3';
 
@@ -1165,7 +1165,7 @@ export function UserProfileWidget({ className }: UserProfileWidgetProps) {
 // packages/auth/src/routes/webhook.ts
 import type { H3Event } from 'h3';
 import { readBody, getHeader } from 'h3';
-import { getRoostContext } from '@roost/start';
+import { getRoostContext } from '@roostjs/start';
 
 export type DirectorySyncEventType =
   | 'dsync.user.created'
@@ -1240,9 +1240,9 @@ export function createWebhookHandler(
 
 ```typescript
 // packages/auth/src/provider.ts
-import { ServiceProvider } from '@roost/core';
-import type { Application } from '@roost/core';
-import { KVStore } from '@roost/cloudflare';
+import { ServiceProvider } from '@roostjs/core';
+import type { Application } from '@roostjs/core';
+import { KVStore } from '@roostjs/cloudflare';
 import { RoostWorkOSClient } from './workos-client.js';
 import { KVSessionStore } from './session/store.js';
 import { SessionManager } from './session/manager.js';
@@ -1347,7 +1347,7 @@ Path:     /
 
 ## API Design
 
-### `@roost/auth` Public API
+### `@roostjs/auth` Public API
 
 ```typescript
 // packages/auth/src/index.ts
@@ -1457,7 +1457,7 @@ describe('SessionManager', () => {
         emailVerified: true,
       },
     });
-    // Use the mock KVStore from @roost/cloudflare test utilities
+    // Use the mock KVStore from @roostjs/cloudflare test utilities
     const mockKv = createMockKVStore();
     store = new KVSessionStore(mockKv);
     manager = new SessionManager(store, fake, 'client_test_123');
@@ -1503,7 +1503,7 @@ describe('SessionManager', () => {
 
 ```bash
 # Type checking
-bun run --filter '@roost/*' tsc --noEmit
+bun run --filter '@roostjs/*' tsc --noEmit
 
 # Auth package tests only
 bun test --filter packages/auth

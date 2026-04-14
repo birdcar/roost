@@ -34,8 +34,8 @@ function NotFound() {
       <ul className="not-found-links">
         <li><Link to="/docs">Documentation</Link></li>
         <li><Link to="/docs/getting-started">Getting Started</Link></li>
-        <li><Link to="/docs/reference/core">@roost/core</Link></li>
-        <li><Link to="/docs/reference/orm">@roost/orm</Link></li>
+        <li><Link to="/docs/reference/core">@roostjs/core</Link></li>
+        <li><Link to="/docs/reference/orm">@roostjs/orm</Link></li>
       </ul>
       <Link to="/" className="not-found-home">Back to Home</Link>
     </div>

@@ -1,4 +1,4 @@
-# Audit: @roost/mcp
+# Audit: @roostjs/mcp
 
 ## Status: FIXED
 

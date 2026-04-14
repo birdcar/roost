@@ -3,7 +3,7 @@ import { useEffect, useRef } from 'react'
 const TOKENS = [
   'import', 'export', 'async', 'await', 'Model', 'Agent', 'Job',
   'Router', 'Pipeline', 'Session', 'Schema', 'Queue', 'deploy',
-  'createServerFn', 'middleware', '@roost/orm', '@roost/ai',
+  'createServerFn', 'middleware', '@roostjs/orm', '@roostjs/ai',
   'D1', 'KV', 'R2', 'Workers', 'edge', 'query', 'migrate',
 ]
 

@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeEach } from 'bun:test';
-import { Billing, FakeBillingProvider } from '@roost/billing';
+import { Billing, FakeBillingProvider } from '@roostjs/billing';
 
 describe('SaaS billing', () => {
   let fake: FakeBillingProvider;

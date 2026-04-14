@@ -1,342 +1,342 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://roost.dev/</loc>
+    <loc>https://roost.birdcar.dev/</loc>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://roost.dev/docs/tutorials/index</loc>
+    <loc>https://roost.birdcar.dev/docs/tutorials/index</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://roost.dev/docs/tutorials/deploy-to-cloudflare</loc>
+    <loc>https://roost.birdcar.dev/docs/tutorials/deploy-to-cloudflare</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://roost.dev/docs/tutorials/build-a-task-api</loc>
+    <loc>https://roost.birdcar.dev/docs/tutorials/build-a-task-api</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://roost.dev/docs/tutorials/build-a-saas-app</loc>
+    <loc>https://roost.birdcar.dev/docs/tutorials/build-a-saas-app</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://roost.dev/docs/tutorials/build-a-chat-app</loc>
+    <loc>https://roost.birdcar.dev/docs/tutorials/build-a-chat-app</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://roost.dev/docs/index</loc>
+    <loc>https://roost.birdcar.dev/docs/index</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://roost.dev/docs/getting-started</loc>
+    <loc>https://roost.birdcar.dev/docs/getting-started</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://roost.dev/docs/guides/queue</loc>
+    <loc>https://roost.birdcar.dev/docs/guides/queue</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://roost.dev/docs/guides/cli</loc>
+    <loc>https://roost.birdcar.dev/docs/guides/cli</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://roost.dev/docs/guides/cloudflare</loc>
+    <loc>https://roost.birdcar.dev/docs/guides/cloudflare</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://roost.dev/docs/guides/events</loc>
+    <loc>https://roost.birdcar.dev/docs/guides/events</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://roost.dev/docs/guides/migrations</loc>
+    <loc>https://roost.birdcar.dev/docs/guides/migrations</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://roost.dev/docs/guides/feature-flags</loc>
+    <loc>https://roost.birdcar.dev/docs/guides/feature-flags</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://roost.dev/docs/guides/index</loc>
+    <loc>https://roost.birdcar.dev/docs/guides/index</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://roost.dev/docs/guides/auth</loc>
+    <loc>https://roost.birdcar.dev/docs/guides/auth</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://roost.dev/docs/guides/testing</loc>
+    <loc>https://roost.birdcar.dev/docs/guides/testing</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://roost.dev/docs/guides/start</loc>
+    <loc>https://roost.birdcar.dev/docs/guides/start</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://roost.dev/docs/guides/environment</loc>
+    <loc>https://roost.birdcar.dev/docs/guides/environment</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://roost.dev/docs/guides/error-handling</loc>
+    <loc>https://roost.birdcar.dev/docs/guides/error-handling</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://roost.dev/docs/guides/core</loc>
+    <loc>https://roost.birdcar.dev/docs/guides/core</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://roost.dev/docs/guides/broadcast</loc>
+    <loc>https://roost.birdcar.dev/docs/guides/broadcast</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://roost.dev/docs/guides/deployment</loc>
+    <loc>https://roost.birdcar.dev/docs/guides/deployment</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://roost.dev/docs/guides/workflow</loc>
+    <loc>https://roost.birdcar.dev/docs/guides/workflow</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://roost.dev/docs/guides/ai</loc>
+    <loc>https://roost.birdcar.dev/docs/guides/ai</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://roost.dev/docs/guides/billing</loc>
+    <loc>https://roost.birdcar.dev/docs/guides/billing</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://roost.dev/docs/guides/orm</loc>
+    <loc>https://roost.birdcar.dev/docs/guides/orm</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://roost.dev/docs/guides/schema</loc>
+    <loc>https://roost.birdcar.dev/docs/guides/schema</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://roost.dev/docs/guides/mcp</loc>
+    <loc>https://roost.birdcar.dev/docs/guides/mcp</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://roost.dev/docs/reference/queue</loc>
+    <loc>https://roost.birdcar.dev/docs/reference/queue</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://roost.dev/docs/reference/cli</loc>
+    <loc>https://roost.birdcar.dev/docs/reference/cli</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://roost.dev/docs/reference/cloudflare</loc>
+    <loc>https://roost.birdcar.dev/docs/reference/cloudflare</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://roost.dev/docs/reference/events</loc>
+    <loc>https://roost.birdcar.dev/docs/reference/events</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://roost.dev/docs/reference/feature-flags</loc>
+    <loc>https://roost.birdcar.dev/docs/reference/feature-flags</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://roost.dev/docs/reference/index</loc>
+    <loc>https://roost.birdcar.dev/docs/reference/index</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://roost.dev/docs/reference/auth</loc>
+    <loc>https://roost.birdcar.dev/docs/reference/auth</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://roost.dev/docs/reference/testing</loc>
+    <loc>https://roost.birdcar.dev/docs/reference/testing</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://roost.dev/docs/reference/start</loc>
+    <loc>https://roost.birdcar.dev/docs/reference/start</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://roost.dev/docs/reference/core</loc>
+    <loc>https://roost.birdcar.dev/docs/reference/core</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://roost.dev/docs/reference/broadcast</loc>
+    <loc>https://roost.birdcar.dev/docs/reference/broadcast</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://roost.dev/docs/reference/workflow</loc>
+    <loc>https://roost.birdcar.dev/docs/reference/workflow</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://roost.dev/docs/reference/ai</loc>
+    <loc>https://roost.birdcar.dev/docs/reference/ai</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://roost.dev/docs/reference/billing</loc>
+    <loc>https://roost.birdcar.dev/docs/reference/billing</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://roost.dev/docs/reference/orm</loc>
+    <loc>https://roost.birdcar.dev/docs/reference/orm</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://roost.dev/docs/reference/schema</loc>
+    <loc>https://roost.birdcar.dev/docs/reference/schema</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://roost.dev/docs/reference/mcp</loc>
+    <loc>https://roost.birdcar.dev/docs/reference/mcp</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://roost.dev/docs/concepts/queue</loc>
+    <loc>https://roost.birdcar.dev/docs/concepts/queue</loc>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://roost.dev/docs/concepts/service-container</loc>
+    <loc>https://roost.birdcar.dev/docs/concepts/service-container</loc>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://roost.dev/docs/concepts/cli</loc>
+    <loc>https://roost.birdcar.dev/docs/concepts/cli</loc>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://roost.dev/docs/concepts/cloudflare</loc>
+    <loc>https://roost.birdcar.dev/docs/concepts/cloudflare</loc>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://roost.dev/docs/concepts/events</loc>
+    <loc>https://roost.birdcar.dev/docs/concepts/events</loc>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://roost.dev/docs/concepts/feature-flags</loc>
+    <loc>https://roost.birdcar.dev/docs/concepts/feature-flags</loc>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://roost.dev/docs/concepts/index</loc>
+    <loc>https://roost.birdcar.dev/docs/concepts/index</loc>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://roost.dev/docs/concepts/testing-philosophy</loc>
+    <loc>https://roost.birdcar.dev/docs/concepts/testing-philosophy</loc>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://roost.dev/docs/concepts/auth</loc>
+    <loc>https://roost.birdcar.dev/docs/concepts/auth</loc>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://roost.dev/docs/concepts/testing</loc>
+    <loc>https://roost.birdcar.dev/docs/concepts/testing</loc>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://roost.dev/docs/concepts/architecture</loc>
+    <loc>https://roost.birdcar.dev/docs/concepts/architecture</loc>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://roost.dev/docs/concepts/start</loc>
+    <loc>https://roost.birdcar.dev/docs/concepts/start</loc>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://roost.dev/docs/concepts/core</loc>
+    <loc>https://roost.birdcar.dev/docs/concepts/core</loc>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://roost.dev/docs/concepts/broadcast</loc>
+    <loc>https://roost.birdcar.dev/docs/concepts/broadcast</loc>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://roost.dev/docs/concepts/workflow</loc>
+    <loc>https://roost.birdcar.dev/docs/concepts/workflow</loc>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://roost.dev/docs/concepts/ai</loc>
+    <loc>https://roost.birdcar.dev/docs/concepts/ai</loc>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://roost.dev/docs/concepts/billing</loc>
+    <loc>https://roost.birdcar.dev/docs/concepts/billing</loc>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://roost.dev/docs/concepts/orm</loc>
+    <loc>https://roost.birdcar.dev/docs/concepts/orm</loc>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://roost.dev/docs/concepts/laravel-patterns</loc>
+    <loc>https://roost.birdcar.dev/docs/concepts/laravel-patterns</loc>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://roost.dev/docs/concepts/edge-computing</loc>
+    <loc>https://roost.birdcar.dev/docs/concepts/edge-computing</loc>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://roost.dev/docs/concepts/schema</loc>
+    <loc>https://roost.birdcar.dev/docs/concepts/schema</loc>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://roost.dev/docs/concepts/mcp</loc>
+    <loc>https://roost.birdcar.dev/docs/concepts/mcp</loc>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>

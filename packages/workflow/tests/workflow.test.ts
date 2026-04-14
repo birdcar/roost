@@ -262,7 +262,7 @@ describe('Compensable', () => {
 describe('WorkflowServiceProvider', () => {
   test('resolves FakeWorkflowClient when workflow is faked', async () => {
     const { WorkflowServiceProvider } = await import('../src/provider.js');
-    const { Application } = await import('@roost/core');
+    const { Application } = await import('@roostjs/core');
 
     TestWorkflow.fake();
 
@@ -283,7 +283,7 @@ describe('WorkflowServiceProvider', () => {
 
   test('resolves real WorkflowClient when not faked (mock CF binding)', async () => {
     const { WorkflowServiceProvider } = await import('../src/provider.js');
-    const { Application } = await import('@roost/core');
+    const { Application } = await import('@roostjs/core');
 
     const mockBinding = {
       create: mock(async () => ({
@@ -316,7 +316,7 @@ describe('WorkflowServiceProvider', () => {
 // ─── NonRetryableError re-export ──────────────────────────────────────────────
 
 describe('NonRetryableError re-export', () => {
-  test('imports from @roost/workflow without error', async () => {
+  test('imports from @roostjs/workflow without error', async () => {
     const { NonRetryableError } = await import('../src/errors.js');
     const err = new NonRetryableError('permanent failure');
     expect(err.message).toBe('permanent failure');

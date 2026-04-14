@@ -449,7 +449,7 @@ roost migrate
 # Expect: "Nothing to migrate."
 
 # Type check
-bun run --filter @roost/orm typecheck
+bun run --filter @roostjs/orm typecheck
 ```
 
 ## Migration File Naming

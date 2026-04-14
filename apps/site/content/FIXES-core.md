@@ -1,4 +1,4 @@
-# Audit: @roost/core
+# Audit: @roostjs/core
 
 ## Status: FIXED
 
@@ -42,6 +42,6 @@ From `packages/core/src/index.ts`:
 
 ## Items requiring human review
 
-- **Error class exports**: `BindingNotFoundError`, `CircularDependencyError`, and `ConfigKeyNotFoundError` are thrown at runtime but not exported from `@roost/core`. Users who want to catch them by type currently cannot do so cleanly. Consider either exporting them from `index.ts` or documenting an alternative error-handling pattern (e.g., checking `.name` on the caught error).
+- **Error class exports**: `BindingNotFoundError`, `CircularDependencyError`, and `ConfigKeyNotFoundError` are thrown at runtime but not exported from `@roostjs/core`. Users who want to catch them by type currently cannot do so cleanly. Consider either exporting them from `index.ts` or documenting an alternative error-handling pattern (e.g., checking `.name` on the caught error).
 - **`Middleware` as interface vs. function**: The docs previously showed `Middleware` as a plain function type matching `Handler`'s shape. The actual interface requires a `handle()` method, meaning plain arrow functions are **not** valid `Middleware` values — they must be objects with a `handle` method. The function-based examples in `guides/core.mdx` (`rateLimitMiddleware`, `rateLimit`) type their return as `Handler`, not `Middleware`, which is correct, but this distinction may be worth a callout in the guides.
 - **`ServiceProviderClass` type**: References `import('./provider.js').ServiceProvider` internally. If docs ever show the `ServiceProviderClass` type verbatim, it should reflect that it expects a constructor taking an `Application` argument: `new (app: Application) => ServiceProvider`.

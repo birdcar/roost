@@ -59,6 +59,6 @@ jobs with no triggering event, but they should not be the default.
 
 ## Further Reading
 
-- [@roost/queue reference — Job, dispatch, and consumer API](/docs/packages/queue.md)
+- [@roostjs/queue reference — Job, dispatch, and consumer API](/docs/packages/queue.md)
 - [Testing Philosophy — Job.fake() and how queue testing works](/docs/concepts/testing-philosophy.md)
 - [Cloudflare Queues Documentation](https://developers.cloudflare.com/queues/)

@@ -1,5 +1,5 @@
 {
-  "name": "@roost/testing",
+  "name": "@roostjs/testing",
   "version": "0.1.0",
   "type": "module",
   "exports": {
@@ -13,26 +13,47 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@roost/core": "workspace:*"
+    "@roostjs/core": "workspace:*"
   },
   "peerDependencies": {
-    "@roost/ai": "workspace:*",
-    "@roost/billing": "workspace:*",
-    "@roost/queue": "workspace:*",
-    "@roost/orm": "workspace:*"
+    "@roostjs/ai": "workspace:*",
+    "@roostjs/billing": "workspace:*",
+    "@roostjs/queue": "workspace:*",
+    "@roostjs/orm": "workspace:*"
   },
   "peerDependenciesMeta": {
-    "@roost/ai": { "optional": true },
-    "@roost/billing": { "optional": true },
-    "@roost/queue": { "optional": true },
-    "@roost/orm": { "optional": true }
+    "@roostjs/ai": {
+      "optional": true
+    },
+    "@roostjs/billing": {
+      "optional": true
+    },
+    "@roostjs/queue": {
+      "optional": true
+    },
+    "@roostjs/orm": {
+      "optional": true
+    }
   },
   "devDependencies": {
-    "@roost/ai": "workspace:*",
-    "@roost/billing": "workspace:*",
-    "@roost/queue": "workspace:*",
-    "@roost/orm": "workspace:*",
+    "@roostjs/ai": "workspace:*",
+    "@roostjs/billing": "workspace:*",
+    "@roostjs/queue": "workspace:*",
+    "@roostjs/orm": "workspace:*",
     "bun-types": "catalog:",
     "typescript": "catalog:"
-  }
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/birdcar/roost.git",
+    "directory": "packages/testing"
+  },
+  "homepage": "https://github.com/birdcar/roost/tree/main/packages/testing#readme",
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "src"
+  ]
 }

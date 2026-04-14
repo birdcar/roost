@@ -1,5 +1,5 @@
 ---
-title: "@roost/feature-flags Guides"
+title: "@roostjs/feature-flags Guides"
 description: Task-oriented instructions for defining flags in WorkOS, checking them in handlers, scoped user/org evaluation, prefetching with middleware, and testing flag-gated behavior.
 ---
 
@@ -8,8 +8,8 @@ description: Task-oriented instructions for defining flags in WorkOS, checking t
 Add `FeatureFlagServiceProvider` to your app's provider list. With `WORKOS_API_KEY` in env and a `FLAGS_KV` binding, it automatically uses WorkOS for evaluation with KV edge caching.
 
 ```ts title="src/app.ts"
-import { createApp } from '@roost/core';
-import { FeatureFlagServiceProvider } from '@roost/feature-flags';
+import { createApp } from '@roostjs/core';
+import { FeatureFlagServiceProvider } from '@roostjs/feature-flags';
 
 export const app = createApp({
   providers: [
@@ -33,7 +33,7 @@ export const app = createApp({
 Call `FeatureFlag.isEnabled()` or `FeatureFlag.active()` anywhere after the provider has registered. Both are identical — use whichever reads more naturally.
 
 ```ts title="src/handlers/billing.ts"
-import { FeatureFlag } from '@roost/feature-flags';
+import { FeatureFlag } from '@roostjs/feature-flags';
 
 export async function handleCheckout(request: Request): Promise<Response> {
   const newCheckoutEnabled = await FeatureFlag.active('new-checkout');
@@ -51,7 +51,7 @@ export async function handleCheckout(request: Request): Promise<Response> {
 Use `FeatureFlag.for(context)` to create a scoped evaluator that passes user/org context to the provider. WorkOS uses this context when evaluating targeting rules configured in the dashboard.
 
 ```ts
-import { FeatureFlag } from '@roost/feature-flags';
+import { FeatureFlag } from '@roostjs/feature-flags';
 
 export async function handleDashboard(request: Request, userId: string, orgId: string) {
   const scoped = FeatureFlag.for({ userId, organizationId: orgId });
@@ -69,7 +69,7 @@ export async function handleDashboard(request: Request, userId: string, orgId: s
 Use `value<T>()` on a scoped evaluator, or `getValue<T>()` on the static class, when you need the raw value rather than a boolean.
 
 ```ts
-import { FeatureFlag } from '@roost/feature-flags';
+import { FeatureFlag } from '@roostjs/feature-flags';
 
 // With a default value (never throws)
 const limit = await FeatureFlag.value<number>('api-rate-limit', 100);
@@ -85,8 +85,8 @@ const color = await FeatureFlag.for({ userId }).value<string>('button-color', 'b
 Use `FeatureFlagMiddleware` to batch-fetch flags at the start of each request. Downstream calls to `isEnabled(flag, request)` or `active(flag, request)` read from the per-request cache rather than hitting the provider again.
 
 ```ts title="src/app.ts"
-import { createApp } from '@roost/core';
-import { FeatureFlagMiddleware, FeatureFlagServiceProvider } from '@roost/feature-flags';
+import { createApp } from '@roostjs/core';
+import { FeatureFlagMiddleware, FeatureFlagServiceProvider } from '@roostjs/feature-flags';
 
 export const app = createApp({
   providers: [new FeatureFlagServiceProvider()],
@@ -107,7 +107,7 @@ const enabled = await FeatureFlag.active('new-checkout', request);
 Use `FeatureFlag.set()` to update a flag programmatically — from an admin panel, a seed script, or a management endpoint. Requires a KV binding to be configured.
 
 ```ts
-import { FeatureFlag } from '@roost/feature-flags';
+import { FeatureFlag } from '@roostjs/feature-flags';
 
 await FeatureFlag.set('new-checkout', true);
 await FeatureFlag.set('api-rate-limit', 500);
@@ -122,7 +122,7 @@ Call `FeatureFlag.fake()` with the desired flag values before running the code u
 
 ```ts title="tests/handlers/billing.test.ts"
 import { describe, it, afterEach } from 'bun:test';
-import { FeatureFlag } from '@roost/feature-flags';
+import { FeatureFlag } from '@roostjs/feature-flags';
 import { handleCheckout } from '../../src/handlers/billing';
 
 describe('handleCheckout', () => {

@@ -1,5 +1,5 @@
 {
-  "name": "@roost/queue",
+  "name": "@roostjs/queue",
   "version": "0.1.0",
   "type": "module",
   "exports": {
@@ -13,12 +13,25 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@roost/core": "workspace:*",
-    "@roost/cloudflare": "workspace:*"
+    "@roostjs/core": "workspace:*",
+    "@roostjs/cloudflare": "workspace:*"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "catalog:",
     "bun-types": "catalog:",
     "typescript": "catalog:"
-  }
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/birdcar/roost.git",
+    "directory": "packages/queue"
+  },
+  "homepage": "https://github.com/birdcar/roost/tree/main/packages/queue#readme",
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "src"
+  ]
 }

@@ -1,5 +1,5 @@
-import { ServiceProvider } from '@roost/core';
-import { AIClient } from '@roost/cloudflare';
+import { ServiceProvider } from '@roostjs/core';
+import { AIClient } from '@roostjs/cloudflare';
 import { CloudflareAIProvider } from './providers/cloudflare.js';
 import { GatewayAIProvider } from './providers/gateway.js';
 import { Agent } from './agent.js';

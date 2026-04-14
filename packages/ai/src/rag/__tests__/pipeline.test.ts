@@ -1,7 +1,7 @@
 import { describe, test, expect, beforeEach, mock } from 'bun:test';
 import { RAGPipeline } from '../pipeline.js';
 import type { Document, QueryResult } from '../types.js';
-import type { VectorStore } from '@roost/cloudflare';
+import type { VectorStore } from '@roostjs/cloudflare';
 import type { EmbeddingPipeline } from '../embedding-pipeline.js';
 import type { Chunker } from '../chunker.js';
 import type { Chunk } from '../types.js';

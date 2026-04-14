@@ -1,4 +1,4 @@
-import { ServiceProvider } from '@roost/core';
+import { ServiceProvider } from '@roostjs/core';
 import { WorkflowClient } from './client.js';
 import type { Workflow } from './workflow.js';
 import type { WorkflowFake } from './testing.js';

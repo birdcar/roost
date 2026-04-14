@@ -96,14 +96,14 @@ app/
 - Migration files: {timestamp}_{action}_{table}.ts (20240101_create_users.ts)
 
 ## Import Paths
-- ORM: import { Model, Schema } from '@roost/orm'
-- Router: import { Router, Route } from '@roost/router'
-- Auth: import { Auth, Session } from '@roost/auth'
-- Queue: import { Queue, Job } from '@roost/queue'
-- Agents: import { Agent, Tool } from '@roost/agents'
-- Storage: import { Storage } from '@roost/storage'
-- Cache: import { Cache } from '@roost/cache'
-- Config: import { config } from '@roost/config'
+- ORM: import { Model, Schema } from '@roostjs/orm'
+- Router: import { Router, Route } from '@roostjs/router'
+- Auth: import { Auth, Session } from '@roostjs/auth'
+- Queue: import { Queue, Job } from '@roostjs/queue'
+- Agents: import { Agent, Tool } from '@roostjs/agents'
+- Storage: import { Storage } from '@roostjs/storage'
+- Cache: import { Cache } from '@roostjs/cache'
+- Config: import { config } from '@roostjs/config'
 
 ## Key Patterns
 - Routes registered in app/bootstrap.ts
@@ -138,7 +138,7 @@ packages/roost-skills/
 
 ```json
 {
-  "name": "@roost/skills",
+  "name": "@roostjs/skills",
   "version": "0.1.0",
   "description": "Agent skills for building Roost applications",
   "type": "module",
@@ -287,7 +287,7 @@ export function setCached(key: string, value: string): void {
 npx skills.sh install roost
 
 # Manual install
-npm install -g @roost/skills
+npm install -g @roostjs/skills
 
 # Verify
 roost-docs --version
@@ -302,7 +302,7 @@ roost-conventions
 - [ ] Cache writes/reads correctly on macOS and Linux
 - [ ] Skills work in Claude Code (test via `/roost-docs orm`)
 - [ ] Skills work in Copilot CLI
-- [ ] Package published to npm as `@roost/skills`
+- [ ] Package published to npm as `@roostjs/skills`
 - [ ] Registered with skills.sh registry
 
 ## Validation Commands
@@ -336,4 +336,4 @@ bun run --filter roost-skills typecheck
 - [ ] `roost-docs` caches responses and serves from cache on repeated calls
 - [ ] `roost-conventions` returns static convention guide without network access
 - [ ] All four skills work in Claude Code
-- [ ] Package published to npm as `@roost/skills@0.1.0`
+- [ ] Package published to npm as `@roostjs/skills@0.1.0`

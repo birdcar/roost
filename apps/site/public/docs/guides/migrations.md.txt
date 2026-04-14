@@ -122,4 +122,4 @@ export default {
 };
 ```
 
-Related: [ORM guides](/docs/guides/orm.md) for model definitions, [@roost/orm reference](/docs/reference/orm.md) for the full Model and QueryBuilder API.
+Related: [ORM guides](/docs/guides/orm.md) for model definitions, [@roostjs/orm reference](/docs/reference/orm.md) for the full Model and QueryBuilder API.

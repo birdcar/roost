@@ -23,7 +23,7 @@ After this phase, a developer can define `class User extends Model`, declare rel
 
 ## Functional Requirements
 
-### Model Base Class (@roost/orm)
+### Model Base Class (@roostjs/orm)
 
 - **FR-4.1**: `Model` base class that wraps a Drizzle table definition
 - **FR-4.2**: Models define schema as static properties (column definitions with types)
@@ -34,7 +34,7 @@ After this phase, a developer can define `class User extends Model`, declare rel
 ### Drizzle Integration
 
 - **FR-4.6**: Drizzle schema auto-generated from Model class definitions
-- **FR-4.7**: D1 adapter configured automatically from @roost/cloudflare D1 binding
+- **FR-4.7**: D1 adapter configured automatically from @roostjs/cloudflare D1 binding
 - **FR-4.8**: Raw Drizzle access available for escape-hatch queries
 
 ### Query Builder
@@ -85,7 +85,7 @@ After this phase, a developer can define `class User extends Model`, declare rel
 
 ### Prerequisites
 
-- Phase 1 complete (D1 binding from @roost/cloudflare, service container)
+- Phase 1 complete (D1 binding from @roostjs/cloudflare, service container)
 
 ### Outputs for Next Phase
 

@@ -6,25 +6,25 @@ start to finish.
 
 Foundational packages required by every Roost application.
 
-- [`@roost/core`](/docs/reference/core.md) — Dependency injection, configuration, middleware pipeline, application lifecycle, and service providers.
-- [`@roost/cloudflare`](/docs/reference/cloudflare.md) — Typed wrappers for D1, KV, R2, Queues, AI, Vectorize, Durable Objects, and Hyperdrive bindings.
-- [`@roost/start`](/docs/reference/start.md) — TanStack Start bridge: middleware factory and server function wrappers.
-- [`@roost/schema`](/docs/reference/schema.md) — Fluent JSON Schema builder used by AI tools and MCP tool definitions.
+- [`@roostjs/core`](/docs/reference/core.md) — Dependency injection, configuration, middleware pipeline, application lifecycle, and service providers.
+- [`@roostjs/cloudflare`](/docs/reference/cloudflare.md) — Typed wrappers for D1, KV, R2, Queues, AI, Vectorize, Durable Objects, and Hyperdrive bindings.
+- [`@roostjs/start`](/docs/reference/start.md) — TanStack Start bridge: middleware factory and server function wrappers.
+- [`@roostjs/schema`](/docs/reference/schema.md) — Fluent JSON Schema builder used by AI tools and MCP tool definitions.
 
 ## Features
 
 Optional packages that add application capabilities.
 
-- [`@roost/auth`](/docs/reference/auth.md) — WorkOS authentication, session management, middleware guards, CSRF protection, and multi-tenancy.
-- [`@roost/orm`](/docs/reference/orm.md) — Model classes, query builder, relationships, lifecycle hooks, migrations, factories, and seeders for D1.
-- [`@roost/ai`](/docs/reference/ai.md) — Class-based agents, typed tools, conversation memory, and streaming on Cloudflare Workers AI.
-- [`@roost/mcp`](/docs/reference/mcp.md) — Model Context Protocol server with tools, resources, and prompts.
-- [`@roost/billing`](/docs/reference/billing.md) — Abstract billing interface with a Stripe adapter for subscriptions, checkout, and webhooks.
-- [`@roost/queue`](/docs/reference/queue.md) — Background job processing on Cloudflare Queues with retry strategies and lifecycle hooks.
+- [`@roostjs/auth`](/docs/reference/auth.md) — WorkOS authentication, session management, middleware guards, CSRF protection, and multi-tenancy.
+- [`@roostjs/orm`](/docs/reference/orm.md) — Model classes, query builder, relationships, lifecycle hooks, migrations, factories, and seeders for D1.
+- [`@roostjs/ai`](/docs/reference/ai.md) — Class-based agents, typed tools, conversation memory, and streaming on Cloudflare Workers AI.
+- [`@roostjs/mcp`](/docs/reference/mcp.md) — Model Context Protocol server with tools, resources, and prompts.
+- [`@roostjs/billing`](/docs/reference/billing.md) — Abstract billing interface with a Stripe adapter for subscriptions, checkout, and webhooks.
+- [`@roostjs/queue`](/docs/reference/queue.md) — Background job processing on Cloudflare Queues with retry strategies and lifecycle hooks.
 
 ## Tooling
 
 Development and testing utilities.
 
-- [`@roost/cli`](/docs/reference/cli.md) — Project scaffolding, code generators, database commands, and deployment.
-- [`@roost/testing`](/docs/reference/testing.md) — HTTP test client, response assertions, unified fakes, and test setup helpers.
+- [`@roostjs/cli`](/docs/reference/cli.md) — Project scaffolding, code generators, database commands, and deployment.
+- [`@roostjs/testing`](/docs/reference/testing.md) — HTTP test client, response assertions, unified fakes, and test setup helpers.

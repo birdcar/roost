@@ -1,5 +1,5 @@
-import { ServiceProvider } from '@roost/core';
-import { D1Database } from '@roost/cloudflare';
+import { ServiceProvider } from '@roostjs/core';
+import { D1Database } from '@roostjs/cloudflare';
 import { ModelRegistry } from './registry.js';
 import { TenantContext } from './tenant-context.js';
 import { TenantDatabaseResolver } from './tenant-resolver.js';

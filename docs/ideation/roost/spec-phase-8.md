@@ -8,7 +8,7 @@
 
 Phase 8 builds the `roost` CLI — the developer's primary interface to the framework. It's a bun-native CLI that handles project scaffolding, code generation, database commands, and dev/deploy orchestration.
 
-The CLI is built as @roost/cli using bun's native executable capabilities. Code generation uses a template engine (EJS-like) with framework conventions baked in. The scaffolding templates live alongside the CLI code, not fetched from a remote source.
+The CLI is built as @roostjs/cli using bun's native executable capabilities. Code generation uses a template engine (EJS-like) with framework conventions baked in. The scaffolding templates live alongside the CLI code, not fetched from a remote source.
 
 The CLI delegates to underlying tools where possible: `roost dev` wraps Vinxi's dev server, `roost deploy` wraps Wrangler, `roost migrate` wraps Drizzle Kit. Roost adds framework-aware defaults and conventions on top.
 
@@ -26,7 +26,7 @@ The CLI delegates to underlying tools where possible: `roost dev` wraps Vinxi's 
 
 | File Path | Purpose |
 |---|---|
-| `packages/cli/package.json` | @roost/cli package manifest with `bin` entry |
+| `packages/cli/package.json` | @roostjs/cli package manifest with `bin` entry |
 | `packages/cli/tsconfig.json` | TS config |
 | `packages/cli/src/index.ts` | CLI entry point — command router |
 | `packages/cli/src/commands/new.ts` | `roost new` — project scaffolding |
@@ -235,7 +235,7 @@ templates/project/
 
 **Template example (model.ts.ejs)**:
 ```typescript
-import { Model, column } from '@roost/orm';
+import { Model, column } from '@roostjs/orm';
 
 export class <%= pascalName %> extends Model {
   static table = '<%= tableName %>';
@@ -320,7 +320,7 @@ await run('npx', ['wrangler', 'deploy'], { cwd: projectRoot });
 
 **Key test cases**:
 - `roost new test-app` creates directory with package.json, wrangler.toml, app/routes/
-- `roost new test-app --with-billing` includes @roost/billing in package.json
+- `roost new test-app --with-billing` includes @roostjs/billing in package.json
 - `roost make:model Post` creates app/models/post.ts with correct class name and table name
 - `roost make:agent Assistant` creates app/agents/assistant.ts with correct imports
 - All generated files pass `tsc --noEmit`

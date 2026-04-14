@@ -1,5 +1,5 @@
 {
-  "name": "@roost/skills",
+  "name": "@roostjs/skills",
   "version": "0.1.0",
   "description": "Agent skills for building Roost applications",
   "type": "module",
@@ -19,5 +19,18 @@
   "devDependencies": {
     "typescript": "catalog:",
     "bun-types": "catalog:"
-  }
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/birdcar/roost.git",
+    "directory": "packages/roost-skills"
+  },
+  "homepage": "https://github.com/birdcar/roost/tree/main/packages/roost-skills#readme",
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "src"
+  ]
 }

@@ -3,7 +3,7 @@
 A Laravel-inspired TypeScript framework for building full-stack applications on Cloudflare Workers.
 
 [![CI](https://img.shields.io/github/actions/workflow/status/birdcar/roost/ci.yml?branch=main)](https://github.com/birdcar/roost/actions)
-[![npm](https://img.shields.io/npm/v/@roost/core)](https://www.npmjs.com/package/@roost/core)
+[![npm](https://img.shields.io/npm/v/@roostjs/core)](https://www.npmjs.com/package/@roostjs/core)
 [![License](https://img.shields.io/github/license/birdcar/roost)](./LICENSE)
 
 ---
@@ -15,7 +15,7 @@ Roost is the framework I wanted to exist. It brings Laravel's convention-over-co
 ## Quick start
 
 ```bash
-bun add -g @roost/cli
+bun add -g @roostjs/cli
 roost new my-app
 cd my-app && bun install && bun run dev
 ```
@@ -151,7 +151,7 @@ return new Response(stream, {
 There's also a functional API for quick one-off agents:
 
 ```typescript
-import { agent } from '@roost/ai';
+import { agent } from '@roostjs/ai';
 
 const helper = agent({
   instructions: 'You answer questions about our docs.',
@@ -230,22 +230,22 @@ Typed wrappers for all eight Cloudflare bindings: D1, KV, R2, Queues, Durable Ob
 
 ## Packages
 
-Roost is a Bun monorepo with 12 packages, all published under `@roost/*`:
+Roost is a Bun monorepo with 12 packages, all published under `@roostjs/*`:
 
 | Package | What it does |
 |---------|-------------|
-| `@roost/core` | Service container, config manager, middleware pipeline, Application class |
-| `@roost/cloudflare` | Typed wrappers for D1, KV, R2, Queues, Durable Objects, AI, Vectorize, Hyperdrive |
-| `@roost/start` | TanStack Start integration, context bridge, server functions |
-| `@roost/auth` | WorkOS authentication, KV sessions, auth/guest/role/csrf middleware guards |
-| `@roost/orm` | Drizzle-backed ORM with ActiveRecord models, query builder, relations, hooks, factories |
-| `@roost/ai` | Agent classes, typed tools, streaming, conversation memory, Cloudflare AI provider |
-| `@roost/mcp` | MCP server with tools, resources, and prompts |
-| `@roost/schema` | Fluent JSON Schema builder |
-| `@roost/billing` | Abstract billing interface with Stripe REST adapter and webhook handling |
-| `@roost/queue` | Job classes with dispatch, retry, chain, batch on Cloudflare Queues |
-| `@roost/cli` | Project scaffolding (`roost new`) and code generators (`roost make:model`, `roost make:agent`) |
-| `@roost/testing` | HTTP test client, unified fakes for agents, jobs, and billing |
+| `@roostjs/core` | Service container, config manager, middleware pipeline, Application class |
+| `@roostjs/cloudflare` | Typed wrappers for D1, KV, R2, Queues, Durable Objects, AI, Vectorize, Hyperdrive |
+| `@roostjs/start` | TanStack Start integration, context bridge, server functions |
+| `@roostjs/auth` | WorkOS authentication, KV sessions, auth/guest/role/csrf middleware guards |
+| `@roostjs/orm` | Drizzle-backed ORM with ActiveRecord models, query builder, relations, hooks, factories |
+| `@roostjs/ai` | Agent classes, typed tools, streaming, conversation memory, Cloudflare AI provider |
+| `@roostjs/mcp` | MCP server with tools, resources, and prompts |
+| `@roostjs/schema` | Fluent JSON Schema builder |
+| `@roostjs/billing` | Abstract billing interface with Stripe REST adapter and webhook handling |
+| `@roostjs/queue` | Job classes with dispatch, retry, chain, batch on Cloudflare Queues |
+| `@roostjs/cli` | Project scaffolding (`roost new`) and code generators (`roost make:model`, `roost make:agent`) |
+| `@roostjs/testing` | HTTP test client, unified fakes for agents, jobs, and billing |
 
 ## Testing
 
@@ -272,7 +272,7 @@ SendWelcomeEmail.assertDispatched();
 SendWelcomeEmail.restore();
 ```
 
-The `@roost/testing` package also includes an HTTP test client for integration tests and a `setupTestSuite` helper that wires up a test application with fakes pre-configured.
+The `@roostjs/testing` package also includes an HTTP test client for integration tests and a `setupTestSuite` helper that wires up a test application with fakes pre-configured.
 
 ## CLI
 

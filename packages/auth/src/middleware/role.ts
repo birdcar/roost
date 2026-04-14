@@ -1,4 +1,4 @@
-import type { Middleware } from '@roost/core';
+import type { Middleware } from '@roostjs/core';
 import { SessionManager } from '../session/manager.js';
 import type { RoostUser } from '../user.js';
 

@@ -1,6 +1,6 @@
 import { describe, test, expect, beforeEach } from 'bun:test';
 import { bootApp, getApp, createRoostContext, resetAppCache } from '../src/context';
-import { Application } from '@roost/core';
+import { Application } from '@roostjs/core';
 
 describe('context bridge', () => {
   beforeEach(() => {

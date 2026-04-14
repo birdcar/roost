@@ -1,17 +1,17 @@
 ---
-title: "@roost/start"
+title: "@roostjs/start"
 description: Bridges the Roost framework with TanStack Start. Provides the context bridge, middleware factory, and server function wrappers.
 ---
 
 ## Installation
 
 ```bash title="terminal"
-bun add @roost/start
+bun add @roostjs/start
 ```
 
 ## Configuration
 
-No environment variables are required. `@roost/start` depends on the
+No environment variables are required. `@roostjs/start` depends on the
 `Application` instance you construct and pass into its factories.
 
 ## createRoostMiddleware API
@@ -24,9 +24,9 @@ once per request. Returns a middleware compatible with TanStack Start's
 `createMiddleware()` system.
 
 ```ts title="src/middleware.ts"
-import { createRoostMiddleware } from '@roost/start';
-import { Application } from '@roost/core';
-import { CloudflareServiceProvider } from '@roost/cloudflare';
+import { createRoostMiddleware } from '@roostjs/start';
+import { Application } from '@roostjs/core';
+import { CloudflareServiceProvider } from '@roostjs/cloudflare';
 
 export const roostMiddleware = createRoostMiddleware(() => {
   const app = new Application({});
@@ -44,7 +44,7 @@ a `RoostContext` object with access to the container and resolved application.
 Use when the server function takes no user input.
 
 ```ts title="src/functions/users.ts"
-import { roostFn } from '@roost/start';
+import { roostFn } from '@roostjs/start';
 import { roostMiddleware } from '../middleware';
 
 const listUsers = roostFn(roostMiddleware, async (roost) => {
@@ -61,7 +61,7 @@ The `validator` function receives the raw deserialized input and returns
 the typed value. Throw from the validator to reject invalid input.
 
 ```ts title="src/functions/users.ts"
-import { roostFnWithInput } from '@roost/start';
+import { roostFnWithInput } from '@roostjs/start';
 import { roostMiddleware } from '../middleware';
 
 const getUser = roostFnWithInput(
@@ -99,7 +99,7 @@ starts with a fresh application.
 
 ## StartServiceProvider
 
-Service provider that registers `@roost/start` integrations in the Roost
+Service provider that registers `@roostjs/start` integrations in the Roost
 container. Register this provider when using `bootApp` directly to ensure
 TanStack Start bindings are available.
 

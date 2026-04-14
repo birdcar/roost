@@ -3,7 +3,7 @@ import { Event } from '../src/event';
 import { EventDispatcher } from '../src/dispatcher';
 import { Subscriber } from '../src/subscriber';
 import { EventServiceProvider } from '../src/provider';
-import type { Application } from '@roost/core';
+import type { Application } from '@roostjs/core';
 import type { EventClass } from '../src/types';
 
 class OrderCreated extends Event {

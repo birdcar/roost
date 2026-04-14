@@ -9,7 +9,7 @@
 
 - App name: `todo`
 - Scaffold flags: (none — base Roost app)
-- Primary packages: @roost/core, @roost/auth, @roost/orm, @roost/cloudflare
+- Primary packages: @roostjs/core, @roostjs/auth, @roostjs/orm, @roostjs/cloudflare
 
 ## Models
 

@@ -18,7 +18,7 @@ export async function makeModel(name: string): Promise<void> {
   const kebab = toKebabCase(name);
   const table = toTableName(name);
 
-  const content = `import { Model } from '@roost/orm';
+  const content = `import { Model } from '@roostjs/orm';
 import { text, integer } from 'drizzle-orm/sqlite-core';
 
 export class ${pascal} extends Model {
@@ -38,7 +38,7 @@ export async function makeAgent(name: string): Promise<void> {
   const pascal = toPascalCase(name);
   const kebab = toKebabCase(name);
 
-  const content = `import { Agent } from '@roost/ai';
+  const content = `import { Agent } from '@roostjs/ai';
 
 export class ${pascal} extends Agent {
   instructions() {
@@ -59,8 +59,8 @@ export async function makeTool(name: string): Promise<void> {
   const pascal = toPascalCase(name);
   const kebab = toKebabCase(name);
 
-  const content = `import type { Tool, ToolRequest } from '@roost/ai';
-import { schema } from '@roost/schema';
+  const content = `import type { Tool, ToolRequest } from '@roostjs/ai';
+import { schema } from '@roostjs/schema';
 
 export class ${pascal} implements Tool {
   description() {
@@ -88,7 +88,7 @@ export async function makeJob(name: string): Promise<void> {
   const pascal = toPascalCase(name);
   const kebab = toKebabCase(name);
 
-  const content = `import { Job } from '@roost/queue';
+  const content = `import { Job } from '@roostjs/queue';
 
 interface ${pascal}Payload {
   // Define your payload type
@@ -109,7 +109,7 @@ export async function makeMiddleware(name: string): Promise<void> {
   const pascal = toPascalCase(name);
   const kebab = toKebabCase(name);
 
-  const content = `import type { Middleware } from '@roost/core';
+  const content = `import type { Middleware } from '@roostjs/core';
 
 export class ${pascal}Middleware implements Middleware {
   async handle(
@@ -131,9 +131,9 @@ export async function makeMcpServer(name: string): Promise<void> {
   const pascal = toPascalCase(name);
   const kebab = toKebabCase(name);
 
-  const content = `import { McpServer, McpTool, McpResponse } from '@roost/mcp';
-import { schema } from '@roost/schema';
-import type { McpRequest } from '@roost/mcp';
+  const content = `import { McpServer, McpTool, McpResponse } from '@roostjs/mcp';
+import { schema } from '@roostjs/schema';
+import type { McpRequest } from '@roostjs/mcp';
 
 class ExampleTool extends McpTool {
   description() { return 'An example tool'; }
@@ -160,8 +160,8 @@ export async function makeRateLimiter(name: string, variant: 'kv' | 'do'): Promi
   const kebab = toKebabCase(name);
 
   const content = variant === 'kv'
-    ? `import { KVRateLimiter } from '@roost/cloudflare';
-import type { KVStore } from '@roost/cloudflare';
+    ? `import { KVRateLimiter } from '@roostjs/cloudflare';
+import type { KVStore } from '@roostjs/cloudflare';
 
 // Injected via container — bind KVStore instance for your rate limit namespace
 export const ${pascal}RateLimiter = (kv: KVStore) =>
@@ -171,8 +171,8 @@ export const ${pascal}RateLimiter = (kv: KVStore) =>
     keyExtractor: (request) => request.headers.get('CF-Connecting-IP') ?? 'unknown',
   });
 `
-    : `import { DORateLimiter } from '@roost/cloudflare';
-import type { DurableObjectClient } from '@roost/cloudflare';
+    : `import { DORateLimiter } from '@roostjs/cloudflare';
+import type { DurableObjectClient } from '@roostjs/cloudflare';
 
 // Injected via container — bind DurableObjectClient for your rate limit DO
 export const ${pascal}RateLimiter = (doClient: DurableObjectClient) =>
@@ -190,7 +190,7 @@ export async function makeWorkflow(name: string): Promise<void> {
   const pascal = toPascalCase(name);
   const kebab = toKebabCase(name);
 
-  const content = `import { Workflow, Compensable, NonRetryableError } from '@roost/workflow';
+  const content = `import { Workflow, Compensable, NonRetryableError } from '@roostjs/workflow';
 import type { WorkflowEvent, WorkflowStep } from 'cloudflare:workers';
 
 interface ${pascal}Params {
@@ -232,8 +232,8 @@ export async function makeEvent(name: string, options: { broadcast?: boolean } =
   const kebab = toKebabCase(name);
 
   const content = options.broadcast
-    ? `import { Event } from '@roost/events';
-import { type BroadcastableEvent, PrivateChannel } from '@roost/broadcast';
+    ? `import { Event } from '@roostjs/events';
+import { type BroadcastableEvent, PrivateChannel } from '@roostjs/broadcast';
 
 export class ${pascal} extends Event implements BroadcastableEvent {
   constructor(readonly id: string) {
@@ -249,7 +249,7 @@ export class ${pascal} extends Event implements BroadcastableEvent {
   }
 }
 `
-    : `import { Event } from '@roost/events';
+    : `import { Event } from '@roostjs/events';
 
 export class ${pascal} extends Event {
   constructor(
@@ -277,8 +277,8 @@ export async function makeListener(
       ? `import type { ${toPascalCase(options.event)} } from '../events/${toKebabCase(options.event)}.js';\n`
       : '';
     const eventType = options.event ? toPascalCase(options.event) : 'unknown';
-    content = `import { Job } from '@roost/queue';
-import type { Listener, ShouldQueue } from '@roost/events';
+    content = `import { Job } from '@roostjs/queue';
+import type { Listener, ShouldQueue } from '@roostjs/events';
 ${eventImport}
 export class ${pascal} extends Job<${eventType}> implements Listener<${eventType}>, ShouldQueue {
   readonly shouldQueue = true as const;
@@ -295,7 +295,7 @@ export class ${pascal} extends Job<${eventType}> implements Listener<${eventType
       ? `import type { ${toPascalCase(options.event)} } from '../events/${toKebabCase(options.event)}.js';\n`
       : '';
     const eventType = options.event ? toPascalCase(options.event) : 'unknown';
-    content = `import type { Listener } from '@roost/events';
+    content = `import type { Listener } from '@roostjs/events';
 ${eventImport}
 export class ${pascal} implements Listener<${eventType}> {
   async handle(event: ${eventType}): Promise<void> {

@@ -1,7 +1,7 @@
 ## Installation
 
 ```bash title="terminal"
-bun add @roost/cloudflare
+bun add @roostjs/cloudflare
 ```
 
 ## Configuration
@@ -122,7 +122,7 @@ Send multiple messages in a single operation.
 ## AIClient API
 
 Typed wrapper around the Cloudflare Workers `Ai` binding. This is the
-low-level client used internally by `@roost/ai`.
+low-level client used internally by `@roostjs/ai`.
 
 #### `constructor(ai: Ai)`
 

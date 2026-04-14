@@ -31,12 +31,12 @@ export class EventDispatcher {
         const listener = new ListenerCls() as Listener & { shouldQueue?: true };
 
         if ('shouldQueue' in listener && listener.shouldQueue === true) {
-          // @roost/queue is a peer dep — import lazily to avoid a hard dependency
+          // @roostjs/queue is a peer dep — import lazily to avoid a hard dependency
           try {
-            await import('@roost/queue');
+            await import('@roostjs/queue');
           } catch {
             throw new Error(
-              `[roost/events] Listener "${ListenerCls.name}" implements ShouldQueue but @roost/queue is not installed.`
+              `[roost/events] Listener "${ListenerCls.name}" implements ShouldQueue but @roostjs/queue is not installed.`
             );
           }
           await (ListenerCls as unknown as { dispatch(payload: unknown): Promise<void> }).dispatch(event);
@@ -50,14 +50,14 @@ export class EventDispatcher {
     // Broadcast if the event implements BroadcastableEvent
     if ('broadcastOn' in event && typeof (event as Record<string, unknown>).broadcastOn === 'function') {
       try {
-        const { BroadcastManager } = await import('@roost/broadcast');
+        const { BroadcastManager } = await import('@roostjs/broadcast');
         await BroadcastManager.get().broadcast(
-          event as import('@roost/broadcast').BroadcastableEvent
+          event as import('@roostjs/broadcast').BroadcastableEvent
         );
       } catch {
-        // @roost/broadcast not installed or BroadcastManager not initialized — skip
+        // @roostjs/broadcast not installed or BroadcastManager not initialized — skip
         // eslint-disable-next-line no-console
-        console.warn('[roost/events] @roost/broadcast is not installed or BroadcastManager is not initialized.');
+        console.warn('[roost/events] @roostjs/broadcast is not installed or BroadcastManager is not initialized.');
       }
     }
   }

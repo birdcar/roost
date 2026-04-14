@@ -32,18 +32,18 @@ Inspired by Laravel's approach: their Eloquent ORM docs have separate "Getting S
 
 | File Path | Purpose |
 |-----------|---------|
-| `apps/site/src/routes/docs/reference/core.tsx` | @roost/core reference |
-| `apps/site/src/routes/docs/reference/cloudflare.tsx` | @roost/cloudflare reference |
-| `apps/site/src/routes/docs/reference/start.tsx` | @roost/start reference |
-| `apps/site/src/routes/docs/reference/auth.tsx` | @roost/auth reference |
-| `apps/site/src/routes/docs/reference/orm.tsx` | @roost/orm reference |
-| `apps/site/src/routes/docs/reference/ai.tsx` | @roost/ai reference |
-| `apps/site/src/routes/docs/reference/mcp.tsx` | @roost/mcp reference |
-| `apps/site/src/routes/docs/reference/billing.tsx` | @roost/billing reference |
-| `apps/site/src/routes/docs/reference/queue.tsx` | @roost/queue reference |
-| `apps/site/src/routes/docs/reference/cli.tsx` | @roost/cli reference |
-| `apps/site/src/routes/docs/reference/testing.tsx` | @roost/testing reference |
-| `apps/site/src/routes/docs/reference/schema.tsx` | @roost/schema reference |
+| `apps/site/src/routes/docs/reference/core.tsx` | @roostjs/core reference |
+| `apps/site/src/routes/docs/reference/cloudflare.tsx` | @roostjs/cloudflare reference |
+| `apps/site/src/routes/docs/reference/start.tsx` | @roostjs/start reference |
+| `apps/site/src/routes/docs/reference/auth.tsx` | @roostjs/auth reference |
+| `apps/site/src/routes/docs/reference/orm.tsx` | @roostjs/orm reference |
+| `apps/site/src/routes/docs/reference/ai.tsx` | @roostjs/ai reference |
+| `apps/site/src/routes/docs/reference/mcp.tsx` | @roostjs/mcp reference |
+| `apps/site/src/routes/docs/reference/billing.tsx` | @roostjs/billing reference |
+| `apps/site/src/routes/docs/reference/queue.tsx` | @roostjs/queue reference |
+| `apps/site/src/routes/docs/reference/cli.tsx` | @roostjs/cli reference |
+| `apps/site/src/routes/docs/reference/testing.tsx` | @roostjs/testing reference |
+| `apps/site/src/routes/docs/reference/schema.tsx` | @roostjs/schema reference |
 
 ### Modified Files
 
@@ -87,7 +87,7 @@ export const Route = createFileRoute('/docs/reference/{package}')({ component: P
 
 function Page() {
   return (
-    <DocLayout title="@roost/{package}" subtitle="{one-line factual description}">
+    <DocLayout title="@roostjs/{package}" subtitle="{one-line factual description}">
       <h2>Installation</h2>
       {/* bun add command */}
 
@@ -120,14 +120,14 @@ function Page() {
 
 Each package's reference page must cover its complete public API. Source of truth is the package source code in `packages/{name}/src/`. Read the actual source to ensure completeness — the existing docs pages may be incomplete.
 
-**@roost/core** — `packages/core/src/`
+**@roostjs/core** — `packages/core/src/`
 - `RoostContainer`: `singleton()`, `bind()`, `resolve()`, `has()`, `flush()`
 - `ConfigManager`: `get()`, `set()`, `has()`, `all()`
 - `Pipeline`: `send()`, `through()`, `then()`
 - `Application`: `create()`, `boot()`, `register()`, lifecycle
 - `ServiceProvider`: `register()`, `boot()`, abstract base class
 
-**@roost/cloudflare** — `packages/cloudflare/src/`
+**@roostjs/cloudflare** — `packages/cloudflare/src/`
 - `D1Client`: query, batch, raw operations
 - `KVClient`: get, put, delete, list
 - `R2Client`: put, get, delete, list, head
@@ -138,12 +138,12 @@ Each package's reference page must cover its complete public API. Source of trut
 - `HyperdriveClient`: connect, pool config
 - Binding resolution from `wrangler.jsonc`
 
-**@roost/start** — `packages/start/src/`
+**@roostjs/start** — `packages/start/src/`
 - `RoostStartPlugin`: Vite plugin config
 - Context bridge: `getServerContext()`, `createServerFn()`
 - Route integration with TanStack Start
 
-**@roost/auth** — `packages/auth/src/`
+**@roostjs/auth** — `packages/auth/src/`
 - `AuthManager`: `user()`, `check()`, `id()`, `organization()`, `logout()`
 - `AuthMiddleware`: route protection, role checks
 - `SessionManager`: `get()`, `set()`, `destroy()`, `regenerate()`
@@ -151,7 +151,7 @@ Each package's reference page must cover its complete public API. Source of trut
 - RBAC: `can()`, `hasRole()`, `hasPermission()`
 - Multi-tenancy: `organization()`, `switchOrganization()`
 
-**@roost/orm** — `packages/orm/src/`
+**@roostjs/orm** — `packages/orm/src/`
 - `Model`: define, attributes, timestamps, soft deletes
 - `QueryBuilder`: `where()`, `orderBy()`, `limit()`, `offset()`, `join()`, `groupBy()`
 - Relationships: `hasOne()`, `hasMany()`, `belongsTo()`, `belongsToMany()`
@@ -160,23 +160,23 @@ Each package's reference page must cover its complete public API. Source of trut
 - Factories: `Factory` class, `define()`, `create()`, `make()`
 - Seeders: `Seeder` class, `run()`
 
-**@roost/ai** — `packages/ai/src/`
+**@roostjs/ai** — `packages/ai/src/`
 - `Agent`: `instructions()`, `prompt()`, `stream()`, `tools()`, conversation memory
 - `Tool` interface: `description()`, `schema()`, `handle()`
 - `ToolRequest`: `get<T>(key)`
 - Decorators: `@Model`, `@MaxSteps`, `@Temperature`, `@MaxTokens`, `@Provider`, `@Timeout`
 - `CloudflareAIProvider`: the only built-in provider — wraps CF Workers `Ai` binding
-- `AIClient` (from `@roost/cloudflare`): `run()` method
+- `AIClient` (from `@roostjs/cloudflare`): `run()` method
 - Default model: `@cf/meta/llama-3.1-8b-instruct`
 - **Critical**: Document that this uses CF Workers AI exclusively. No API keys. The `AI` binding must exist in `wrangler.jsonc`.
 
-**@roost/mcp** — `packages/mcp/src/`
+**@roostjs/mcp** — `packages/mcp/src/`
 - `McpServer`: `tools()`, `resources()`, `prompts()`, `handle()`
 - `McpTool`: `description()`, `schema()`, `handle()`
 - `McpResource`: `uri()`, `name()`, `read()`
 - `McpPrompt`: `name()`, `description()`, `messages()`
 
-**@roost/billing** — `packages/billing/src/`
+**@roostjs/billing** — `packages/billing/src/`
 - `BillingProvider` interface: abstract billing operations
 - `StripeAdapter`: Stripe-specific implementation
 - `Customer`: `create()`, `retrieve()`, `update()`
@@ -184,29 +184,29 @@ Each package's reference page must cover its complete public API. Source of trut
 - `BillingMiddleware`: subscription gate for routes
 - Webhook handler: event routing, signature verification
 
-**@roost/queue** — `packages/queue/src/`
+**@roostjs/queue** — `packages/queue/src/`
 - `Job` base class: `handle()`, `failed()`, `retries()`, `backoff()`
 - `Queue.dispatch()`, `Queue.dispatchChain()`, `Queue.dispatchBatch()`
 - `QueueServiceProvider`: registration and config
 - Job lifecycle: dispatch → handle → success/failure
 
-**@roost/cli** — `packages/cli/src/`
+**@roostjs/cli** — `packages/cli/src/`
 - `roost new` command: flags, generated structure
 - `roost make:model`, `make:controller`, `make:agent`, `make:job`, `make:middleware`, `make:tool`
 - `roost migrate`, `roost migrate:rollback`, `roost migrate:fresh`
 - `roost deploy`
 - `roost db:seed`
 
-**@roost/testing** — `packages/testing/src/`
+**@roostjs/testing** — `packages/testing/src/`
 - `TestClient`: `get()`, `post()`, `put()`, `patch()`, `delete()`, `json()`, `send()`
 - Response assertions: `assertStatus()`, `assertJson()`, `assertHeader()`, `assertRedirect()`
 - Fakes: per-package fakes (Agent.fake, Queue.fake, etc.)
 - Database helpers: `refreshDatabase()`, `seed()`
 
-**@roost/schema** — `packages/schema/src/`
+**@roostjs/schema** — `packages/schema/src/`
 - `schema.string()`, `.number()`, `.boolean()`, `.enum()`, `.array()`, `.object()`
 - Modifiers: `.optional()`, `.description()`, `.default()`
-- Used by: `@roost/ai` tools, `@roost/mcp` tools
+- Used by: `@roostjs/ai` tools, `@roostjs/mcp` tools
 
 ### Sidebar and Search Updates
 

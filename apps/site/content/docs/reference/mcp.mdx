@@ -1,12 +1,12 @@
 ---
-title: "@roost/mcp"
+title: "@roostjs/mcp"
 description: Model Context Protocol server implementation. Expose application capabilities as tools, resources, and prompts to MCP-compatible AI clients.
 ---
 
 ## Installation
 
 ```bash title="terminal"
-bun add @roost/mcp @roost/schema
+bun add @roostjs/mcp @roostjs/schema
 ```
 
 ## McpServer API
@@ -76,7 +76,7 @@ One-sentence description of the tool. Sent to the client in the tools list.
 
 #### `abstract schema(s: typeof schema): Record<string, SchemaBuilder>`
 
-Define input parameters using the schema builder from `@roost/schema`.
+Define input parameters using the schema builder from `@roostjs/schema`.
 
 #### `abstract async handle(request: McpRequest): Promise<McpResponse>`
 
@@ -159,7 +159,7 @@ Because `AiSearchResource` requires constructor arguments (the AI Search binding
 ### Pattern 1 — Subclass per instance (recommended)
 
 ```ts title="src/mcp/resources/MyAiSearch.ts"
-import { AiSearchResource } from '@roost/mcp';
+import { AiSearchResource } from '@roostjs/mcp';
 
 export class MyAiSearch extends AiSearchResource {
   constructor() {

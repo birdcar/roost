@@ -83,5 +83,5 @@ The D1 Sessions API addresses this with session tokens. After a write, the clien
 
 - [Laravel Patterns — the Eloquent model and what Roost adapts](/docs/concepts/laravel-patterns.md)
 - [Edge Computing — D1 as the edge database and its consistency model](/docs/concepts/edge-computing.md)
-- [@roost/orm reference — Model, QueryBuilder, and factory API](/docs/reference/orm.md)
+- [@roostjs/orm reference — Model, QueryBuilder, and factory API](/docs/reference/orm.md)
 - [Drizzle ORM Documentation](https://orm.drizzle.team)

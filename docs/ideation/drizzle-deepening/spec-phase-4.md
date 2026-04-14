@@ -10,7 +10,7 @@ All ORM documentation describes the old `static columns = {}` pattern that no lo
 
 ## Goal
 
-All docs accurately describe the post-Phase-2/3 APIs. Generated LLM files (`llms.txt`, `llms-full.txt`, `.md.txt` files) are rebuilt. The `@roost/skills` conventions file is updated so AI tools give correct guidance.
+All docs accurately describe the post-Phase-2/3 APIs. Generated LLM files (`llms.txt`, `llms-full.txt`, `.md.txt` files) are rebuilt. The `@roostjs/skills` conventions file is updated so AI tools give correct guidance.
 
 ## Files Changed
 
@@ -54,9 +54,9 @@ Document that this now delegates to `db.query.{table}.findMany({ with: {...} })`
 
 **Remove** documentation for `HasManyRelation`, `HasOneRelation`, `BelongsToRelation` classes — replaced by Drizzle's `relations()` function.
 
-**Add** documentation for `relations()` re-export from `@roost/orm`:
+**Add** documentation for `relations()` re-export from `@roostjs/orm`:
 ```ts
-import { relations } from '@roost/orm';
+import { relations } from '@roostjs/orm';
 
 export const usersRelations = relations(users, ({ many, one }) => ({
   posts: many(posts),
@@ -68,7 +68,7 @@ export const usersRelations = relations(users, ({ many, one }) => ({
 **Replace "How to define a model"** with the new static schema pattern:
 
 ```ts src/models/user.ts
-import { Model, relations } from '@roost/orm';
+import { Model, relations } from '@roostjs/orm';
 import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
 
 export const users = sqliteTable('users', {
@@ -93,7 +93,7 @@ export class User extends Model {
 
 **Defining relations**:
 ```ts src/models/post.ts
-import { Model, relations } from '@roost/orm';
+import { Model, relations } from '@roostjs/orm';
 import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
 import { users } from './user.js';
 
@@ -117,7 +117,7 @@ export class Post extends Model {
 
 **Registering models with relations**:
 ```ts src/app.ts
-import { OrmServiceProvider } from '@roost/orm';
+import { OrmServiceProvider } from '@roostjs/orm';
 import { User, usersRelations } from './models/user.js';
 import { Post, postsRelations } from './models/post.js';
 
@@ -254,7 +254,7 @@ Find the ORM conventions section. Update to reflect:
    export class User extends Model { static _table = users; }
    ```
 
-2. Relations use `relations()` from `@roost/orm` (re-exported from drizzle-orm):
+2. Relations use `relations()` from `@roostjs/orm` (re-exported from drizzle-orm):
    ```ts
    export const usersRelations = relations(users, ({ many }) => ({ posts: many(posts) }));
    ```

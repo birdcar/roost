@@ -9,7 +9,7 @@ Every Roost application is a Cloudflare Worker — a V8 isolate that receives HT
 HTTP responses. There is no load balancer to configure, no Nginx to tune, and no server process to
 keep alive. The Worker is both the web server and the application framework running inside it.
 
-The `Application` class from `@roost/core` is the heart of this setup. It holds
+The `Application` class from `@roostjs/core` is the heart of this setup. It holds
 the service container, owns the list of registered service providers, and exposes a single
 `handle(request)` method that the Worker's `fetch` handler calls for every
 incoming request. All of Roost's bootstrap logic flows through this one object.
@@ -43,7 +43,7 @@ middleware modify the response on the way back out. The final handler in the cha
 
 ## TanStack Start and the Context Bridge
 
-When Roost is used with `@roost/start`, TanStack Start handles routing and SSR. The
+When Roost is used with `@roostjs/start`, TanStack Start handles routing and SSR. The
 Roost application runs as middleware inside TanStack Start's request pipeline, not as a standalone
 server. This means TanStack Start's file-based router resolves the route, but Roost's middleware
 pipeline runs first — authenticating the request, resolving the organization, and making services
@@ -58,5 +58,5 @@ globals.
 
 - [Service Container — DI, providers, and the boot sequence in depth](/docs/concepts/service-container)
 - [Edge Computing — why Workers, and how the runtime shapes the architecture](/docs/concepts/edge-computing)
-- [@roost/core concepts — the design decisions behind the container and pipeline](/docs/concepts/core)
+- [@roostjs/core concepts — the design decisions behind the container and pipeline](/docs/concepts/core)
 - [Reference — Application, Pipeline, and ServiceProvider API](/docs/reference)

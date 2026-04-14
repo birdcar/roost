@@ -1,12 +1,12 @@
 ---
-title: "@roost/broadcast"
+title: "@roostjs/broadcast"
 description: Real-time WebSocket broadcasting via Cloudflare Durable Objects. Channel types, ChannelDO, BroadcastManager, client helper, and testing utilities.
 ---
 
 ## Installation
 
 ```bash title="terminal"
-bun add @roost/broadcast
+bun add @roostjs/broadcast
 ```
 
 ## Configuration
@@ -29,7 +29,7 @@ Declare a Durable Object binding and class in `wrangler.jsonc`:
 Export `ChannelDO` from your Worker's entry point:
 
 ```ts title="src/index.ts"
-export { ChannelDO } from '@roost/broadcast';
+export { ChannelDO } from '@roostjs/broadcast';
 ```
 
 ## Channel API
@@ -63,7 +63,7 @@ maps to a distinct DO instance.
 ## BroadcastableEvent Interface
 
 Events that implement this interface are automatically broadcast by
-`EventDispatcher` when `@roost/broadcast` is installed.
+`EventDispatcher` when `@roostjs/broadcast` is installed.
 
 ```ts
 interface BroadcastableEvent {
@@ -176,7 +176,7 @@ Closes the socket with code `1011` on error.
 
 ## createBroadcastClient (client-side helper)
 
-```ts title="client entrypoint: @roost/broadcast/client"
+```ts title="client entrypoint: @roostjs/broadcast/client"
 function createBroadcastClient(
   urlOrFactory: string | (() => string),
   options?: BroadcastClientOptions
@@ -184,7 +184,7 @@ function createBroadcastClient(
 ```
 
 Creates a WebSocket client with automatic reconnection. Import from
-`@roost/broadcast/client` — this module does not import any server-side code.
+`@roostjs/broadcast/client` — this module does not import any server-side code.
 
 #### `urlOrFactory: string | (() => string)`
 

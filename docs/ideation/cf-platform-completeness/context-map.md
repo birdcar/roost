@@ -25,7 +25,7 @@
 ## Dependencies
 
 - `packages/core/src/application.ts` — consumed by → `packages/start/`, `apps/playground/`, `apps/site/`, all user apps. Public API: `Application.create()`, `.register()`, `.useMiddleware()`, `.handle()`. Adding optional `ctx` param to `handle()` is backward compatible.
-- `packages/core/src/index.ts` — barrel export consumed by all `@roost/core` consumers. Adding exports is additive-only.
+- `packages/core/src/index.ts` — barrel export consumed by all `@roostjs/core` consumers. Adding exports is additive-only.
 - `packages/core/src/types.ts` — consumed by middleware implementations, container types. Adding types is additive.
 - `packages/cli/src/commands/new.ts` — self-contained, only consumed by CLI entry point.
 

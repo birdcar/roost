@@ -99,7 +99,7 @@ Current template (`packages/cli/src/commands/make.ts`, `makeModel` function) gen
 
 **New template output** (for `roost make:model User`):
 ```ts
-import { Model } from '@roost/orm';
+import { Model } from '@roostjs/orm';
 import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
 
 export const users = sqliteTable('users', {
@@ -128,7 +128,7 @@ export async function makeModel(name: string): Promise<void> {
   const kebab = toKebabCase(name);
   const table = toTableName(name);
 
-  const content = `import { Model } from '@roost/orm';
+  const content = `import { Model } from '@roostjs/orm';
 import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
 
 export const ${table} = sqliteTable('${table}', {
@@ -184,13 +184,13 @@ Run after each step:
 
 ```bash
 # From repo root
-bun test --filter @roost/orm
+bun test --filter @roostjs/orm
 
 # After make.ts changes — verify template output looks right
 # (no automated test for generator output, eyeball it)
 
 # Type check
-bun run --filter @roost/orm typecheck
+bun run --filter @roostjs/orm typecheck
 ```
 
 The existing `registry.test.ts` test registers a fake model with `_table: null`. Update the fake model to have a real `_table` set, or the new boot logic will throw. Concretely:

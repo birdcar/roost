@@ -8,9 +8,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@roost/core": "workspace:*",
-    "@roost/cloudflare": "workspace:*",
-    "@roost/start": "workspace:*",
+    "@roostjs/core": "workspace:*",
+    "@roostjs/cloudflare": "workspace:*",
+    "@roostjs/start": "workspace:*",
     "@tanstack/react-router": "catalog:",
     "@tanstack/react-start": "catalog:",
     "react": "catalog:",

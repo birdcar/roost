@@ -1,5 +1,5 @@
 ---
-title: "@roost/ai Guides"
+title: "@roostjs/ai Guides"
 description: "Task-oriented instructions for agents, tools, streaming, and testing. Powered by Cloudflare Workers AI — no API keys required."
 ---
 
@@ -14,7 +14,7 @@ Extend `Agent` and implement `instructions()` to define the system prompt. The A
 ```
 
 ```ts src/agents/SupportAgent.ts
-import { Agent } from '@roost/ai';
+import { Agent } from '@roostjs/ai';
 
 export class SupportAgent extends Agent {
   instructions(): string {
@@ -35,8 +35,8 @@ Each agent instance maintains its own conversation history. Create a new instanc
 Implement the `Tool` interface and add the tool to your agent's `tools()` method.
 
 ```ts src/tools/OrderStatusTool.ts
-import { type Tool, type ToolRequest } from '@roost/ai';
-import { schema } from '@roost/schema';
+import { type Tool, type ToolRequest } from '@roostjs/ai';
+import { schema } from '@roostjs/schema';
 
 export class OrderStatusTool implements Tool {
   constructor(private db: Database) {}
@@ -61,7 +61,7 @@ export class OrderStatusTool implements Tool {
 ```
 
 ```ts src/agents/SupportAgent.ts
-import { Agent, type HasTools } from '@roost/ai';
+import { Agent, type HasTools } from '@roostjs/ai';
 import { OrderStatusTool } from '../tools/OrderStatusTool';
 
 export class SupportAgent extends Agent implements HasTools {
@@ -84,7 +84,7 @@ export class SupportAgent extends Agent implements HasTools {
 Use class decorators to set defaults. All decorators can be overridden per-prompt via the options argument.
 
 ```ts src/agents/WritingAgent.ts
-import { Agent, Model, MaxSteps, Temperature, MaxTokens } from '@roost/ai';
+import { Agent, Model, MaxSteps, Temperature, MaxTokens } from '@roostjs/ai';
 
 @Model('@cf/meta/llama-3.1-70b-instruct')
 @Temperature(0.9)     // More creative responses
@@ -175,8 +175,8 @@ AI_GATEWAY_ID=my-gateway
 3. Wire up the provider at application startup:
 
 ```ts title="src/app.ts"
-import { GatewayAIProvider } from '@roost/ai';
-import { CloudflareAIProvider, AIClient } from '@roost/cloudflare';
+import { GatewayAIProvider } from '@roostjs/ai';
+import { CloudflareAIProvider, AIClient } from '@roostjs/cloudflare';
 
 const direct = new CloudflareAIProvider(new AIClient(env.AI));
 const gateway = new GatewayAIProvider(
@@ -209,7 +209,7 @@ export async function startSummary(text: string): Promise<string> {
 Poll with `AIClient.poll()` from a separate endpoint or Durable Object alarm:
 
 ```ts title="src/functions/checkSummary.ts"
-import { AIClient } from '@roost/cloudflare';
+import { AIClient } from '@roostjs/cloudflare';
 
 export async function checkSummary(taskId: string, env: Env) {
   const client = new AIClient(env.AI);
@@ -252,9 +252,9 @@ npx wrangler vectorize create my-docs-index --dimensions=768 --metric=cosine
 ### 2. Ingest documents
 
 ```ts title="src/scripts/ingest.ts"
-import { RAGPipeline, SemanticChunker, EmbeddingPipeline } from '@roost/ai/rag';
-import { AIClient, VectorStore } from '@roost/cloudflare';
-import type { Document } from '@roost/ai/rag';
+import { RAGPipeline, SemanticChunker, EmbeddingPipeline } from '@roostjs/ai/rag';
+import { AIClient, VectorStore } from '@roostjs/cloudflare';
+import type { Document } from '@roostjs/ai/rag';
 
 const client = new AIClient(env.AI);
 const store = new VectorStore(env.VECTORIZE);
@@ -275,9 +275,9 @@ console.log(`Inserted ${inserted} vectors`);
 ### 3. Query and inject context into an agent
 
 ```ts title="src/agents/DocsAgent.ts"
-import { Agent } from '@roost/ai';
-import { RAGPipeline, SemanticChunker, EmbeddingPipeline } from '@roost/ai/rag';
-import { AIClient, VectorStore } from '@roost/cloudflare';
+import { Agent } from '@roostjs/ai';
+import { RAGPipeline, SemanticChunker, EmbeddingPipeline } from '@roostjs/ai/rag';
+import { AIClient, VectorStore } from '@roostjs/cloudflare';
 
 export class DocsAgent extends Agent {
   private rag: RAGPipeline;
@@ -310,8 +310,8 @@ export class DocsAgent extends Agent {
 ### 4. Test the RAG pipeline without a real index
 
 ```ts title="tests/DocsAgent.test.ts"
-import { RAGPipeline } from '@roost/ai/rag';
-import type { QueryResult } from '@roost/ai/rag';
+import { RAGPipeline } from '@roostjs/ai/rag';
+import type { QueryResult } from '@roostjs/ai/rag';
 
 const fakeResults: QueryResult[] = [
   { chunk: { id: 'doc-1:0', documentId: 'doc-1', text: 'Roost uses D1.', tokenCount: 5 }, score: 0.92 },

@@ -5,13 +5,14 @@
   "scripts": {
     "dev": "vite dev",
     "prebuild": "bun run scripts/generate-llm-files.ts",
-    "build": "vite build"
+    "build": "vite build",
+    "deploy": "bun run build && wrangler deploy"
   },
   "dependencies": {
     "@mdx-js/react": "^3.1.0",
     "@mdx-js/rollup": "^3.1.0",
-    "@roost/core": "workspace:*",
-    "@roost/start": "workspace:*",
+    "@roostjs/core": "workspace:*",
+    "@roostjs/start": "workspace:*",
     "@tanstack/react-router": "catalog:",
     "@tanstack/react-start": "catalog:",
     "react": "catalog:",

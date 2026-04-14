@@ -1,5 +1,5 @@
 {
-  "name": "@roost/orm",
+  "name": "@roostjs/orm",
   "version": "0.1.0",
   "type": "module",
   "exports": {
@@ -14,8 +14,8 @@
   },
   "dependencies": {
     "drizzle-orm": "catalog:",
-    "@roost/core": "workspace:*",
-    "@roost/cloudflare": "workspace:*"
+    "@roostjs/core": "workspace:*",
+    "@roostjs/cloudflare": "workspace:*"
   },
   "devDependencies": {
     "drizzle-kit": "catalog:",
@@ -23,5 +23,18 @@
     "@cloudflare/workers-types": "catalog:",
     "bun-types": "catalog:",
     "typescript": "catalog:"
-  }
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/birdcar/roost.git",
+    "directory": "packages/orm"
+  },
+  "homepage": "https://github.com/birdcar/roost/tree/main/packages/orm#readme",
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "src"
+  ]
 }

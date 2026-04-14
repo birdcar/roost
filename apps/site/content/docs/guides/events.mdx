@@ -1,5 +1,5 @@
 ---
-title: "@roost/events Guides"
+title: "@roostjs/events Guides"
 description: Task-oriented instructions for defining events, registering listeners, using subscribers, deferring listeners to the queue, and testing dispatches.
 ---
 
@@ -8,7 +8,7 @@ description: Task-oriented instructions for defining events, registering listene
 Extend `Event` with a typed constructor. Store all event data as public properties.
 
 ```ts title="src/events/UserRegistered.ts"
-import { Event } from '@roost/events';
+import { Event } from '@roostjs/events';
 
 export class UserRegistered extends Event {
   constructor(
@@ -27,7 +27,7 @@ Implement the `Listener<T>` interface. The `handle()` method receives the
 dispatched event instance.
 
 ```ts title="src/listeners/SendWelcomeEmailListener.ts"
-import type { Listener } from '@roost/events';
+import type { Listener } from '@roostjs/events';
 import type { UserRegistered } from '../events/UserRegistered';
 
 export class SendWelcomeEmailListener implements Listener<UserRegistered> {
@@ -48,7 +48,7 @@ Extend `EventServiceProvider` and override `listen()` to map event classes to
 listener classes.
 
 ```ts title="src/providers/AppEventServiceProvider.ts"
-import { EventServiceProvider } from '@roost/events';
+import { EventServiceProvider } from '@roostjs/events';
 import { UserRegistered } from '../events/UserRegistered';
 import { SendWelcomeEmailListener } from '../listeners/SendWelcomeEmailListener';
 import { CreateTrialSubscriptionListener } from '../listeners/CreateTrialSubscriptionListener';
@@ -65,7 +65,7 @@ export class AppEventServiceProvider extends EventServiceProvider {
 Register the provider in your app:
 
 ```ts title="src/app.ts"
-import { createApp } from '@roost/core';
+import { createApp } from '@roostjs/core';
 import { AppEventServiceProvider } from './providers/AppEventServiceProvider';
 
 export const app = createApp({
@@ -93,8 +93,8 @@ Use `Subscriber` to group related event handlers in one class instead of
 defining a separate listener class per event.
 
 ```ts title="src/subscribers/NotificationSubscriber.ts"
-import { Subscriber } from '@roost/events';
-import type { EventClass, Event } from '@roost/events';
+import { Subscriber } from '@roostjs/events';
+import type { EventClass, Event } from '@roostjs/events';
 import { UserRegistered } from '../events/UserRegistered';
 import { OrderPlaced } from '../events/OrderPlaced';
 
@@ -119,7 +119,7 @@ export class NotificationSubscriber extends Subscriber {
 Register the subscriber in the service provider:
 
 ```ts title="src/providers/AppEventServiceProvider.ts"
-import { EventServiceProvider } from '@roost/events';
+import { EventServiceProvider } from '@roostjs/events';
 import { NotificationSubscriber } from '../subscribers/NotificationSubscriber';
 
 export class AppEventServiceProvider extends EventServiceProvider {
@@ -132,12 +132,12 @@ export class AppEventServiceProvider extends EventServiceProvider {
 ## How to defer a listener to the queue
 
 Add the `ShouldQueue` interface to a listener that also extends `Job<TEvent>`
-from `@roost/queue`. The event dispatcher will dispatch the listener as a job
+from `@roostjs/queue`. The event dispatcher will dispatch the listener as a job
 rather than calling `handle()` inline.
 
 ```ts title="src/listeners/GenerateInvoiceListener.ts"
-import { Job } from '@roost/queue';
-import type { Listener, ShouldQueue } from '@roost/events';
+import { Job } from '@roostjs/queue';
+import type { Listener, ShouldQueue } from '@roostjs/events';
 import type { OrderPlaced } from '../events/OrderPlaced';
 
 export class GenerateInvoiceListener
@@ -153,7 +153,7 @@ export class GenerateInvoiceListener
 }
 ```
 
-Requires `@roost/queue` to be installed and configured.
+Requires `@roostjs/queue` to be installed and configured.
 
 ## How to test event dispatches
 

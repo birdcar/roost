@@ -1,4 +1,4 @@
-import type { Middleware } from '@roost/core';
+import type { Middleware } from '@roostjs/core';
 import { parseCookie, buildSetCookie } from '../session/manager.js';
 
 const CSRF_COOKIE_NAME = 'roost_csrf';

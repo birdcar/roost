@@ -54,7 +54,7 @@ const results = await db.batch([
 ]);
 ```
 
-For application-level querying, prefer [@roost/orm](/docs/packages/orm.md) models over raw D1. Use raw D1 for migrations or complex SQL not covered by the query builder.
+For application-level querying, prefer [@roostjs/orm](/docs/packages/orm.md) models over raw D1. Use raw D1 for migrations or complex SQL not covered by the query builder.
 
 ## How to store and retrieve files with R2
 
@@ -122,7 +122,7 @@ for (const key of result.keys) {
 
 ## How to send messages to a Queue
 
-Use `QueueSender` for direct queue access, or use [@roost/queue](/docs/packages/queue.md) jobs for structured background processing.
+Use `QueueSender` for direct queue access, or use [@roostjs/queue](/docs/packages/queue.md) jobs for structured background processing.
 
 ```ts
 
@@ -161,7 +161,7 @@ const embeddings = await ai.run('@cf/baai/bge-base-en-v1.5', {
 });
 ```
 
-For full agent capabilities with tools and conversation memory, use [@roost/ai](/docs/packages/ai.md). `AIClient` is the low-level binding wrapper.
+For full agent capabilities with tools and conversation memory, use [@roostjs/ai](/docs/packages/ai.md). `AIClient` is the low-level binding wrapper.
 
 ## How to configure Vectorize for embeddings
 
@@ -404,7 +404,7 @@ Export `RateLimiterDO` from your Worker entry and declare the binding:
 ```
 
 ```ts title="src/index.ts"
-export { RateLimiterDO } from '@roost/cloudflare';
+export { RateLimiterDO } from '@roostjs/cloudflare';
 ```
 
 ### Testing rate limiting

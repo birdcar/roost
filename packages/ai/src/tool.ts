@@ -1,4 +1,4 @@
-import { schema as schemaBuilder, type SchemaBuilder, type JsonSchemaOutput } from '@roost/schema';
+import { schema as schemaBuilder, type SchemaBuilder, type JsonSchemaOutput } from '@roostjs/schema';
 
 export interface ToolRequest {
   [key: string]: unknown;

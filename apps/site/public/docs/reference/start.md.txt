@@ -1,12 +1,12 @@
 ## Installation
 
 ```bash title="terminal"
-bun add @roost/start
+bun add @roostjs/start
 ```
 
 ## Configuration
 
-No environment variables are required. `@roost/start` depends on the
+No environment variables are required. `@roostjs/start` depends on the
 `Application` instance you construct and pass into its factories.
 
 ## createRoostMiddleware API
@@ -87,7 +87,7 @@ starts with a fresh application.
 
 ## StartServiceProvider
 
-Service provider that registers `@roost/start` integrations in the Roost
+Service provider that registers `@roostjs/start` integrations in the Roost
 container. Register this provider when using `bootApp` directly to ensure
 TanStack Start bindings are available.
 

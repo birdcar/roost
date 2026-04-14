@@ -1,11 +1,11 @@
 ---
-title: "@roost/events"
+title: "@roostjs/events"
 description: The observer pattern in Roost, how in-process event dispatching differs from message queues, listener vs subscriber design, and the ShouldQueue escape hatch.
 ---
 
 ## The Observer Pattern in Workers
 
-`@roost/events` implements the observer pattern: an event is dispatched, and
+`@roostjs/events` implements the observer pattern: an event is dispatched, and
 any number of listeners react to it. This separates the code that produces a
 domain action (user registered, order placed) from the code that responds to it
 (send email, update analytics, provision trial subscription).
@@ -26,7 +26,7 @@ request's total response time.
 
 For listeners that are slow or whose success is not required for the response,
 implement `ShouldQueue`. The dispatcher checks for this marker and dispatches
-the listener as a `Job` via `@roost/queue` instead of calling `handle()` inline.
+the listener as a `Job` via `@roostjs/queue` instead of calling `handle()` inline.
 The job runs asynchronously in a separate Worker invocation, and the original
 request completes immediately.
 
@@ -36,14 +36,14 @@ sending emails, generating reports, or updating external systems.
 
 ## Broadcast Interop
 
-Events that implement the `BroadcastableEvent` interface from `@roost/broadcast`
+Events that implement the `BroadcastableEvent` interface from `@roostjs/broadcast`
 are automatically forwarded to `BroadcastManager` after dispatching to listeners.
 This means a single `UserRegistered.dispatch(event)` call can simultaneously
 notify in-process listeners and push an update to connected WebSocket clients —
 no extra code needed at the dispatch site.
 
 The interop is opt-in and lazy: the dispatcher attempts to import
-`@roost/broadcast` at dispatch time. If the package is not installed or
+`@roostjs/broadcast` at dispatch time. If the package is not installed or
 `BroadcastManager` is not initialized, the dispatch succeeds and a warning is
 logged. This prevents a hard dependency between the two packages.
 
@@ -86,6 +86,6 @@ level.
 
 ## Further Reading
 
-- [@roost/events reference — Event, EventDispatcher, Listener, Subscriber API](/docs/reference/events)
-- [@roost/broadcast concepts — How broadcast and events connect](/docs/concepts/broadcast)
-- [@roost/queue concepts — When to use ShouldQueue](/docs/concepts/queue)
+- [@roostjs/events reference — Event, EventDispatcher, Listener, Subscriber API](/docs/reference/events)
+- [@roostjs/broadcast concepts — How broadcast and events connect](/docs/concepts/broadcast)
+- [@roostjs/queue concepts — When to use ShouldQueue](/docs/concepts/queue)

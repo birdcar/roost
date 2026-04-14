@@ -10,7 +10,7 @@
 
 ## Technical Approach
 
-Four independent additions to two packages (`@roost/ai`, `@roost/cloudflare`):
+Four independent additions to two packages (`@roostjs/ai`, `@roostjs/cloudflare`):
 
 1. **`GatewayAIProvider`** — A new `AIProvider` implementation that proxies `chat()` calls through the Cloudflare AI Gateway REST endpoint. Reads account/gateway config from `ai.gateway.accountId` and `ai.gateway.gatewayId`. Falls back transparently to `CloudflareAIProvider` when those config keys are absent. Registered automatically by `AiServiceProvider` when gateway config is present.
 

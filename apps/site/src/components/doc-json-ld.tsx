@@ -14,7 +14,7 @@ export function DocJsonLd({ title, description, url }: Props) {
     publisher: {
       '@type': 'Organization',
       name: 'Roost',
-      url: 'https://roost.dev',
+      url: 'https://roost.birdcar.dev',
     },
   })
 

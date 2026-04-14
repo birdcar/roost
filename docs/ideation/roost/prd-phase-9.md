@@ -6,7 +6,7 @@
 
 ## Phase Overview
 
-Phase 9 formalizes the testing story. Individual packages (AI, Billing, Queue) already ship their own `.fake()` methods from their respective phases, but this phase creates @roost/testing as a unified package that provides HTTP test client, database helpers, and cross-package test orchestration.
+Phase 9 formalizes the testing story. Individual packages (AI, Billing, Queue) already ship their own `.fake()` methods from their respective phases, but this phase creates @roostjs/testing as a unified package that provides HTTP test client, database helpers, and cross-package test orchestration.
 
 This phase depends on Phases 5-7 because it wraps their testing primitives into a cohesive layer. It's sequenced before example apps because the examples should demonstrate proper testing patterns.
 
@@ -22,7 +22,7 @@ After this phase, a developer has Laravel-grade testing DX: `test('user can subs
 
 ## Functional Requirements
 
-### HTTP Test Client (@roost/testing)
+### HTTP Test Client (@roostjs/testing)
 
 - **FR-9.1**: `TestClient` class that sends requests through the Roost application without HTTP
 - **FR-9.2**: Request builders: `client.get('/users')`, `client.post('/users', body)`, `client.put()`, `client.delete()`

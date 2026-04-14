@@ -21,7 +21,7 @@ challenge is connecting these two systems so that server functions and route loa
 access Roost's container — the authenticated user, resolved organization, database
 connection — without the container being globally mutable state.
 
-The `@roost/start` package solves this with a context bridge. The Roost
+The `@roostjs/start` package solves this with a context bridge. The Roost
 `Application` is bootstrapped once and cached. For each request, a scoped
 container is created and attached to TanStack Start's server context. Server functions
 defined with `roostFn` capture this context and can resolve services from it.
@@ -48,5 +48,5 @@ any incompatibilities.
 
 - [Application Architecture — how start integrates with the Roost request lifecycle](/docs/concepts/architecture.md)
 - [Edge Computing — the Workers runtime and SSR implications](/docs/concepts/edge-computing.md)
-- [@roost/start reference — bootApp, roostFn, and provider API](/docs/packages/start.md)
+- [@roostjs/start reference — bootApp, roostFn, and provider API](/docs/packages/start.md)
 - [TanStack Start Documentation](https://tanstack.com/start)

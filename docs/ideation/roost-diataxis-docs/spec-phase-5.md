@@ -63,7 +63,7 @@ function Page() {
         <p><strong>What you'll learn:</strong> {2-3 bullet points}</p>
         <p><strong>Time:</strong> ~{N} minutes</p>
         <p><strong>Prerequisites:</strong> {Minimal — link to getting-started if needed}</p>
-        <p><strong>Packages used:</strong> {List of @roost/* packages}</p>
+        <p><strong>Packages used:</strong> {List of @roostjs/* packages}</p>
       </Callout>
 
       <h2>Step 1: {Action Verb} — {What This Step Does}</h2>
@@ -94,7 +94,7 @@ function Page() {
 
 **New structure** — a proper Diataxis tutorial that takes a beginner from zero to running app:
 
-1. **Step 1: Install Roost CLI** — `bun add -g @roost/cli`, verify with `roost --version`
+1. **Step 1: Install Roost CLI** — `bun add -g @roostjs/cli`, verify with `roost --version`
 2. **Step 2: Create your project** — `roost new my-app`, `cd my-app && bun install` — show what the CLI outputs
 3. **Step 3: Start the dev server** — `bun run dev`, visit `localhost:3000`, see the welcome page
 4. **Step 4: Create your first route** — add `src/routes/hello.tsx`, see it in the browser immediately
@@ -113,7 +113,7 @@ function Page() {
 
 ### Tutorial: Build an AI Chat App
 
-**Packages**: `@roost/ai`, `@roost/orm`, `@roost/start`, `@roost/schema`
+**Packages**: `@roostjs/ai`, `@roostjs/orm`, `@roostjs/start`, `@roostjs/schema`
 
 **What you'll build**: A simple chat interface that uses an AI agent to answer questions, with conversation history stored in D1.
 
@@ -136,7 +136,7 @@ function Page() {
 
 ### Tutorial: Build a SaaS App
 
-**Packages**: `@roost/auth`, `@roost/billing`, `@roost/orm`, `@roost/start`, `@roost/queue`
+**Packages**: `@roostjs/auth`, `@roostjs/billing`, `@roostjs/orm`, `@roostjs/start`, `@roostjs/queue`
 
 **What you'll build**: A simple SaaS app with user authentication, subscription billing, and a background job for sending welcome emails.
 
@@ -154,7 +154,7 @@ function Page() {
 
 ### Tutorial: Deploy to Cloudflare
 
-**Packages**: `@roost/cloudflare`, `@roost/start`, `@roost/cli`
+**Packages**: `@roostjs/cloudflare`, `@roostjs/start`, `@roostjs/cli`
 
 **What you'll build**: Take an existing Roost app from local dev to production on Cloudflare Workers.
 
@@ -170,7 +170,7 @@ function Page() {
 
 ### Tutorial: Build a REST API
 
-**Packages**: `@roost/orm`, `@roost/core`, `@roost/testing`, `@roost/start`
+**Packages**: `@roostjs/orm`, `@roostjs/core`, `@roostjs/testing`, `@roostjs/start`
 
 **What you'll build**: A CRUD API for managing tasks, with database models, validation, and tests.
 

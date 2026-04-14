@@ -49,6 +49,6 @@ not automatically an admin in another.
 
 ## Further Reading
 
-- [@roost/auth reference — middleware, session management, and RBAC API](/docs/packages/auth.md)
+- [@roostjs/auth reference — middleware, session management, and RBAC API](/docs/packages/auth.md)
 - [Edge Computing — why KV is the right session store for Workers](/docs/concepts/edge-computing.md)
 - [WorkOS Documentation](https://workos.com/docs)

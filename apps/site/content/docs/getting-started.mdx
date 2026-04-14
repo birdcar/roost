@@ -15,7 +15,7 @@ import { Callout } from '../../src/components/callout'
 Install the CLI globally with Bun:
 
 ```terminal
-bun add -g @roost/cli
+bun add -g @roostjs/cli
 ```
 
 Verify the installation:
@@ -80,7 +80,7 @@ roost make:model Post
 This creates `src/models/post.ts`. Edit it to define your schema columns using Drizzle's SQLite core helpers:
 
 ```src/models/post.ts
-import { Model } from '@roost/orm';
+import { Model } from '@roostjs/orm';
 import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
 
 export const posts = sqliteTable('posts', {
@@ -188,5 +188,5 @@ Cloudflare Workers. That's a full-stack app running at the edge.
 - [Build a REST API](/docs/tutorials/build-a-task-api) — CRUD endpoints, validation, and testing
 - [Build an AI Chat App](/docs/tutorials/build-a-chat-app) — agents, tools, and streaming on Workers AI
 - [Build a SaaS App](/docs/tutorials/build-a-saas-app) — auth, billing, and background jobs
-- [@roost/core Reference](/docs/reference/core) — service container, config, and middleware
+- [@roostjs/core Reference](/docs/reference/core) — service container, config, and middleware
 - [Architecture Concepts](/docs/concepts/architecture) — understand how Roost works under the hood

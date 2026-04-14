@@ -1,5 +1,5 @@
 ---
-title: "@roost/workflow Guides"
+title: "@roostjs/workflow Guides"
 description: Task-oriented instructions for defining workflows, running durable steps, implementing sagas with Compensable, and testing without Cloudflare.
 ---
 
@@ -8,7 +8,7 @@ description: Task-oriented instructions for defining workflows, running durable 
 Extend `Workflow<Env, TParams>` with a typed params interface and implement `run()`.
 
 ```ts title="src/workflows/ProvisionTenant.ts"
-import { Workflow, NonRetryableError } from '@roost/workflow';
+import { Workflow, NonRetryableError } from '@roostjs/workflow';
 import type { WorkflowEvent, WorkflowStep } from 'cloudflare:workers';
 
 interface ProvisionTenantParams {
@@ -48,7 +48,7 @@ Register the workflow class in `WorkflowServiceProvider.withWorkflows()`, then
 resolve the `WorkflowClient` from the container and call `create()`.
 
 ```ts title="src/providers/AppServiceProvider.ts"
-import { WorkflowServiceProvider } from '@roost/workflow';
+import { WorkflowServiceProvider } from '@roostjs/workflow';
 import { ProvisionTenant } from '../workflows/ProvisionTenant';
 
 export const workflowProvider = new WorkflowServiceProvider()
@@ -59,7 +59,7 @@ export const workflowProvider = new WorkflowServiceProvider()
 
 ```ts title="src/handlers/organizations.ts"
 import type { AppContainer } from '../container';
-import type { WorkflowClient } from '@roost/workflow';
+import type { WorkflowClient } from '@roostjs/workflow';
 
 export async function handleCreateOrganization(
   container: AppContainer,
@@ -83,7 +83,7 @@ Use `Compensable` to register rollback operations as you go. If a step fails,
 call `compensate()` to undo completed work in reverse order.
 
 ```ts title="src/workflows/OnboardUser.ts"
-import { Workflow, Compensable } from '@roost/workflow';
+import { Workflow, Compensable } from '@roostjs/workflow';
 import type { WorkflowEvent, WorkflowStep } from 'cloudflare:workers';
 
 interface OnboardUserParams {
@@ -199,7 +199,7 @@ Throw `NonRetryableError` inside `run()` or a `step.do()` callback to tell
 Cloudflare not to retry the workflow.
 
 ```ts
-import { Workflow, NonRetryableError } from '@roost/workflow';
+import { Workflow, NonRetryableError } from '@roostjs/workflow';
 
 export class ImportData extends Workflow<Env, { fileKey: string }> {
   async run(event: WorkflowEvent<{ fileKey: string }>, step: WorkflowStep) {

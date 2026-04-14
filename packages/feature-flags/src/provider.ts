@@ -1,5 +1,5 @@
-import { ServiceProvider } from '@roost/core';
-import { KVStore } from '@roost/cloudflare';
+import { ServiceProvider } from '@roostjs/core';
+import { KVStore } from '@roostjs/cloudflare';
 import { FeatureFlag } from './feature-flag.js';
 import { WorkOSFlagProvider } from './providers/workos.js';
 import { KVCacheFlagProvider } from './providers/kv-cache.js';

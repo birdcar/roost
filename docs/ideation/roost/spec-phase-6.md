@@ -6,11 +6,11 @@
 
 ## Technical Approach
 
-Phase 6 builds `@roost/queue` — a Laravel Horizon-inspired job abstraction over Cloudflare Queues. The core pattern: every background job is a class, dispatching is a static method call, and a registry maps message type names to job classes inside the Wrangler `queue` consumer handler.
+Phase 6 builds `@roostjs/queue` — a Laravel Horizon-inspired job abstraction over Cloudflare Queues. The core pattern: every background job is a class, dispatching is a static method call, and a registry maps message type names to job classes inside the Wrangler `queue` consumer handler.
 
 The architecture has three distinct runtime contexts:
 
-1. **Dispatch time** (inside a Worker `fetch` handler): `Job.dispatch()` serializes the payload with job class metadata and sends it to the `QueueSender` from `@roost/cloudflare`. This is synchronous from the caller's perspective — it enqueues and moves on.
+1. **Dispatch time** (inside a Worker `fetch` handler): `Job.dispatch()` serializes the payload with job class metadata and sends it to the `QueueSender` from `@roostjs/cloudflare`. This is synchronous from the caller's perspective — it enqueues and moves on.
 
 2. **Consume time** (inside the Wrangler `queue` handler): A `JobConsumer` receives a batch of raw Cloudflare `MessageBatch`, looks up each message's job name in a `JobRegistry`, instantiates the job class, and calls `handle()`. Retries and acknowledgment are managed here.
 
@@ -34,7 +34,7 @@ Chaining is implemented as a special payload envelope: the first job in a chain,
 
 | File Path | Purpose |
 |---|---|
-| `packages/queue/package.json` | @roost/queue package manifest |
+| `packages/queue/package.json` | @roostjs/queue package manifest |
 | `packages/queue/tsconfig.json` | Extends base TS config |
 | `packages/queue/src/index.ts` | Public API barrel export |
 | `packages/queue/src/job.ts` | Job base class with typed payload generic |
@@ -182,7 +182,7 @@ import { Job } from './job.ts';
 ```typescript
 // packages/queue/src/job.ts
 
-import type { Container } from '@roost/core';
+import type { Container } from '@roostjs/core';
 import type { JobConfig, JobMessage, SerializedJob } from './types.ts';
 
 export abstract class Job<TPayload = void> {
@@ -439,7 +439,7 @@ export function hasExceededMaxRetries(attempt: number, maxRetries: number): bool
 ```typescript
 // packages/queue/src/consumer.ts
 
-import type { Container } from '@roost/core';
+import type { Container } from '@roostjs/core';
 import type { MessageBatch, Message } from '@cloudflare/workers-types';
 import type { JobMessage, FailedJobRecord } from './types.ts';
 import type { JobRegistry } from './registry.ts';
@@ -588,14 +588,14 @@ function getDispatcher(container: Container): import('./dispatcher.ts').Dispatch
 
 ### 5. Dispatcher
 
-**Overview**: The `Dispatcher` wraps `QueueSender` from `@roost/cloudflare`. It serializes jobs into `JobMessage` envelopes and sends them. It handles delayed dispatch, chain initialization, and batch dispatch with KV-backed completion tracking.
+**Overview**: The `Dispatcher` wraps `QueueSender` from `@roostjs/cloudflare`. It serializes jobs into `JobMessage` envelopes and sends them. It handles delayed dispatch, chain initialization, and batch dispatch with KV-backed completion tracking.
 
 ```typescript
 // packages/queue/src/dispatcher.ts
 
-import type { QueueSender } from '@roost/cloudflare';
-import type { Container } from '@roost/core';
-import type { KVStore } from '@roost/cloudflare';
+import type { QueueSender } from '@roostjs/cloudflare';
+import type { Container } from '@roostjs/core';
+import type { KVStore } from '@roostjs/cloudflare';
 import type { JobMessage, SerializedJob } from './types.ts';
 import type { JobRegistry } from './registry.ts';
 import { emitJobEvent } from './events.ts';
@@ -715,7 +715,7 @@ export class Dispatcher {
 ```typescript
 // packages/queue/src/monitor.ts
 
-import type { KVStore } from '@roost/cloudflare';
+import type { KVStore } from '@roostjs/cloudflare';
 import type { JobMetrics } from './types.ts';
 
 const METRICS_PREFIX = 'roost:jobs:metrics:';
@@ -780,7 +780,7 @@ export class JobMonitor {
 ```typescript
 // packages/queue/src/failed-jobs.ts
 
-import type { KVStore } from '@roost/cloudflare';
+import type { KVStore } from '@roostjs/cloudflare';
 import type { FailedJobRecord } from './types.ts';
 
 const FAILED_JOBS_PREFIX = 'roost:jobs:failed:';
@@ -975,7 +975,7 @@ export const JobFake = {
 ```
 
 **Key decisions**:
-- `Job.fake()` is a module-level function (not a static on `Job` itself) to avoid coupling the base class to test infrastructure. This follows the same pattern as `@roost/testing` will use for other fakes.
+- `Job.fake()` is a module-level function (not a static on `Job` itself) to avoid coupling the base class to test infrastructure. This follows the same pattern as `@roostjs/testing` will use for other fakes.
 - The `FakeDispatcher` is also returned from `fake()` so tests can inspect `fakeInstance.dispatched` directly if the assertion helpers don't cover their use case.
 - `restore()` should be called in `afterEach` to prevent test pollution.
 
@@ -988,13 +988,13 @@ export const JobFake = {
 
 ### 9. Service Provider
 
-**Overview**: `QueueServiceProvider` extends `ServiceProvider` from `@roost/core`. It registers the `JobRegistry`, `Dispatcher`, `JobMonitor`, `FailedJobStore`, and wires the module-level dispatcher reference.
+**Overview**: `QueueServiceProvider` extends `ServiceProvider` from `@roostjs/core`. It registers the `JobRegistry`, `Dispatcher`, `JobMonitor`, `FailedJobStore`, and wires the module-level dispatcher reference.
 
 ```typescript
 // packages/queue/src/provider.ts
 
-import { ServiceProvider } from '@roost/core';
-import { QueueSender } from '@roost/cloudflare';
+import { ServiceProvider } from '@roostjs/core';
+import { QueueSender } from '@roostjs/cloudflare';
 import { JobRegistry } from './registry.ts';
 import { Dispatcher } from './dispatcher.ts';
 import { JobMonitor } from './monitor.ts';
@@ -1061,9 +1061,9 @@ export class QueueServiceProvider extends ServiceProvider {
 **User setup** (in their `worker.ts`):
 
 ```typescript
-import { Application } from '@roost/core';
-import { QueueServiceProvider } from '@roost/queue';
-import { JobConsumer } from '@roost/queue';
+import { Application } from '@roostjs/core';
+import { QueueServiceProvider } from '@roostjs/queue';
+import { JobConsumer } from '@roostjs/queue';
 import { SendWelcomeEmail } from './jobs/send-welcome-email.ts';
 
 const app = Application.create(env);
@@ -1130,7 +1130,7 @@ await Job.batch([
 ### Job Definition (developer-facing)
 
 ```typescript
-import { Job, Queue, MaxRetries, RetryAfter, Backoff } from '@roost/queue';
+import { Job, Queue, MaxRetries, RetryAfter, Backoff } from '@roostjs/queue';
 
 interface EmailPayload {
   userId: string;
@@ -1210,13 +1210,13 @@ const metrics = await monitor.getMetrics('SendWelcomeEmail');
 
 ```bash
 # Type checking
-bun run --filter @roost/queue tsc --noEmit
+bun run --filter @roostjs/queue tsc --noEmit
 
 # Unit tests
 bun test --filter packages/queue
 
 # Build
-bun run --filter @roost/queue build
+bun run --filter @roostjs/queue build
 
 # Full suite
 bun test

@@ -14,10 +14,10 @@
   </p>
   <p>
     <strong>Packages used:</strong>{' '}
-    <a href="/docs/packages/orm">@roost/orm</a>,{' '}
-    <a href="/docs/packages/core">@roost/core</a>,{' '}
-    <a href="/docs/packages/testing">@roost/testing</a>,{' '}
-    <a href="/docs/packages/start">@roost/start</a>
+    <a href="/docs/packages/orm">@roostjs/orm</a>,{' '}
+    <a href="/docs/packages/core">@roostjs/core</a>,{' '}
+    <a href="/docs/packages/testing">@roostjs/testing</a>,{' '}
+    <a href="/docs/packages/start">@roostjs/start</a>
   </p>
 </Callout>
 
@@ -566,6 +566,6 @@ You now have a fully functional, tested REST API with:
 
 ## Next steps
 
-- [@roost/orm reference](/docs/reference/orm.md) — full API documentation for `Model`, `QueryBuilder`, and all relation types
+- [@roostjs/orm reference](/docs/reference/orm.md) — full API documentation for `Model`, `QueryBuilder`, and all relation types
 - [ORM guide](/docs/guides/orm.md) — pagination, soft deletes, model hooks, and eager loading
 - [ORM concepts](/docs/concepts/orm.md) — how the ORM maps to Drizzle and D1 under the hood

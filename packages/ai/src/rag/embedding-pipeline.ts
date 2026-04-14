@@ -1,4 +1,4 @@
-import type { AIClient } from '@roost/cloudflare';
+import type { AIClient } from '@roostjs/cloudflare';
 import { EmbeddingError } from './types.js';
 
 export class EmbeddingPipeline {

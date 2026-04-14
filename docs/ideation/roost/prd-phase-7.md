@@ -23,7 +23,7 @@ After this phase, a developer can add billing to any Roost app: create customers
 
 ## Functional Requirements
 
-### Abstract Billing Contract (@roost/billing)
+### Abstract Billing Contract (@roostjs/billing)
 
 - **FR-7.1**: `BillingProvider` interface with methods: `createCustomer`, `subscribe`, `cancelSubscription`, `swapSubscription`, `resumeSubscription`, `createPortalSession`, `processWebhook`
 - **FR-7.2**: `Billable` mixin for model classes — adds `.subscription()`, `.subscribed()`, `.onTrial()`, `.subscribedToPrice()`

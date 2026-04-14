@@ -98,7 +98,7 @@ describe('EventDispatcher', () => {
 
     // The dispatcher checks `shouldQueue` and calls ListenerClass.dispatch(event)
     // We set up a custom dispatcher flow by registering via registerListener,
-    // but we need to mock the @roost/queue import. Instead, test the gate condition:
+    // but we need to mock the @roostjs/queue import. Instead, test the gate condition:
     // Since we can't easily mock dynamic imports in unit tests, we verify the behavior
     // by checking that handle() is NOT called when shouldQueue is true and the
     // listener has a dispatch method — we test the observable side effect.

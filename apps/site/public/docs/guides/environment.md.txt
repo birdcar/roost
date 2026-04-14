@@ -117,4 +117,4 @@ export default {
 };
 ```
 
-Related: [Deployment guide](/docs/guides/deployment.md) for setting production secrets, [@roost/core reference](/docs/packages/core.md) for the ConfigManager API.
+Related: [Deployment guide](/docs/guides/deployment.md) for setting production secrets, [@roostjs/core reference](/docs/packages/core.md) for the ConfigManager API.

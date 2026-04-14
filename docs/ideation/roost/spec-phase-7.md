@@ -6,19 +6,19 @@
 
 ## Technical Approach
 
-Phase 7 builds `@roost/billing` — a Laravel Cashier-inspired billing abstraction over Stripe, designed for Cloudflare Workers. The core constraint driving every architectural decision: **no Node.js Stripe SDK**. The official `stripe` npm package depends on Node.js APIs unavailable in Workers (`http`, `net`, `tls`). All Stripe communication must use the native `fetch` API against Stripe's REST endpoints.
+Phase 7 builds `@roostjs/billing` — a Laravel Cashier-inspired billing abstraction over Stripe, designed for Cloudflare Workers. The core constraint driving every architectural decision: **no Node.js Stripe SDK**. The official `stripe` npm package depends on Node.js APIs unavailable in Workers (`http`, `net`, `tls`). All Stripe communication must use the native `fetch` API against Stripe's REST endpoints.
 
 The architecture has four layers:
 
 1. **Abstract contract** (`BillingProvider` interface): All billing operations are defined here. Consumer code (models, controllers, middleware) depends only on this interface. A Stripe provider implements it; future providers (Paddle, LemonSqueezy) can be swapped without touching consumer code.
 
-2. **Billable mixin**: A TypeScript mixin function that adds subscription-aware methods to any ORM model class (`User`, `Organization`, etc.). The mixin uses the `BillingProvider` from the container and loads/saves `Subscription` records via `@roost/orm`.
+2. **Billable mixin**: A TypeScript mixin function that adds subscription-aware methods to any ORM model class (`User`, `Organization`, etc.). The mixin uses the `BillingProvider` from the container and loads/saves `Subscription` records via `@roostjs/orm`.
 
 3. **Stripe adapter** (`StripeProvider`): Implements `BillingProvider` by calling Stripe's REST API directly via `fetch`. All requests are signed with the secret key using HTTP Basic auth (`Authorization: Bearer sk_...`). Webhook signature verification uses the `crypto.subtle` Web Crypto API.
 
 4. **Webhook router**: A small request handler registered at `/billing/webhook` that verifies the Stripe signature, parses the event, and dispatches to registered event handlers. This integrates with Phase 2's routing (or stands alone as a `Request => Response` function).
 
-The `Subscription` model persists to D1 via `@roost/orm` (Phase 4 dependency). The `Customer` record is stored alongside the user's model using a `stripe_customer_id` column. This is the same pattern as Laravel Cashier: local DB mirrors Stripe state, webhooks keep them in sync.
+The `Subscription` model persists to D1 via `@roostjs/orm` (Phase 4 dependency). The `Customer` record is stored alongside the user's model using a `stripe_customer_id` column. This is the same pattern as Laravel Cashier: local DB mirrors Stripe state, webhooks keep them in sync.
 
 ## Feedback Strategy
 
@@ -34,13 +34,13 @@ The `Subscription` model persists to D1 via `@roost/orm` (Phase 4 dependency). T
 
 | File Path | Purpose |
 |---|---|
-| `packages/billing/package.json` | @roost/billing package manifest |
+| `packages/billing/package.json` | @roostjs/billing package manifest |
 | `packages/billing/tsconfig.json` | Extends base TS config |
 | `packages/billing/src/index.ts` | Public API barrel export |
 | `packages/billing/src/types.ts` | Shared type definitions and interfaces |
 | `packages/billing/src/provider.ts` | BillingProvider abstract interface |
 | `packages/billing/src/billable.ts` | Billable mixin for ORM models |
-| `packages/billing/src/subscription.ts` | Subscription model (extends @roost/orm Model) |
+| `packages/billing/src/subscription.ts` | Subscription model (extends @roostjs/orm Model) |
 | `packages/billing/src/customer.ts` | Customer record helpers |
 | `packages/billing/src/stripe/client.ts` | Stripe REST API fetch client |
 | `packages/billing/src/stripe/provider.ts` | StripeProvider implements BillingProvider |
@@ -222,14 +222,14 @@ export const BILLING_PROVIDER = Symbol('roost.billing.provider');
 
 ### 2. Subscription Model
 
-**Overview**: The `Subscription` model extends `@roost/orm`'s `Model` base class. It represents the local state mirror of a provider subscription. All billing state changes go through webhooks that update this record.
+**Overview**: The `Subscription` model extends `@roostjs/orm`'s `Model` base class. It represents the local state mirror of a provider subscription. All billing state changes go through webhooks that update this record.
 
 ```typescript
 // packages/billing/src/subscription.ts
 // This is the Drizzle schema + ORM model for subscriptions.
-// It depends on @roost/orm being configured with a D1 binding.
+// It depends on @roostjs/orm being configured with a D1 binding.
 
-import { Model } from '@roost/orm';
+import { Model } from '@roostjs/orm';
 import type { SubscriptionStatus } from './types.ts';
 
 // Drizzle table definition — generated migration adds this table.
@@ -336,7 +336,7 @@ import type { BillingProvider } from './provider.ts';
 // packages/billing/src/billable.ts
 
 import type { BillingProvider } from './provider.ts';
-import type { Container } from '@roost/core';
+import type { Container } from '@roostjs/core';
 import { Subscription } from './subscription.ts';
 import type {
   CreateCheckoutSessionResult,
@@ -463,7 +463,7 @@ import { BILLING_PROVIDER } from './provider.ts';
 ```
 
 **Key decisions**:
-- The mixin pattern (`Billable(Model)`) is idiomatic TypeScript and avoids the "mixin via interface + abstract class" confusion. It also works with any base class, not just `@roost/orm`'s `Model`.
+- The mixin pattern (`Billable(Model)`) is idiomatic TypeScript and avoids the "mixin via interface + abstract class" confusion. It also works with any base class, not just `@roostjs/orm`'s `Model`.
 - `getOrCreateStripeCustomer()` is lazy — a Stripe customer is only created on the first billing action. This prevents orphaned customer records for users who never subscribe.
 - `subscribed()` accepts an optional `priceId` for plan-specific checks: `user.subscribed('price_premium')`.
 
@@ -477,7 +477,7 @@ import { BILLING_PROVIDER } from './provider.ts';
 
 ### 4. Stripe REST Client
 
-**Overview**: A minimal fetch-based client for Stripe's API. This is the core infrastructure that makes Workers compatibility possible. It handles authentication, URL encoding, and error normalization. It is not a full Stripe SDK — it only implements the endpoints `@roost/billing` needs.
+**Overview**: A minimal fetch-based client for Stripe's API. This is the core infrastructure that makes Workers compatibility possible. It handles authentication, URL encoding, and error normalization. It is not a full Stripe SDK — it only implements the endpoints `@roostjs/billing` needs.
 
 ```typescript
 // packages/billing/src/stripe/client.ts
@@ -597,7 +597,7 @@ function encodeFormBody(
 - `application/x-www-form-urlencoded` is Stripe's standard request format. JSON is only supported on a few newer Stripe endpoints. Using form encoding is the safe, universal choice.
 - The auth header is computed once in the constructor. Stripe supports both `Authorization: Bearer sk_...` and HTTP Basic auth; Basic auth is slightly simpler to implement correctly with `btoa`.
 - `encodeFormBody` is a flat encoder. Stripe supports nested parameters via bracket notation (e.g., `metadata[key]=value`), but this spec deliberately keeps the client simple. Nested params are handled by the StripeProvider by flattening before passing to `post()`.
-- The client does not implement rate limiting, automatic retries, or idempotency keys — those are left for a future `@roost/billing` v2. The current scope is correctness on the happy path.
+- The client does not implement rate limiting, automatic retries, or idempotency keys — those are left for a future `@roostjs/billing` v2. The current scope is correctness on the happy path.
 
 **Implementation steps**:
 1. Implement `StripeClient` with `post`, `get`, `delete`
@@ -1092,13 +1092,13 @@ interface StripeSubscriptionWebhookObject {
 
 ### 8. Middleware
 
-**Overview**: Two middleware classes that gate route access based on subscription status. They extend the `Middleware` interface from `@roost/core` (Phase 1).
+**Overview**: Two middleware classes that gate route access based on subscription status. They extend the `Middleware` interface from `@roostjs/core` (Phase 1).
 
 ```typescript
 // packages/billing/src/middleware.ts
 
-import type { Middleware } from '@roost/core';
-import type { Container } from '@roost/core';
+import type { Middleware } from '@roostjs/core';
+import type { Container } from '@roostjs/core';
 import type { Billable } from './billable.ts';
 
 /**
@@ -1109,7 +1109,7 @@ import type { Billable } from './billable.ts';
  *   middleware: ['subscribed:premium']   // specific price ID
  *
  * The middleware reads the authenticated user from the request context
- * (set by @roost/auth's middleware in Phase 3).
+ * (set by @roostjs/auth's middleware in Phase 3).
  */
 export class SubscribedMiddleware implements Middleware {
   constructor(private readonly container: Container) {}
@@ -1174,7 +1174,7 @@ export class OnTrialMiddleware implements Middleware {
   }
 }
 
-// Internal types for request context (matches @roost/auth's shape)
+// Internal types for request context (matches @roostjs/auth's shape)
 interface BillableModel {
   subscribed(priceId?: string): Promise<boolean>;
   onTrial(): Promise<boolean>;
@@ -1394,7 +1394,7 @@ export const Billing = {
 ```typescript
 // packages/billing/src/service-provider.ts
 
-import { ServiceProvider } from '@roost/core';
+import { ServiceProvider } from '@roostjs/core';
 import { StripeProvider } from './stripe/provider.ts';
 import { WebhookHandler } from './webhook-handler.ts';
 import { BILLING_PROVIDER } from './provider.ts';
@@ -1442,14 +1442,14 @@ export class BillingServiceProvider extends ServiceProvider {
   }
 }
 
-import type { Application } from '@roost/core';
+import type { Application } from '@roostjs/core';
 import type { BillingProvider } from './provider.ts';
 ```
 
 **User setup** (in their route config, Phase 2 dependency):
 
 ```typescript
-import { BillingServiceProvider } from '@roost/billing';
+import { BillingServiceProvider } from '@roostjs/billing';
 
 const app = Application.create(env);
 app.register(new BillingServiceProvider(app));
@@ -1467,7 +1467,7 @@ app.router.post('/billing/webhook', async (request) => {
 ## Data Model
 
 ```sql
--- D1 migration generated by @roost/orm make:migration
+-- D1 migration generated by @roostjs/orm make:migration
 CREATE TABLE subscriptions (
   id                   TEXT PRIMARY KEY,
   billable_id          TEXT NOT NULL,
@@ -1560,7 +1560,7 @@ handler.on('customer.subscription.trial_will_end', async (data) => {
 ### Testing (developer-facing)
 
 ```typescript
-import { Billing, BillingFake } from '@roost/billing';
+import { Billing, BillingFake } from '@roostjs/billing';
 import { describe, it, beforeEach, afterEach, expect } from 'bun:test';
 
 describe('subscription flow', () => {
@@ -1663,13 +1663,13 @@ describe('subscription flow', () => {
 
 ```bash
 # Type checking
-bun run --filter @roost/billing tsc --noEmit
+bun run --filter @roostjs/billing tsc --noEmit
 
 # Unit tests
 bun test --filter packages/billing
 
 # Build
-bun run --filter @roost/billing build
+bun run --filter @roostjs/billing build
 
 # Full suite
 bun test

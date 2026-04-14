@@ -1,4 +1,4 @@
-import { ServiceProvider } from '@roost/core';
+import { ServiceProvider } from '@roostjs/core';
 import { EventDispatcher } from './dispatcher.js';
 import type { EventClass, ListenerClass, SubscriberClass } from './types.js';
 import type { Event } from './event.js';

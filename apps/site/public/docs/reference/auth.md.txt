@@ -1,7 +1,7 @@
 ## Installation
 
 ```bash title="terminal"
-bun add @roost/auth
+bun add @roostjs/auth
 ```
 
 ## Configuration
@@ -194,7 +194,7 @@ Reads the `X-Org-Slug` request header.
 
 ## TenantScopeMiddleware
 
-`TenantScopeMiddleware` is exported from `@roost/orm`, not `@roost/auth`, but it is designed to be wired together with `OrgResolver` from `@roost/auth`. See the full API reference in the [@roost/orm reference — TenantScopeMiddleware](/docs/reference/orm#tenantscopemiddleware.md).
+`TenantScopeMiddleware` is exported from `@roostjs/orm`, not `@roostjs/auth`, but it is designed to be wired together with `OrgResolver` from `@roostjs/auth`. See the full API reference in the [@roostjs/orm reference — TenantScopeMiddleware](/docs/reference/orm#tenantscopemiddleware.md).
 
 `OrgResolver` satisfies the `OrgResolvable` interface required by `TenantScopeMiddleware`:
 

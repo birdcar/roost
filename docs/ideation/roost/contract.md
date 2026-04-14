@@ -51,7 +51,7 @@ The person building this framework is also its first target user: a senior engin
 
 ### In Scope
 
-**Core Framework (@roost/core)**
+**Core Framework (@roostjs/core)**
 - Service container / dependency injection
 - Configuration management (convention-over-configuration)
 - Middleware pipeline
@@ -66,7 +66,7 @@ The person building this framework is also its first target user: a senior engin
 - Layout system, error boundaries
 - Static asset handling via Vinxi/Nitro asset pipeline or R2
 
-**Authentication (@roost/auth)**
+**Authentication (@roostjs/auth)**
 - WorkOS SDK wrapper with framework-level abstractions
 - Session management (Workers-compatible, KV-backed or cookie-based)
 - Middleware guards (auth, guest, role, organization)
@@ -74,7 +74,7 @@ The person building this framework is also its first target user: a senior engin
 - Directory sync via WorkOS Events API
 - WorkOS Widgets integration for prebuilt UI components
 
-**ORM (@roost/orm)**
+**ORM (@roostjs/orm)**
 - Drizzle wrapper with Laravel-like model base class
 - Migration generation and running
 - Query builder with D1 optimizations
@@ -82,17 +82,17 @@ The person building this framework is also its first target user: a senior engin
 - Model events/hooks
 - Seeding and factories for testing
 
-**Cloudflare Bindings (@roost/cloudflare)**
-- D1 — database (via Drizzle, surfaced through @roost/orm)
+**Cloudflare Bindings (@roostjs/cloudflare)**
+- D1 — database (via Drizzle, surfaced through @roostjs/orm)
 - KV — key-value storage with typed get/put/delete, cache abstractions
 - R2 — object/file storage with upload/download/presigned URLs
 - Queues — job dispatch, retry, dead letter, consumer handlers
 - Durable Objects — stateful actor abstractions
-- AI — inference client wrapped by @roost/ai
+- AI — inference client wrapped by @roostjs/ai
 - Vectorize — vector storage/search for RAG
 - Hyperdrive — connection pooling for external databases
 
-**AI SDK (@roost/ai)**
+**AI SDK (@roostjs/ai)**
 - Agent base class with decorator-driven configuration (@Provider, @Model, @MaxSteps, etc.)
 - Tool definition with typed schemas (mirroring Laravel's JsonSchema builder)
 - Structured output with schema validation
@@ -103,7 +103,7 @@ The person building this framework is also its first target user: a senior engin
 - Cloudflare AI as first-class provider, with extensible provider interface
 - Testing fakes (Agent.fake(), assertPrompted(), etc.)
 
-**MCP (@roost/mcp)**
+**MCP (@roostjs/mcp)**
 - MCP Server base class with decorator metadata (@Name, @Version, @Instructions)
 - Tool, Resource, and Prompt base classes
 - Request/Response abstractions mirroring Laravel's
@@ -112,21 +112,21 @@ The person building this framework is also its first target user: a senior engin
 - Tool annotations (@IsReadOnly, @IsDestructive, etc.)
 - Testing utilities (Server.tool(ToolClass, args) pattern)
 
-**Billing (@roost/billing)**
+**Billing (@roostjs/billing)**
 - Abstract billing interface (subscribe, cancel, swap, meter, portal)
 - Stripe adapter as first implementation
 - Webhook handling on Workers
 - Subscription status middleware
 - Customer model integration
 
-**Queue/Jobs (@roost/queue)**
+**Queue/Jobs (@roostjs/queue)**
 - Job base class with typed payloads
 - Dispatch API (dispatch, dispatchAfter, chain, batch)
 - Cloudflare Queues consumer integration
 - Retry strategies, dead letter handling
 - Job monitoring/status (Horizon-lite)
 
-**CLI (@roost/cli)**
+**CLI (@roostjs/cli)**
 - `roost new <name>` — project scaffolding with WorkOS setup wizard
 - `roost make:model` — generate model + migration
 - `roost make:controller` — generate controller
@@ -139,7 +139,7 @@ The person building this framework is also its first target user: a senior engin
 - `roost dev` — start dev server (wraps wrangler dev)
 - `roost deploy` — deploy to Workers (wraps wrangler deploy)
 
-**Testing (@roost/testing)**
+**Testing (@roostjs/testing)**
 - Agent fakes and assertions
 - Billing fakes and assertions
 - Queue fakes and assertions
@@ -162,17 +162,17 @@ The person building this framework is also its first target user: a senior engin
 - Non-WorkOS auth providers (Auth0, Clerk, Firebase Auth) — WorkOS is the opinionated choice
 - Non-TypeScript language support — Workers run TS/JS, Roost is TS-only
 - GraphQL — REST/RPC patterns via TanStack Start loaders/server functions. GraphQL can be a future package
-- Email sending — defer to a future @roost/mail package; not core to v0.1
+- Email sending — defer to a future @roostjs/mail package; not core to v0.1
 - WebSocket abstractions — Durable Objects handle this at the binding level; no framework WebSocket layer in v0.1
 - Admin panel / dashboard UI — framework provides primitives, not a prebuilt admin interface
 - Package registry / marketplace — no third-party plugin ecosystem in v0.1
 
 ### Future Considerations
 
-- `@roost/mail` — transactional email via Resend/Postmark
-- `@roost/notifications` — multi-channel notifications (email, Slack, webhook)
-- `@roost/websocket` — higher-level WebSocket abstractions over Durable Objects
-- `@roost/admin` — auto-generated admin panel from models
+- `@roostjs/mail` — transactional email via Resend/Postmark
+- `@roostjs/notifications` — multi-channel notifications (email, Slack, webhook)
+- `@roostjs/websocket` — higher-level WebSocket abstractions over Durable Objects
+- `@roostjs/admin` — auto-generated admin panel from models
 - Plugin/package ecosystem with community contributions
 - Multi-provider AI support (OpenAI, Anthropic direct, not just via CF AI)
 - `roost deploy --preview` with preview URL generation
@@ -272,11 +272,11 @@ Teammates:
 
 2. "ORM" — docs/ideation/roost/spec-phase-4.md
    Drizzle-based ORM with model classes, query builder, relationships,
-   migrations, factories. Uses D1 binding from @roost/cloudflare.
+   migrations, factories. Uses D1 binding from @roostjs/cloudflare.
 
 3. "Queue" — docs/ideation/roost/spec-phase-6.md
    Job classes with typed payloads, dispatch API, Cloudflare Queues
-   consumer, retry/dead letter. Uses Queues binding from @roost/cloudflare.
+   consumer, retry/dead letter. Uses Queues binding from @roostjs/cloudflare.
 
 Coordinate on shared files: packages/core/src/index.ts may need
 re-exports. Only one teammate should modify a shared file at a time.
@@ -304,13 +304,13 @@ Teammates:
 2. "AI + MCP" — docs/ideation/roost/spec-phase-5.md
    Agent classes, tools, structured output, streaming, MCP server.
    Depends on Phase 2 (routing for MCP HTTP transport).
-   Creates @roost/schema as shared zero-dep package.
+   Creates @roostjs/schema as shared zero-dep package.
 
 3. "Billing" — docs/ideation/roost/spec-phase-7.md
    Abstract billing interface, Stripe adapter (REST API, no Node SDK),
    webhooks, subscription middleware. Depends on Phase 4 (ORM).
 
-Coordinate on shared files: @roost/schema (created by AI+MCP teammate)
+Coordinate on shared files: @roostjs/schema (created by AI+MCP teammate)
 should not conflict with others. Auth and Billing both add middleware
 to packages/core — coordinate to avoid merge conflicts.
 ```

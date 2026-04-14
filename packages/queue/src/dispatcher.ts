@@ -1,4 +1,4 @@
-import type { QueueSender } from '@roost/cloudflare';
+import type { QueueSender } from '@roostjs/cloudflare';
 import type { JobMessage, SerializedJob } from './types.js';
 import { getJobConfig } from './decorators.js';
 

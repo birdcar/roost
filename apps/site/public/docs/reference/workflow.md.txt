@@ -1,7 +1,7 @@
 ## Installation
 
 ```bash title="terminal"
-bun add @roost/workflow
+bun add @roostjs/workflow
 ```
 
 ## Configuration

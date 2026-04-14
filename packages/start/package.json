@@ -1,5 +1,5 @@
 {
-  "name": "@roost/start",
+  "name": "@roostjs/start",
   "version": "0.1.0",
   "type": "module",
   "exports": {
@@ -13,7 +13,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@roost/core": "workspace:*"
+    "@roostjs/core": "workspace:*"
   },
   "peerDependencies": {
     "@tanstack/react-start": ">=1.120.0",
@@ -27,5 +27,18 @@
     "typescript": "catalog:",
     "react": "catalog:",
     "@types/react": "catalog:"
-  }
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/birdcar/roost.git",
+    "directory": "packages/start"
+  },
+  "homepage": "https://github.com/birdcar/roost/tree/main/packages/start#readme",
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "src"
+  ]
 }

@@ -6,7 +6,7 @@
 
 ## Phase Overview
 
-Phase 5 is the heart of Roost's AI-native story. It implements two packages: @roost/ai (agent classes, tools, structured output, streaming, conversation memory) and @roost/mcp (MCP server with tools, resources, and prompts). Both are modeled directly after Laravel 13's AI SDK and MCP implementations, adapted for TypeScript decorators and Cloudflare Workers.
+Phase 5 is the heart of Roost's AI-native story. It implements two packages: @roostjs/ai (agent classes, tools, structured output, streaming, conversation memory) and @roostjs/mcp (MCP server with tools, resources, and prompts). Both are modeled directly after Laravel 13's AI SDK and MCP implementations, adapted for TypeScript decorators and Cloudflare Workers.
 
 This phase depends on Phase 2 (routing, for MCP HTTP transport and streaming SSE routes) and Phase 1 (Cloudflare AI binding). It can run in parallel with Auth (Phase 3) and ORM (Phase 4), though conversation persistence will initially use raw D1 until the ORM is available.
 
@@ -24,7 +24,7 @@ After this phase, a developer can define an AI agent as a class with typed tools
 
 ## Functional Requirements
 
-### Agent Classes (@roost/ai)
+### Agent Classes (@roostjs/ai)
 
 - **FR-5.1**: `Agent` interface with `instructions()` method returning system prompt
 - **FR-5.2**: `Promptable` mixin providing `prompt()`, `stream()`, and `queue()` methods
@@ -35,7 +35,7 @@ After this phase, a developer can define an AI agent as a class with typed tools
 - **FR-5.7**: Constructor injection — agents accept dependencies via constructor (e.g., `new SalesCoach(user)`)
 - **FR-5.8**: Anonymous agent function for one-off prompts: `agent({ instructions, tools, schema }).prompt('...')`
 
-### Tool Definitions (@roost/ai)
+### Tool Definitions (@roostjs/ai)
 
 - **FR-5.9**: `Tool` interface with `description()`, `schema()`, and `handle(request)` methods
 - **FR-5.10**: Schema builder matching Laravel's JsonSchema pattern: `schema.string()`, `schema.integer().min(0)`, `schema.object()`, `schema.array()`, `schema.enum([])`, `.required()`, `.default()`
@@ -75,11 +75,11 @@ After this phase, a developer can define an AI agent as a class with typed tools
 - **FR-5.29**: Extensible provider interface for future providers (OpenAI, Anthropic direct)
 - **FR-5.30**: Provider failover: `agent.prompt('...', { provider: [Provider.CloudflareAI, Provider.OpenAI] })`
 
-### MCP Server (@roost/mcp)
+### MCP Server (@roostjs/mcp)
 
 - **FR-5.31**: `Server` base class with `@Name`, `@Version`, `@Instructions` decorators
 - **FR-5.32**: `tools`, `resources`, `prompts` arrays on server class for registration
-- **FR-5.33**: MCP `Tool` base class with `description()`, `schema()`, `outputSchema()`, `handle(request)` — mirroring @roost/ai tools but producing MCP Response objects
+- **FR-5.33**: MCP `Tool` base class with `description()`, `schema()`, `outputSchema()`, `handle(request)` — mirroring @roostjs/ai tools but producing MCP Response objects
 - **FR-5.34**: MCP `Resource` base class with `@Uri`, `@MimeType`, `@Description` decorators
 - **FR-5.35**: Dynamic resources via `HasUriTemplate` interface with `{variable}` placeholders
 - **FR-5.36**: MCP `Prompt` base class with typed arguments and message returns
@@ -92,10 +92,10 @@ After this phase, a developer can define an AI agent as a class with typed tools
 
 ### Shared Schema Builder
 
-- **FR-5.43**: Single `JsonSchema` interface shared between @roost/ai tools, @roost/ai structured output, and @roost/mcp tools
+- **FR-5.43**: Single `JsonSchema` interface shared between @roostjs/ai tools, @roostjs/ai structured output, and @roostjs/mcp tools
 - **FR-5.44**: Schema builder methods: `string()`, `integer()`, `number()`, `boolean()`, `object()`, `array()`, `enum()`, with `.required()`, `.default()`, `.description()`, `.min()`, `.max()` modifiers
 
-### Testing (@roost/ai and @roost/mcp)
+### Testing (@roostjs/ai and @roostjs/mcp)
 
 - **FR-5.45**: `Agent.fake()` prevents real API calls, returns canned responses
 - **FR-5.46**: `Agent.fake(['response1', 'response2'])` queues multiple responses
@@ -142,4 +142,4 @@ After this phase, a developer can define an AI agent as a class with typed tools
 - [ ] Generator-based MCP tool streams via SSE
 - [ ] `Agent.fake()` prevents real API calls in tests
 - [ ] `Server.tool(MyTool, args)` tests a tool without HTTP
-- [ ] Schema builder produces identical output whether used in @roost/ai or @roost/mcp
+- [ ] Schema builder produces identical output whether used in @roostjs/ai or @roostjs/mcp

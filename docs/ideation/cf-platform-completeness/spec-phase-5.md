@@ -7,7 +7,7 @@
 
 Phase 5 delivers two orthogonal features — feature flags and rate limiting — both built on Roost's existing KV and DO wrappers. They share no code, but they do share a philosophy: fake-friendly static APIs, per-request in-memory caching to avoid redundant reads, and the same `Middleware` interface everything else in Roost uses.
 
-**Feature Flags** live in a new `@roost/feature-flags` package. The central API is a static `FeatureFlag` class that reads from a `KVStore` registered under the `FLAGS_KV` binding by default. The binding name is configurable. Flags are stored as JSON-serialized values, so a boolean flag is `"true"` / `"false"`, a percentage rollout flag is a number, and a complex config flag is an object. `FeatureFlagMiddleware` batch-reads a declared set of flags at request start and populates a per-request cache, so every subsequent `FeatureFlag.isEnabled()` call within that request is a cache hit with zero additional KV reads. The `FeatureFlagServiceProvider` registers the KV binding and wires the static class to the request-scoped container.
+**Feature Flags** live in a new `@roostjs/feature-flags` package. The central API is a static `FeatureFlag` class that reads from a `KVStore` registered under the `FLAGS_KV` binding by default. The binding name is configurable. Flags are stored as JSON-serialized values, so a boolean flag is `"true"` / `"false"`, a percentage rollout flag is a number, and a complex config flag is an object. `FeatureFlagMiddleware` batch-reads a declared set of flags at request start and populates a per-request cache, so every subsequent `FeatureFlag.isEnabled()` call within that request is a cache hit with zero additional KV reads. The `FeatureFlagServiceProvider` registers the KV binding and wires the static class to the request-scoped container.
 
 **Rate Limiting** stays in `packages/cloudflare` alongside the KV and DO wrappers it depends on, since it is a direct composition of those two primitives. Two concrete classes implement the `Middleware` interface:
 
@@ -16,7 +16,7 @@ Phase 5 delivers two orthogonal features — feature flags and rate limiting —
 
 Both return `429 Too Many Requests` with a `Retry-After` header when the limit is exceeded. Both accept a key extractor function so callers can rate-limit by IP, user ID, org ID, or any arbitrary request property.
 
-The fake infrastructure mirrors the `Job.fake()` pattern from `@roost/queue`: module-level `WeakMap` keyed on the class, `static fake()` installs the fake, `static restore()` removes it, and `static assert*()` methods throw on unmet expectations.
+The fake infrastructure mirrors the `Job.fake()` pattern from `@roostjs/queue`: module-level `WeakMap` keyed on the class, `static fake()` installs the fake, `static restore()` removes it, and `static assert*()` methods throw on unmet expectations.
 
 ## Feedback Strategy
 
@@ -37,7 +37,7 @@ bun run typecheck
 
 | File Path | Purpose |
 |---|---|
-| `packages/feature-flags/package.json` | @roost/feature-flags package manifest |
+| `packages/feature-flags/package.json` | @roostjs/feature-flags package manifest |
 | `packages/feature-flags/tsconfig.json` | Extends root tsconfig, NodeNext modules |
 | `packages/feature-flags/src/index.ts` | Public API exports |
 | `packages/feature-flags/src/feature-flag.ts` | FeatureFlag static class with get/set/isEnabled/getValue |
@@ -72,7 +72,7 @@ bun run typecheck
 
 ---
 
-### 1. @roost/feature-flags — FeatureFlag
+### 1. @roostjs/feature-flags — FeatureFlag
 
 **Overview**: Static class that reads from a `KVStore` instance. The store is injected via `FeatureFlag.configure(store)` which `FeatureFlagServiceProvider` calls during `register()`. After that, all static methods work without passing a store reference. Tests call `FeatureFlag.fake({ 'my-flag': true })` instead of configuring a real store.
 
@@ -166,7 +166,7 @@ class FeatureFlagFake {
 
 ---
 
-### 2. @roost/cloudflare — KVRateLimiter
+### 2. @roostjs/cloudflare — KVRateLimiter
 
 **Overview**: Sliding window counter stored in KV. Each window is a JSON object `{ count: number, windowStart: number }` keyed by `rate-limit:{key}:{windowIndex}`. The window index is `Math.floor(Date.now() / (window * 1000))`. On each request:
 1. Compute `windowKey`.
@@ -210,7 +210,7 @@ export interface WindowState {
 
 ---
 
-### 3. @roost/cloudflare — DORateLimiter
+### 3. @roostjs/cloudflare — DORateLimiter
 
 **Overview**: Exact counting via a Durable Object. The DO name is derived from the extracted key — `rate-limit:{key}`. Each DO holds a simple in-memory counter per window. The rate limiter sends a `POST /check` request to the DO with the limit and window in the body. The DO responds `{ allowed: boolean, remaining: number, retryAfter?: number }`.
 
@@ -287,8 +287,8 @@ export async function makeRateLimiter(name: string, variant: 'kv' | 'do'): Promi
 
 KV scaffold:
 ```ts
-import { KVRateLimiter } from '@roost/cloudflare';
-import type { KVStore } from '@roost/cloudflare';
+import { KVRateLimiter } from '@roostjs/cloudflare';
+import type { KVStore } from '@roostjs/cloudflare';
 
 // Injected via container — bind KVStore instance for your rate limit namespace
 export const ${pascal}RateLimiter = (kv: KVStore) =>
@@ -301,8 +301,8 @@ export const ${pascal}RateLimiter = (kv: KVStore) =>
 
 DO scaffold:
 ```ts
-import { DORateLimiter } from '@roost/cloudflare';
-import type { DurableObjectClient } from '@roost/cloudflare';
+import { DORateLimiter } from '@roostjs/cloudflare';
+import type { DurableObjectClient } from '@roostjs/cloudflare';
 
 // Injected via container — bind DurableObjectClient for your rate limit DO
 export const ${pascal}RateLimiter = (doClient: DurableObjectClient) =>

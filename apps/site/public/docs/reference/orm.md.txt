@@ -1,7 +1,7 @@
 ## Installation
 
 ```bash title="terminal"
-bun add @roost/orm
+bun add @roostjs/orm
 ```
 
 ## Model API
@@ -367,7 +367,7 @@ Sets the active `TenantContext` from the incoming request using an `OrgResolvabl
 
 | Parameter | Description |
 |---|---|
-| `resolver` | Any object implementing `resolve(request: Request): { slug: string } \| null`. `OrgResolver` from `@roost/auth` satisfies this interface. |
+| `resolver` | Any object implementing `resolve(request: Request): { slug: string } \| null`. `OrgResolver` from `@roostjs/auth` satisfies this interface. |
 | `orgLookup` | Async function that returns `{ id: string }` for a known slug, or `null` if the org does not exist. |
 | `ctx` | The `TenantContext` instance to populate. Resolve from the DI container. |
 

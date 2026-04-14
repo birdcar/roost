@@ -83,5 +83,5 @@ configuration safe.
 
 ## Further Reading
 
-- [@roost/feature-flags reference — FeatureFlag, middleware, and provider API](/docs/reference/feature-flags.md)
+- [@roostjs/feature-flags reference — FeatureFlag, middleware, and provider API](/docs/reference/feature-flags.md)
 - [Cloudflare KV Documentation](https://developers.cloudflare.com/kv/)

@@ -1,4 +1,4 @@
-import { DurableObjectClient } from '@roost/cloudflare';
+import { DurableObjectClient } from '@roostjs/cloudflare';
 import type { BroadcastableEvent } from './event.js';
 import { PrivateChannel, PresenceChannel } from './channel.js';
 import type { BroadcastMessage } from './types.js';
