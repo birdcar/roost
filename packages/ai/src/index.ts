@@ -21,3 +21,19 @@ export type {
   ToolResult,
   StreamEvent,
 } from './types.js';
+
+export {
+  Chunker,
+  TextChunker,
+  SemanticChunker,
+  EmbeddingPipeline,
+  RAGPipeline,
+  EmbeddingError,
+} from './rag/index.js';
+export type {
+  Document,
+  Chunk,
+  ChunkVector,
+  QueryResult,
+  RAGPipelineConfig,
+} from './rag/index.js';
