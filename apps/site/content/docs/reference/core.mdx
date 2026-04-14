@@ -158,6 +158,214 @@ interface Middleware {
 type MiddlewareClass = new (...args: any[]) => Middleware;
 ```
 
+## Application.defer()
+
+#### `defer(promise: Promise<unknown>): void`
+
+Register a promise as background work to complete after the response is sent. Delegates
+to `ExecutionContext.waitUntil()`. The Worker runtime will not terminate the isolate
+until all deferred promises have settled.
+
+```ts title="src/app.ts"
+app.onDispatch(async (request) => {
+  const result = await processRequest(request);
+  // Fire-and-forget: analytics write completes after the response is returned
+  app.defer(analytics.record({ path: new URL(request.url).pathname }));
+  return Response.json(result);
+});
+```
+
+`defer()` is a no-op when no `ExecutionContext` is present (e.g. in tests that call
+`app.handle(request)` directly without a second argument).
+
+## RoostExecutionContext
+
+```ts
+interface RoostExecutionContext {
+  waitUntil(promise: Promise<unknown>): void;
+  passThroughOnException(): void;
+}
+```
+
+The execution context passed to `Application.handle()` as its second argument. Matches
+the shape of the Cloudflare Worker `ExecutionContext` — pass it through directly from the
+Worker `fetch` handler.
+
+```ts title="src/index.ts"
+export default {
+  fetch(request: Request, env: Env, ctx: ExecutionContext) {
+    return app.handle(request, ctx);
+  },
+};
+```
+
+## Logger API
+
+`Logger` emits structured JSON log entries to `console.log`. Every entry carries a
+`requestId` trace identifier so log lines from the same request can be correlated.
+
+#### `constructor(context: LogContext)`
+
+```ts
+interface LogContext {
+  requestId: string;
+  method: string;
+  path: string;
+  userId?: string;
+}
+```
+
+#### `info(message: string, data?: Record<string, unknown>): void`
+#### `warn(message: string, data?: Record<string, unknown>): void`
+#### `error(message: string, data?: Record<string, unknown>): void`
+#### `debug(message: string, data?: Record<string, unknown>): void`
+
+Each method emits a `LogEntry` as a single-line JSON object. The optional `data` map is
+merged into the entry under the `data` key.
+
+```ts
+interface LogEntry extends LogContext {
+  level: 'debug' | 'info' | 'warn' | 'error';
+  message: string;
+  timestamp: string; // ISO 8601
+  data?: Record<string, unknown>;
+}
+```
+
+#### `static fake(context?: Partial<LogContext>): FakeLogger`
+
+Create a `FakeLogger` pre-filled with defaults for test use. See [FakeLogger API](#fakelogger-api) below.
+
+## FakeLogger API
+
+`FakeLogger` extends `Logger` but captures entries in memory instead of writing to
+`console.log`. Used in tests to assert on logged output.
+
+#### `readonly entries: LogEntry[]`
+
+All log entries recorded since construction or the last `restore()` call.
+
+#### `assertLogged(level: LogLevel, message: string): void`
+
+Throws if no entry matching `level` with a message containing `message` exists in
+`entries`. Useful as an assertion in unit tests.
+
+#### `assertNotLogged(level: LogLevel): void`
+
+Throws if any entry at the given level exists in `entries`.
+
+#### `restore(): void`
+
+Clear all recorded entries. Call between tests.
+
+```ts title="src/handlers/payment.test.ts"
+const logger = Logger.fake();
+
+await handler(fakeRequest, logger);
+
+logger.assertLogged('info', 'payment.processed');
+logger.assertNotLogged('error');
+logger.restore();
+```
+
+## RequestIdMiddleware
+
+Extracts or generates a request trace ID and binds a configured `Logger` instance into
+the request-scoped container.
+
+```ts
+import { RequestIdMiddleware } from '@roost/core/middleware/request-id';
+```
+
+#### Behavior
+
+1. Reads `cf-ray` from request headers; falls back to `crypto.randomUUID()`.
+2. Constructs a `Logger` with `{ requestId, method, path }`.
+3. Binds the logger into the request-scoped container under `Logger`.
+4. Sets `X-Request-Id` on the outgoing response.
+
+```ts title="src/app.ts"
+import { Application } from '@roost/core';
+import { RequestIdMiddleware } from '@roost/core/middleware/request-id';
+
+const app = Application.create(env);
+app.useMiddleware(RequestIdMiddleware);
+```
+
+Downstream handlers and middleware can then resolve a pre-configured `Logger` from the
+scoped container.
+
+## Webhook Verification API
+
+### `verifyWebhook(request: Request, options: WebhookVerifyOptions): Promise<string>`
+
+Verify an incoming webhook's HMAC or Ed25519 signature. Returns the raw request body as
+a string on success. Throws `WebhookVerificationError` on any failure (missing header,
+invalid signature, expired timestamp).
+
+```ts
+interface WebhookVerifyOptions {
+  secret: string | Uint8Array;
+  headerName: string;
+  algorithm: 'hmac-sha256' | 'hmac-sha512' | 'ed25519';
+  timestampHeader?: string;
+  parseTimestamp?: (headerValue: string) => number;
+  parseSignature?: (headerValue: string) => string;
+  buildSignedPayload?: (timestamp: number | null, body: string) => string;
+  tolerance?: number; // seconds; default 300; 0 disables timestamp check
+}
+```
+
+### `WebhookPresets`
+
+Pre-built `WebhookVerifyOptions` factories for common providers. Call the method and
+override `secret` with your signing secret.
+
+#### `WebhookPresets.stripe(): WebhookVerifyOptions`
+
+HMAC-SHA256 using the `stripe-signature` header. Extracts `t` and `v1` from the
+comma-separated header. Tolerance: 300 seconds.
+
+#### `WebhookPresets.github(): WebhookVerifyOptions`
+
+HMAC-SHA256 using the `x-hub-signature-256` header. Strips the `sha256=` prefix.
+No timestamp tolerance.
+
+#### `WebhookPresets.svix(): WebhookVerifyOptions`
+
+Ed25519 using `svix-signature` and `svix-timestamp` headers. Extracts the `v1,` prefixed
+signature. Tolerance: 300 seconds.
+
+### `WebhookMiddleware`
+
+Route-level middleware that calls `verifyWebhook` and returns `401` on failure.
+
+#### `constructor(options: WebhookVerifyOptions)`
+
+```ts title="src/routes/webhooks.ts"
+import { WebhookMiddleware } from '@roost/core/webhooks/middleware';
+import { WebhookPresets } from '@roost/core/webhooks/verify';
+
+const stripeWebhook = new WebhookMiddleware({
+  ...WebhookPresets.stripe(),
+  secret: env.STRIPE_WEBHOOK_SECRET,
+});
+```
+
+Pass `WebhookMiddleware` to a route-specific pipeline or via `app.useMiddleware()` for a
+prefix-matched group.
+
+### `WebhookVerificationError`
+
+```ts
+class WebhookVerificationError extends Error {
+  name: 'WebhookVerificationError';
+}
+```
+
+Thrown by `verifyWebhook` when verification fails. `WebhookMiddleware` catches this and
+responds with `401 { "error": "<message>" }`.
+
 ## Errors
 
 The following error classes are thrown at runtime but are not exported from `@roost/core`. Catch them by name or use `instanceof` checks after importing the concrete class from its internal module path (not recommended for production code — prefer guarding with defaults or `has()` checks instead).
@@ -173,3 +381,8 @@ Thrown when a circular dependency is detected during resolution.
 #### `ConfigKeyNotFoundError`
 
 Thrown by `ConfigManager.get()` when the key does not exist and no default is provided.
+
+#### `WebhookVerificationError`
+
+Thrown by `verifyWebhook()` when the signature header is missing, the signature does not
+match, or the timestamp is outside the tolerance window.

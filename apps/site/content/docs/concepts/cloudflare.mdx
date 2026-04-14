@@ -48,6 +48,111 @@ adds a new task type. The pass-through design stays current without changes, and
 `AIClient.run()`. The cloudflare package stays thin; the AI package adds
 structure.
 
+## Binding Auto-Detection
+
+`CloudflareServiceProvider` iterates over every key in the Worker `env` object and
+attempts to identify the binding type by duck-typing — checking for the presence of
+specific methods. This means you do not need to declare which bindings exist in your
+Roost config; the provider discovers them at boot time and wraps each one in the
+appropriate typed client.
+
+The detection order matters because some binding shapes overlap. R2 buckets have all the
+methods that KV namespaces have plus `head`, so R2 is checked before KV. Durable Object
+namespaces have a `get` method, so they are distinguished from KV by also checking for
+`idFromName`. Dispatch namespaces have `get` but not `fetch` on the namespace itself,
+so they are checked before the catch-all `Fetcher` guard. The comments in `provider.ts`
+document the reasoning for each guard's position in the chain.
+
+The practical consequence is that renaming a binding in `wrangler.jsonc` automatically
+renames it in the container — no Roost config change needed. The wrapper is registered
+under the binding's key, which is whatever SCREAMING_SNAKE_CASE name Cloudflare assigns.
+
+## Worker-to-Worker Service Architecture
+
+Cloudflare service bindings let one Worker call another over an internal network without
+going through the public internet. The callee Worker runs in the same Cloudflare data
+center as the caller, so latency is negligible. The `ServiceClient` wrapper provides
+HTTP convenience methods (`get`, `post`, `put`, `patch`, `delete`) that handle
+JSON serialization and the internal URL scheme (`http://service{path}`).
+
+The `call()` method layers a lightweight RPC convention on top: it POST to
+`/rpc/{method}` with `{ args }` as the body and returns the parsed JSON response. This
+is useful when the remote Worker is designed as an internal service rather than a
+user-facing API. Whether to use the HTTP methods or `call()` is a choice about how the
+called Worker is designed — there is no framework-level enforcement.
+
+## Multi-Tenant Compute with Workers for Platforms
+
+Workers for Platforms is Cloudflare's model for running tenant-owned code at scale. A
+platform operator deploys a dispatch namespace; tenants upload their own Worker scripts
+into that namespace; the operator's Worker dispatches inbound requests to the appropriate
+tenant script by name.
+
+`DispatchNamespaceClient.dispatchClient()` returns a `ServiceClient` for a named script,
+which means all the same HTTP and RPC patterns apply to tenant scripts as to first-party
+service bindings. The `trust` option controls whether the dispatched script receives the
+raw request headers or a sanitized version — use `'trusted'` only for scripts you own.
+
+## Edge HTML Transformation
+
+`HTMLRewriter` is a Cloudflare-specific streaming HTML parser. It processes the response
+body as a byte stream and applies registered element handlers without buffering the full
+document. This is important for large pages: transformation latency is proportional to
+handler complexity, not document size.
+
+`HtmlTransformer` wraps `HTMLRewriter` with a chainable interface. Each method
+(`injectScript`, `setMetaTag`, `replaceElement`, `removeElement`, `abTest`) registers
+one or more element handlers. Calling `transform()` passes the accumulated rewriter over
+the response stream.
+
+The A/B test support is a deliberate design choice: the assignment function runs inside
+the element handler, which executes during streaming. The `request` object must be
+threaded into the handler state before streaming begins — that is why `transform()`
+accepts the request as a second argument rather than reading it from a closure at
+construction time.
+
+## Rate Limiting at the Edge
+
+Rate limiting in a distributed system is a coordination problem: each Worker isolate is
+independent, so a per-isolate counter would be meaningless. Roost provides two backends
+that solve this with different consistency trade-offs.
+
+`KVRateLimiter` uses a fixed-window counter stored in KV. KV is eventually consistent —
+reads may not immediately reflect the latest write. Under heavy concurrent traffic from
+the same key, multiple isolates may read the same count and all increment it, allowing
+brief bursts above the limit. For most applications this is acceptable; the over-run is
+bounded to the replication lag of the KV write.
+
+`DORateLimiter` routes each check to a named Durable Object instance. Durable Objects
+serialize requests to a single instance, so the counter is always accurate. The trade-off
+is latency: every rate limit check requires a round-trip to the DO, which may be in a
+different data center if the request originates far from the DO's home location.
+
+`RateLimiterFake` exists for the same reason as `FakeLogger`: rate limiters are a
+side-effecting external dependency. Tests that use `fakeRateLimiter()` get deterministic
+behavior without any KV or DO infrastructure. The fake integrates at the point where
+`KVRateLimiter` and `DORateLimiter` check for an active fake, so no test-specific code
+path is needed in the middleware itself.
+
+## Content-Addressed Caching with VersionedKVStore
+
+KV's consistency model — eventual consistency with no atomic compare-and-swap — makes
+cache invalidation tricky. The conventional approach (write a new value under the same
+key and delete the old one) has a race window: a reader between the write and the delete
+may get the old value or a null. `VersionedKVStore` sidesteps this by separating content
+storage from pointer storage.
+
+Content is written under a SHA-256 hash of its serialized form: the same content always
+produces the same key, and the key is immutable once written. A separate pointer key
+holds the current hash. Readers follow the pointer; writers update the pointer atomically
+after writing the content. A reader that follows a stale pointer still gets valid data —
+it just gets the previous version rather than the latest.
+
+The content TTL controls how long orphaned content entries survive after the pointer
+moves away. Setting it too low means a pointer update and the subsequent read could
+race with content expiry on the old value. The default of 24 hours is conservative for
+data that changes at most once per day.
+
 ## Further Reading
 
 - [Edge Computing — bindings, the Workers runtime, and what they mean for design](/docs/concepts/edge-computing)
