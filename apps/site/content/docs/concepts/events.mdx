@@ -1,0 +1,91 @@
+---
+title: "@roost/events"
+description: The observer pattern in Roost, how in-process event dispatching differs from message queues, listener vs subscriber design, and the ShouldQueue escape hatch.
+---
+
+## The Observer Pattern in Workers
+
+`@roost/events` implements the observer pattern: an event is dispatched, and
+any number of listeners react to it. This separates the code that produces a
+domain action (user registered, order placed) from the code that responds to it
+(send email, update analytics, provision trial subscription).
+
+Without events, the handler that creates a user record knows about email sending,
+analytics, and provisioning. With events, it only knows about user creation. The
+listeners — which may live in different modules — subscribe to the event and
+handle their own concerns. Adding a new side effect does not require modifying
+the original handler.
+
+## In-Process vs Message Queue
+
+`EventDispatcher.dispatch()` calls listeners synchronously within the same Worker
+invocation. All listeners for a given event execute in parallel via `Promise.all`
+before `dispatch()` resolves. This is straightforward but means listener failures
+propagate back to the dispatch caller, and listener execution time adds to the
+request's total response time.
+
+For listeners that are slow or whose success is not required for the response,
+implement `ShouldQueue`. The dispatcher checks for this marker and dispatches
+the listener as a `Job` via `@roost/queue` instead of calling `handle()` inline.
+The job runs asynchronously in a separate Worker invocation, and the original
+request completes immediately.
+
+Choose in-process listeners for fast, critical side effects that the caller needs
+to know about. Choose `ShouldQueue` listeners for slow, non-critical work like
+sending emails, generating reports, or updating external systems.
+
+## Broadcast Interop
+
+Events that implement the `BroadcastableEvent` interface from `@roost/broadcast`
+are automatically forwarded to `BroadcastManager` after dispatching to listeners.
+This means a single `UserRegistered.dispatch(event)` call can simultaneously
+notify in-process listeners and push an update to connected WebSocket clients —
+no extra code needed at the dispatch site.
+
+The interop is opt-in and lazy: the dispatcher attempts to import
+`@roost/broadcast` at dispatch time. If the package is not installed or
+`BroadcastManager` is not initialized, the dispatch succeeds and a warning is
+logged. This prevents a hard dependency between the two packages.
+
+## Listener vs Subscriber
+
+`Listener` and `Subscriber` both receive events; they are registered differently
+and serve different organizational purposes.
+
+A `Listener` class handles exactly one event type. Use listeners when the
+handler has a single, focused responsibility: `SendWelcomeEmailListener` handles
+`UserRegistered` and nothing else.
+
+A `Subscriber` class groups handlers for multiple events in one class. Use
+subscribers when the handlers share domain context: a `NotificationSubscriber`
+that reacts to `UserRegistered`, `OrderPlaced`, and `PasswordReset` can share
+notification service logic without injecting it into three separate listener classes.
+
+Both are registered in `EventServiceProvider`. Internally, the service provider
+wraps subscriber methods in adapter objects that satisfy the `ListenerClass`
+interface, so the dispatcher treats them identically.
+
+## Testing Model
+
+`Event.fake()` uses a `WeakMap` to store fake state per event class rather than
+a global. This means multiple event classes can be faked independently in the
+same test without interfering with each other. Calling `UserRegistered.fake()`
+does not affect `OrderPlaced`, and vice versa.
+
+`assertDispatched()` accepts an optional predicate to make assertions about
+specific dispatch arguments:
+
+```ts
+UserRegistered.assertDispatched((event) => event.email === 'alice@example.com');
+```
+
+This is more precise than just asserting the event was dispatched — it verifies
+the event was dispatched with the right data. For tests that need to verify no
+side effects happened, `assertNotDispatched()` reads clearly at the test assertion
+level.
+
+## Further Reading
+
+- [@roost/events reference — Event, EventDispatcher, Listener, Subscriber API](/docs/reference/events)
+- [@roost/broadcast concepts — How broadcast and events connect](/docs/concepts/broadcast)
+- [@roost/queue concepts — When to use ShouldQueue](/docs/concepts/queue)

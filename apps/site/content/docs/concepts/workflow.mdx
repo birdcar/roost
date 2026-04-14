@@ -1,0 +1,104 @@
+---
+title: "@roost/workflow"
+description: How Cloudflare Workflows differ from queues, the durable execution model, saga patterns with Compensable, and when to use workflows vs jobs.
+---
+
+## How Cloudflare Workflows Work
+
+Cloudflare Workflows is a durable execution engine built on the Workers platform.
+A workflow is a long-running process that survives server restarts, network failures,
+and Cloudflare infrastructure events. Unlike a queue job — which runs once and
+retries on failure — a workflow checkpoints its progress. If a workflow is
+interrupted mid-way through, Cloudflare replays `run()` from the beginning but
+skips every completed `step.do()` call, replaying cached results instead of
+re-executing side effects.
+
+The checkpoint model has a concrete implication: code inside `run()` but outside
+a `step.do()` block can run multiple times. Deterministic computation is fine;
+side effects like sending an email or charging a card must live inside `step.do()`.
+
+## Workflows vs Queue Jobs
+
+Queue jobs and workflows are both tools for deferred, durable work, but they
+solve different problems.
+
+A queue job is a single-step unit of work: receive a payload, execute, succeed
+or retry. It is the right choice for a task that completes in one shot — sending
+an email, resizing an image, updating a record. The entire payload is available
+upfront, and the only durable state is "dispatched" or "complete."
+
+A workflow is a multi-step process where each step produces side effects and the
+overall process may span minutes, hours, or days. Provisioning a new tenant —
+create a database, seed defaults, configure roles, send a welcome email — is a
+workflow. Each step is independently durable, and a failure in step 3 does not
+undo steps 1 and 2. The workflow waits for Cloudflare to reschedule it rather
+than starting over.
+
+Choose a queue job when the work fits in a single `handle()` call. Choose a
+workflow when the work has distinct phases, when any phase might take a long
+time, or when you need `step.sleep()` to delay execution by minutes or hours
+between steps.
+
+## The Saga Pattern and Compensable
+
+Durable execution solves infrastructure failures — an interrupted network call,
+a Worker timeout. It does not automatically undo completed steps when a later
+step fails for a business logic reason.
+
+The saga pattern addresses this. In a saga, each step that produces a side effect
+registers a compensation: an undo function to call if the overall operation fails.
+If step 3 fails, the saga runs compensations for steps 2 and 1 in reverse order,
+restoring the system to a consistent state.
+
+`Compensable` is Roost's saga helper. Wrap the workflow body in a try/catch,
+register compensations after each step, and call `saga.compensate()` in the
+catch block:
+
+```ts
+const saga = new Compensable();
+try {
+  await step.do('create-record', async () => {
+    await createRecord(id);
+    saga.register(async () => deleteRecord(id));
+  });
+  // ...more steps...
+} catch (err) {
+  await saga.compensate();
+  throw err;
+}
+```
+
+Compensations are best-effort: if one throws, the error is swallowed and the
+remaining compensations still run. Design compensations to be idempotent so
+they can be called safely even if the original operation partially succeeded.
+
+## Durable Execution and the Re-run Model
+
+Understanding the replay model prevents bugs. When Cloudflare resumes a
+workflow after an interruption, it calls `run()` again from the start.
+`step.do('label', fn)` does not re-execute `fn` if a checkpoint with that
+label already exists — Cloudflare returns the cached result. Every `step.do()`
+must use a stable, unique label string. If you rename a label after a workflow
+instance has started, the step will re-execute because the old checkpoint does
+not match the new label.
+
+Code outside `step.do()` is replayed on every resume. Conditional logic,
+variable declarations, and calculations are fine. Network calls, database writes,
+and any operation with an observable side effect must be wrapped in `step.do()`.
+
+## Testing Model
+
+`Workflow.fake()` and `Workflow.assertCreated()` follow the same fake-and-assert
+pattern used throughout Roost. Faking a workflow intercepts `WorkflowClient.create()`
+calls so tests do not need a live Cloudflare account. The fake records the creation
+params and id for inspection.
+
+Because the `WorkflowServiceProvider` checks `Workflow._getFake()` at resolve
+time, fake mode is transparent to application code — the code that calls
+`client.create()` does not need to know it is talking to a fake.
+
+## Further Reading
+
+- [@roost/workflow reference — Workflow, WorkflowClient, Compensable API](/docs/reference/workflow)
+- [@roost/queue concepts — When to use queue jobs vs workflows](/docs/concepts/queue)
+- [Cloudflare Workflows Documentation](https://developers.cloudflare.com/workflows/)

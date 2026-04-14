@@ -1,0 +1,156 @@
+---
+title: "@roost/feature-flags"
+description: Feature flag evaluation backed by Cloudflare KV. FeatureFlag static API, per-request caching, middleware, and service provider.
+---
+
+## Installation
+
+```bash title="terminal"
+bun add @roost/feature-flags
+```
+
+## Configuration
+
+Declare a Cloudflare KV namespace binding in `wrangler.jsonc`:
+
+```jsonc title="wrangler.jsonc"
+{
+  "kv_namespaces": [
+    { "binding": "FLAGS_KV", "id": "<your-kv-namespace-id>" }
+  ]
+}
+```
+
+The default binding name is `FLAGS_KV`. Override it via `flags.kv` in the app
+config before registering the provider.
+
+## FeatureFlag API
+
+`FeatureFlag` is a static class. All methods are called directly on the class.
+There is no instance to construct.
+
+### Static Methods
+
+#### `static configure(flagStore: FlagStore): void`
+
+Set the backing `FlagStore`. Called automatically by `FeatureFlagServiceProvider`.
+Call this directly in tests or custom bootstrapping when bypassing the provider.
+
+#### `static async isEnabled(flag: string, request?: Request): Promise<boolean>`
+
+Returns `true` if the flag evaluates to a truthy value. Accepts an optional
+`request` to read from the per-request cache set by `FeatureFlagMiddleware`.
+
+Truthy rules:
+- `boolean`: the value itself
+- `string`: `"true"` is truthy, all other strings are falsy
+- `number`: positive numbers are truthy, `0` and negatives are falsy
+- `null` / missing: falsy
+
+Swallows store errors and returns `false` rather than throwing.
+
+#### `static async getValue<T extends FlagValue>(flag: string, request?: Request): Promise<T | null>`
+
+Returns the raw flag value cast to `T`. Throws `FlagNotFoundError` if the flag
+does not exist in the store. Use `isEnabled()` when you only need a boolean.
+
+#### `static async set<T extends FlagValue>(flag: string, value: T): Promise<void>`
+
+Write a flag value to the store. Used for programmatic flag management.
+Throws `FlagStoreNotConfiguredError` if no store is configured.
+
+#### `static fake(flags: Record<string, FlagValue>): void`
+
+Enable fake mode with a static set of flag values. All subsequent calls to
+`isEnabled()` and `getValue()` read from the in-memory fake.
+
+#### `static restore(): void`
+
+Disable fake mode and clear the configured store.
+
+#### `static assertChecked(flag: string): void`
+
+Assert that `isEnabled()` or `getValue()` was called for `flag` during the test.
+Throws if `fake()` was not called first, or if the flag was not accessed.
+
+## FeatureFlagMiddleware API
+
+Prefetches a set of flag values at the start of each request and attaches them
+to the request object. Downstream code that calls `FeatureFlag.isEnabled(flag, request)`
+reads from the cache without hitting KV again.
+
+#### `constructor(flags: string[])`
+
+Pass the list of flag names to prefetch on every request.
+
+#### `async handle(request: Request, next: (r: Request) => Promise<Response>): Promise<Response>`
+
+Fetches all configured flags in parallel, populates the per-request cache, then
+calls `next`.
+
+## FeatureFlagServiceProvider API
+
+Bootstraps `FeatureFlag` with a `KVStore` backed by the configured binding.
+
+#### `register(): void`
+
+Resolves the KV binding from `app.env` using the name from `app.config.get('flags.kv', 'FLAGS_KV')`.
+Calls `FeatureFlag.configure()` with a `FlagStore` that reads and writes JSON
+values via `@roost/cloudflare`'s `KVStore`. Logs a warning and returns without
+configuring if the binding is not found.
+
+## Types
+
+```ts
+type FlagValue = boolean | number | string | Record<string, unknown>;
+
+interface FlagStore {
+  get<T = FlagValue>(flag: string): Promise<T | null>;
+  set<T = FlagValue>(flag: string, value: T): Promise<void>;
+}
+```
+
+## Errors
+
+#### `FlagStoreNotConfiguredError`
+
+Thrown by `isEnabled()`, `getValue()`, and `set()` when no store has been
+configured and no fake is active.
+
+#### `FlagNotFoundError`
+
+Thrown by `getValue()` when the flag key does not exist in the store.
+
+## Testing
+
+#### `FeatureFlagFake`
+
+Internal fake state managed by `FeatureFlag.fake()`. Tracks which flags were
+checked so `assertChecked()` can verify access.
+
+```ts
+class FeatureFlagFake {
+  get<T extends FlagValue>(flag: string): Promise<T | null>;
+  set<T extends FlagValue>(flag: string, value: T): Promise<void>;
+  wasChecked(flag: string): boolean;
+}
+```
+
+## Cache Utilities
+
+Used internally by `FeatureFlagMiddleware` and `FeatureFlag.isEnabled()`. Exposed
+for advanced use cases.
+
+#### `getRequestCache(request: Request): Map<string, FlagValue> | null`
+
+Read the per-request flag cache attached to `request`. Returns `null` if no
+cache has been set.
+
+#### `setRequestCache(request: Request, cache: Map<string, FlagValue>): void`
+
+Attach a flag cache map to `request`. The cache is keyed by `FLAG_CACHE_KEY`
+(a unique symbol) to avoid namespace collisions.
+
+#### `FLAG_CACHE_KEY: unique symbol`
+
+The symbol used to attach the cache to the request object.

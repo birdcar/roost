@@ -1,0 +1,195 @@
+---
+title: "@roost/events Guides"
+description: Task-oriented instructions for defining events, registering listeners, using subscribers, deferring listeners to the queue, and testing dispatches.
+---
+
+## How to define an event
+
+Extend `Event` with a typed constructor. Store all event data as public properties.
+
+```ts title="src/events/UserRegistered.ts"
+import { Event } from '@roost/events';
+
+export class UserRegistered extends Event {
+  constructor(
+    public readonly userId: string,
+    public readonly email: string,
+    public readonly plan: 'free' | 'pro'
+  ) {
+    super();
+  }
+}
+```
+
+## How to define a listener
+
+Implement the `Listener<T>` interface. The `handle()` method receives the
+dispatched event instance.
+
+```ts title="src/listeners/SendWelcomeEmailListener.ts"
+import type { Listener } from '@roost/events';
+import type { UserRegistered } from '../events/UserRegistered';
+
+export class SendWelcomeEmailListener implements Listener<UserRegistered> {
+  async handle(event: UserRegistered): Promise<void> {
+    await sendEmail({
+      to: event.email,
+      subject: 'Welcome!',
+      template: 'welcome',
+      data: { userId: event.userId, plan: event.plan },
+    });
+  }
+}
+```
+
+## How to register events and listeners
+
+Extend `EventServiceProvider` and override `listen()` to map event classes to
+listener classes.
+
+```ts title="src/providers/AppEventServiceProvider.ts"
+import { EventServiceProvider } from '@roost/events';
+import { UserRegistered } from '../events/UserRegistered';
+import { SendWelcomeEmailListener } from '../listeners/SendWelcomeEmailListener';
+import { CreateTrialSubscriptionListener } from '../listeners/CreateTrialSubscriptionListener';
+
+export class AppEventServiceProvider extends EventServiceProvider {
+  protected listen() {
+    return new Map([
+      [UserRegistered, [SendWelcomeEmailListener, CreateTrialSubscriptionListener]],
+    ]);
+  }
+}
+```
+
+Register the provider in your app:
+
+```ts title="src/app.ts"
+import { createApp } from '@roost/core';
+import { AppEventServiceProvider } from './providers/AppEventServiceProvider';
+
+export const app = createApp({
+  providers: [new AppEventServiceProvider()],
+});
+```
+
+## How to dispatch an event
+
+Call the static `dispatch()` method on the event class.
+
+```ts
+import { UserRegistered } from '../events/UserRegistered';
+
+// After creating a user record
+await UserRegistered.dispatch(new UserRegistered(user.id, user.email, 'free'));
+```
+
+All registered listeners for `UserRegistered` execute in parallel before
+`dispatch()` resolves.
+
+## How to use a subscriber for multiple events
+
+Use `Subscriber` to group related event handlers in one class instead of
+defining a separate listener class per event.
+
+```ts title="src/subscribers/NotificationSubscriber.ts"
+import { Subscriber } from '@roost/events';
+import type { EventClass, Event } from '@roost/events';
+import { UserRegistered } from '../events/UserRegistered';
+import { OrderPlaced } from '../events/OrderPlaced';
+
+export class NotificationSubscriber extends Subscriber {
+  subscribe(): Map<EventClass<Event>, string> {
+    return new Map([
+      [UserRegistered, 'onUserRegistered'],
+      [OrderPlaced, 'onOrderPlaced'],
+    ]);
+  }
+
+  async onUserRegistered(event: UserRegistered): Promise<void> {
+    await notifyAdmins(`New user: ${event.email}`);
+  }
+
+  async onOrderPlaced(event: OrderPlaced): Promise<void> {
+    await notifyFulfillment(event.orderId);
+  }
+}
+```
+
+Register the subscriber in the service provider:
+
+```ts title="src/providers/AppEventServiceProvider.ts"
+import { EventServiceProvider } from '@roost/events';
+import { NotificationSubscriber } from '../subscribers/NotificationSubscriber';
+
+export class AppEventServiceProvider extends EventServiceProvider {
+  protected subscribers() {
+    return [NotificationSubscriber];
+  }
+}
+```
+
+## How to defer a listener to the queue
+
+Add the `ShouldQueue` interface to a listener that also extends `Job<TEvent>`
+from `@roost/queue`. The event dispatcher will dispatch the listener as a job
+rather than calling `handle()` inline.
+
+```ts title="src/listeners/GenerateInvoiceListener.ts"
+import { Job } from '@roost/queue';
+import type { Listener, ShouldQueue } from '@roost/events';
+import type { OrderPlaced } from '../events/OrderPlaced';
+
+export class GenerateInvoiceListener
+  extends Job<OrderPlaced>
+  implements Listener<OrderPlaced>, ShouldQueue
+{
+  readonly shouldQueue = true as const;
+
+  async handle(event: OrderPlaced): Promise<void> {
+    await generatePdfInvoice(event.orderId);
+    await emailInvoice(event.customerEmail);
+  }
+}
+```
+
+Requires `@roost/queue` to be installed and configured.
+
+## How to test event dispatches
+
+Call `Event.fake()` to intercept dispatches without running listeners.
+Use `assertDispatched()` and `assertNotDispatched()` to make assertions.
+
+```ts title="tests/events/UserRegistered.test.ts"
+import { describe, it, afterEach } from 'bun:test';
+import { UserRegistered } from '../../src/events/UserRegistered';
+import { registerUser } from '../../src/handlers/auth';
+
+describe('UserRegistered', () => {
+  afterEach(() => UserRegistered.restore());
+
+  it('is dispatched after successful registration', async () => {
+    UserRegistered.fake();
+
+    await registerUser({ email: 'alice@example.com', plan: 'free' });
+
+    UserRegistered.assertDispatched();
+  });
+
+  it('is dispatched with correct email', async () => {
+    UserRegistered.fake();
+
+    await registerUser({ email: 'bob@example.com', plan: 'pro' });
+
+    UserRegistered.assertDispatched((event) => event.email === 'bob@example.com');
+  });
+
+  it('is not dispatched when registration fails', async () => {
+    UserRegistered.fake();
+
+    await registerUser({ email: 'invalid', plan: 'free' }).catch(() => {});
+
+    UserRegistered.assertNotDispatched();
+  });
+});
+```

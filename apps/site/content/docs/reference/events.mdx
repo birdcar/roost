@@ -1,0 +1,176 @@
+---
+title: "@roost/events"
+description: In-process event dispatching with listener registration, subscriber classes, optional queue integration, and broadcast interop.
+---
+
+## Installation
+
+```bash title="terminal"
+bun add @roost/events
+```
+
+## Event API
+
+`Event` is an abstract base class. Extend it to create typed event classes.
+All dispatch and testing methods are static.
+
+### Static Methods
+
+#### `static async dispatch<T extends Event>(event: T): Promise<void>`
+
+Dispatch the event to all registered listeners. If a fake is active, records the
+event without calling listeners. If the event implements `BroadcastableEvent`
+(has a `broadcastOn()` method), the dispatcher also forwards it to
+`BroadcastManager` if `@roost/broadcast` is installed.
+
+#### `static fake(): void`
+
+Enable fake mode for this event class. Dispatches are recorded but listeners
+are not called.
+
+#### `static restore(): void`
+
+Disable fake mode for this event class.
+
+#### `static assertDispatched<T extends Event>(callback?: (event: T) => boolean): void`
+
+Assert that this event was dispatched. Pass an optional predicate to assert a
+specific dispatch. Throws if `fake()` was not called first.
+
+#### `static assertNotDispatched<T extends Event>(): void`
+
+Assert that this event was not dispatched. Throws if `fake()` was not called first.
+
+## EventDispatcher API
+
+`EventDispatcher` is the internal router that maps event classes to listener
+classes. The service provider creates and configures a dispatcher instance;
+application code typically does not need to use this directly.
+
+#### `static get(): EventDispatcher`
+
+Return the current singleton dispatcher. Creates a default instance if none has
+been set.
+
+#### `static set(dispatcher: EventDispatcher): void`
+
+Replace the singleton dispatcher. Called by `EventServiceProvider.register()`.
+
+#### `registerListener(eventClass: EventClass<Event>, listenerClass: ListenerClass): void`
+
+Register a listener class for an event class. Called during bootstrap by the
+service provider.
+
+#### `async dispatch(event: Event): Promise<void>`
+
+Instantiate and call all listeners registered for `event`'s class. If a listener
+implements `ShouldQueue`, the listener is dispatched as a Job via `@roost/queue`
+instead of being called synchronously.
+
+## Listener Interface
+
+```ts
+interface Listener<T = unknown> {
+  handle(event: T): void | Promise<void>;
+}
+```
+
+Implement this interface on any class used as a listener. The `handle()` method
+receives the dispatched event instance.
+
+## ShouldQueue Interface
+
+```ts
+interface ShouldQueue {
+  readonly shouldQueue: true;
+}
+```
+
+A marker interface. Add this to a `Listener` class that also extends `Job<TEvent>`
+from `@roost/queue` to have the listener dispatched as a background job instead
+of called inline. Requires `@roost/queue` to be installed.
+
+## Subscriber API
+
+`Subscriber` maps multiple event classes to handler methods on a single class.
+Useful when a domain module needs to react to several events.
+
+#### `abstract subscribe(): Map<EventClass<Event>, string>`
+
+Return a map of event class to method name string. The method must exist on the
+subscriber instance.
+
+```ts
+export class OrderSubscriber extends Subscriber {
+  subscribe(): Map<EventClass<Event>, string> {
+    return new Map([
+      [OrderPlaced, 'onOrderPlaced'],
+      [OrderCancelled, 'onOrderCancelled'],
+    ]);
+  }
+
+  async onOrderPlaced(event: OrderPlaced): Promise<void> {
+    // handle event
+  }
+
+  async onOrderCancelled(event: OrderCancelled): Promise<void> {
+    // handle event
+  }
+}
+```
+
+## EventServiceProvider API
+
+`EventServiceProvider` is abstract. Extend it in your application to declare
+event-listener mappings.
+
+#### `protected listen(): Map<EventClass<Event>, ListenerClass[]>`
+
+Override to return a map of event classes to arrays of listener classes.
+Defaults to an empty map.
+
+#### `protected subscribers(): SubscriberClass[]`
+
+Override to return an array of subscriber classes to register.
+Defaults to an empty array.
+
+#### `register(): void`
+
+Creates a new `EventDispatcher`, registers all listeners and subscribers, calls
+`EventDispatcher.set()`, and registers the dispatcher in the service container
+under the key `events.dispatcher`.
+
+## Types
+
+```ts
+type EventClass<T extends Event = Event> = {
+  new (...args: unknown[]): T;
+  dispatch(event: T): Promise<void>;
+  fake(): void;
+  restore(): void;
+};
+
+type ListenerClass = {
+  new (): { handle(event: unknown): void | Promise<void> };
+  name: string;
+};
+
+type SubscriberClass = {
+  new (): Subscriber;
+};
+
+type ListenerMap = Map<EventClass<Event>, ListenerClass[]>;
+```
+
+## Testing
+
+#### `EventFake`
+
+Internal state managed by `Event.fake()`.
+
+```ts
+class EventFake {
+  dispatched: Event[];
+  recordDispatch(event: Event): void;
+}
+```

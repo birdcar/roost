@@ -1,0 +1,257 @@
+---
+title: "@roost/broadcast"
+description: Real-time WebSocket broadcasting via Cloudflare Durable Objects. Channel types, ChannelDO, BroadcastManager, client helper, and testing utilities.
+---
+
+## Installation
+
+```bash title="terminal"
+bun add @roost/broadcast
+```
+
+## Configuration
+
+Declare a Durable Object binding and class in `wrangler.jsonc`:
+
+```jsonc title="wrangler.jsonc"
+{
+  "durable_objects": {
+    "bindings": [
+      { "name": "BROADCAST_DO", "class_name": "ChannelDO" }
+    ]
+  },
+  "migrations": [
+    { "tag": "v1", "new_classes": ["ChannelDO"] }
+  ]
+}
+```
+
+Export `ChannelDO` from your Worker's entry point:
+
+```ts title="src/index.ts"
+export { ChannelDO } from '@roost/broadcast';
+```
+
+## Channel API
+
+Channel classes identify the type and name of a broadcast target.
+
+#### `new Channel(name: string)`
+
+A public channel. Any connected client can receive messages. No authorization
+required to connect.
+
+#### `new PrivateChannel(name: string)`
+
+A private channel. Requires a valid `Authorization: Bearer <token>` header on
+the WebSocket upgrade request. Override `ChannelDO.authorize()` to implement
+application-specific token validation.
+
+#### `new PresenceChannel(name: string)`
+
+A presence channel. Extends private channel behavior with join/leave events.
+Connected clients receive `presence:join` and `presence:leave` events as
+members connect and disconnect. User ID is extracted via `ChannelDO.extractUserId()`.
+
+All channel classes expose:
+
+#### `name: string`
+
+The channel name string. Used as the Durable Object key so each channel name
+maps to a distinct DO instance.
+
+## BroadcastableEvent Interface
+
+Events that implement this interface are automatically broadcast by
+`EventDispatcher` when `@roost/broadcast` is installed.
+
+```ts
+interface BroadcastableEvent {
+  broadcastOn(): Channel[];
+  broadcastWith(): Record<string, unknown>;
+  broadcastAs?(): string;
+}
+```
+
+#### `broadcastOn(): Channel[]`
+
+Return the channels this event should be broadcast on.
+
+#### `broadcastWith(): Record<string, unknown>`
+
+Return the payload to send to subscribers.
+
+#### `broadcastAs?(): string`
+
+Optional. Override the event name sent over the wire. Defaults to the class name.
+
+## BroadcastManager API
+
+`BroadcastManager` routes broadcast calls to the appropriate Durable Object
+instance for each channel.
+
+#### `constructor(doClient: DurableObjectClient)`
+
+Construct with a `DurableObjectClient` wrapping the `ChannelDO` namespace.
+Called automatically by `BroadcastServiceProvider`.
+
+#### `static get(): BroadcastManager`
+
+Return the initialized singleton. Throws if `BroadcastServiceProvider` has not
+registered it.
+
+#### `static set(manager: BroadcastManager): void`
+
+Set the singleton. Called by `BroadcastServiceProvider.register()`.
+
+#### `static fake(): void`
+
+Enable fake mode. All `broadcast()` calls are recorded but not sent to Durable Objects.
+
+#### `static restore(): void`
+
+Disable fake mode and clear the singleton.
+
+#### `static assertBroadcast(eventClass: new (...args) => BroadcastableEvent): void`
+
+Assert that an event of the given class was broadcast (in fake mode).
+
+#### `static assertBroadcastOn(channel: string): void`
+
+Assert that a broadcast was sent to the named channel (in fake mode).
+
+#### `async broadcast(event: BroadcastableEvent): Promise<void>`
+
+Broadcast the event to all channels returned by `event.broadcastOn()`. Calls
+the `ChannelDO`'s `/broadcast` endpoint via HTTP for each channel.
+
+## BroadcastServiceProvider API
+
+#### `protected bindingName(): string`
+
+Returns `'BROADCAST_DO'` by default. Override to use a different binding name.
+
+#### `register(): void`
+
+Resolves the Durable Object namespace from `app.env`, creates a
+`DurableObjectClient`, instantiates a `BroadcastManager`, and registers it in
+the service container under `broadcast.manager`.
+
+## ChannelDO API
+
+`ChannelDO` is the Durable Object that manages WebSocket connections for a
+single channel. Export it from your Worker entry point.
+
+#### `async fetch(request: Request): Promise<Response>`
+
+Routes incoming requests:
+- WebSocket upgrade requests: handled by `handleUpgrade()`
+- `POST /broadcast`: pushes a message to all connected sockets
+- `GET /presence`: returns the list of connected members
+
+#### `protected async authorize(request: Request): Promise<{ ok: boolean }>`
+
+Override to implement application-specific authorization for private and presence
+channels. The default implementation accepts any `Authorization: Bearer <token>`
+header with a non-empty token. Production applications must override this.
+
+#### `protected extractUserId(request: Request): string | undefined`
+
+Override to extract the user ID from the upgrade request. Used for presence
+channel member tracking. The default implementation reads the `userId` query
+parameter.
+
+#### `async webSocketMessage(ws: WebSocket, message: string | ArrayBuffer): Promise<void>`
+
+Handles incoming messages from connected clients. Supports `whisper` events
+for client-to-client messaging within the channel.
+
+#### `async webSocketClose(ws: WebSocket, code: number, reason: string): Promise<void>`
+
+Broadcasts a `presence:leave` event when a presence channel member disconnects.
+
+#### `async webSocketError(ws: WebSocket, error: unknown): Promise<void>`
+
+Closes the socket with code `1011` on error.
+
+## createBroadcastClient (client-side helper)
+
+```ts title="client entrypoint: @roost/broadcast/client"
+function createBroadcastClient(
+  urlOrFactory: string | (() => string),
+  options?: BroadcastClientOptions
+): BroadcastClient
+```
+
+Creates a WebSocket client with automatic reconnection. Import from
+`@roost/broadcast/client` — this module does not import any server-side code.
+
+#### `urlOrFactory: string | (() => string)`
+
+The WebSocket URL or a factory function that returns it. Use a factory when the
+URL needs a fresh auth token on each reconnect.
+
+#### `options?: BroadcastClientOptions`
+
+```ts
+interface BroadcastClientOptions {
+  initialDelay?: number;   // Default: 1000ms
+  maxDelay?: number;       // Default: 30000ms
+  onConnect?: () => void;
+  onDisconnect?: (code: number, reason: string) => void;
+}
+```
+
+### BroadcastClient Interface
+
+#### `subscribe(channel: string, handler: (event: string, data: unknown) => void): () => void`
+
+Register a handler for messages on a channel. Returns an unsubscribe function.
+The `channel` argument is used to namespace handlers; the WebSocket itself is
+channel-scoped at the connection level (one WebSocket per channel URL).
+
+#### `unsubscribe(channel: string): void`
+
+Remove all handlers registered for the given channel key.
+
+#### `whisper(channel: string, event: string, data?: unknown): void`
+
+Send a peer-to-peer message to other clients in the channel. Only sends if the
+WebSocket is open.
+
+#### `close(): void`
+
+Close the WebSocket and disable automatic reconnection.
+
+## Types
+
+```ts
+interface ConnectionMeta {
+  userId?: string;
+  joinedAt: number;
+  channelType: 'public' | 'private' | 'presence';
+}
+
+interface PresenceMember {
+  id: string;
+  joinedAt: number;
+}
+
+interface BroadcastMessage {
+  event: string;
+  data: Record<string, unknown>;
+}
+```
+
+## Testing
+
+#### `BroadcastFake`
+
+Internal state managed by `BroadcastManager.fake()`.
+
+```ts
+class BroadcastFake {
+  broadcasts: Array<{ event: BroadcastableEvent; channel: string }>;
+  recordBroadcast(event: BroadcastableEvent, channel: string): void;
+}
+```

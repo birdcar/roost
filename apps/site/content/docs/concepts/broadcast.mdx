@@ -1,0 +1,111 @@
+---
+title: "@roost/broadcast"
+description: How Durable Objects power per-channel WebSocket state, the three channel types and their authorization model, and how broadcast integrates with the events system.
+---
+
+## Durable Objects as WebSocket Hubs
+
+WebSocket connections require persistent state: a list of connected sockets to
+deliver messages to. Cloudflare Workers are stateless by nature — each invocation
+is independent, and there is no shared memory between them. Durable Objects solve
+this. A single Durable Object instance can hold many WebSocket connections in
+memory and route messages across all of them.
+
+`ChannelDO` is that Durable Object. Each channel name maps to a distinct DO
+instance — `new Channel('announcements')` and `new PrivateChannel('users.123')`
+route to different DO instances with independent connection lists. A broadcast to
+`users.123` only sends to the sockets connected to that channel's DO, not to
+every WebSocket in the system.
+
+The Durable Object's `acceptWebSocket(server)` API persists connections across
+Hibernation. When no messages are flowing, the DO can be evicted from memory;
+when a new broadcast arrives, Cloudflare rehydrates the DO and delivers the
+message to all stored sockets. This hibernation model keeps idle channels cheap.
+
+## Channel Types and Authorization
+
+The three channel classes — `Channel`, `PrivateChannel`, and `PresenceChannel` —
+are semantic tags. They do not have different connection logic in isolation; their
+meaning comes from how `ChannelDO` handles them during the WebSocket upgrade.
+
+**Public channels** (`Channel`) allow any client to connect and receive messages.
+Use them for global announcements, public feeds, or any data that does not require
+authentication.
+
+**Private channels** (`PrivateChannel`) require a valid bearer token in the
+`Authorization` header of the upgrade request. The `ChannelDO.authorize()` method
+validates the token. The default implementation accepts any non-empty bearer — 
+production applications must override this with real JWT or session validation.
+
+**Presence channels** (`PresenceChannel`) extend private channel behavior with
+membership tracking. When a user connects, `ChannelDO` broadcasts a `presence:join`
+event to all existing connections. When a user disconnects, it broadcasts
+`presence:leave`. The user ID is extracted from the upgrade request via
+`ChannelDO.extractUserId()` and stored with the WebSocket's tag for the lifetime
+of the connection.
+
+## Server-Side Broadcasting vs Client-Side Pushing
+
+Broadcast in Roost flows from server to client. Application code calls
+`BroadcastManager.broadcast(event)`, which sends an HTTP POST to the target
+channel's Durable Object. The DO receives this request and sends the message
+to all connected WebSocket clients. The flow is:
+
+```
+Application code
+  → BroadcastManager.broadcast()
+  → HTTP POST to ChannelDO /broadcast endpoint
+  → ChannelDO pushes to all connected WebSocket sockets
+  → Browser clients receive the message
+```
+
+The client-side `createBroadcastClient` goes the other direction: it opens a
+WebSocket to a channel DO URL and receives messages. It does not push messages
+to the server except via `whisper()`, which enables client-to-client messaging
+routed through the DO.
+
+## Events and Broadcast Integration
+
+`EventDispatcher` in `@roost/events` checks whether a dispatched event implements
+`BroadcastableEvent`. If it does, and if `@roost/broadcast` is installed, the
+dispatcher forwards the event to `BroadcastManager` after notifying in-process
+listeners. This means a single `dispatch()` call can:
+
+1. Notify all registered `Listener` classes synchronously
+2. Dispatch `ShouldQueue` listeners as background jobs
+3. Push a WebSocket message to connected clients
+
+None of these responsibilities know about the others. The event class declares
+`broadcastOn()` and `broadcastWith()` independently of which listeners are
+registered, and listeners are registered independently of whether the event
+is broadcastable.
+
+## Client Reconnection
+
+The `createBroadcastClient` helper reconnects automatically on disconnect using
+exponential backoff between `initialDelay` (default 1 second) and `maxDelay`
+(default 30 seconds). The URL factory pattern supports refreshing auth tokens
+on reconnect:
+
+```ts
+createBroadcastClient(() => `/ws/channel/${channelName}?token=${getToken()}`);
+```
+
+Passing a function rather than a string means the token is fetched fresh on
+every connection attempt. This handles token expiry between disconnection and
+reconnection without additional logic in the caller.
+
+## Whisper
+
+Whisper is a peer-to-peer messaging mechanism within a channel. A client calls
+`client.whisper(channel, event, data)`, which sends a message to the DO. The DO
+broadcasts that message to all other connected clients but not back to the sender.
+This is useful for collaborative features — typing indicators, cursor positions,
+transient state that does not need to round-trip through the server.
+
+## Further Reading
+
+- [@roost/broadcast reference — Channel, ChannelDO, BroadcastManager, and client API](/docs/reference/broadcast)
+- [@roost/events concepts — How events and broadcast connect](/docs/concepts/events)
+- [Cloudflare Durable Objects Documentation](https://developers.cloudflare.com/durable-objects/)
+- [WebSocket Hibernation API](https://developers.cloudflare.com/durable-objects/api/websockets/)
