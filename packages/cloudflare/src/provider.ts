@@ -23,10 +23,12 @@ export class CloudflareServiceProvider extends ServiceProvider {
   }
 
   private registerBinding(key: string, binding: object): void {
-    if (this.isKVNamespace(binding)) {
-      this.app.container.singleton(key as any, () => new KVStore(binding as KVNamespace));
-    } else if (this.isR2Bucket(binding)) {
+    // R2 must be checked before KV: R2 is a superset of KV's duck-type (it also has `head`).
+    // More-specific guards come first throughout this chain.
+    if (this.isR2Bucket(binding)) {
       this.app.container.singleton(key as any, () => new R2Storage(binding as R2Bucket));
+    } else if (this.isKVNamespace(binding)) {
+      this.app.container.singleton(key as any, () => new KVStore(binding as KVNamespace));
     } else if (this.isD1Database(binding)) {
       this.app.container.singleton(key as any, () => new D1Database(binding as globalThis.D1Database));
     } else if (this.isQueue(binding)) {
