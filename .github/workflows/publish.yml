@@ -10,18 +10,18 @@ on:
         default: true
 
 permissions:
-  contents: read
   id-token: write
+  contents: read
 
 jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: oven-sh/setup-bun@v2
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
-          node-version: '22'
+          node-version: '24'
           registry-url: 'https://registry.npmjs.org'
       - run: bun install --frozen-lockfile
       - run: bun run typecheck
@@ -35,9 +35,9 @@ jobs:
               echo "Publishing $name..."
               cd "$pkg"
               if [ "$DRY_RUN" = "true" ]; then
-                npm publish --provenance --access public --dry-run || true
+                npm publish --access public --dry-run || true
               else
-                npm publish --provenance --access public || echo "  ⚠ Failed to publish $name"
+                npm publish --access public || echo "  ⚠ Failed to publish $name"
               fi
               cd ../..
             fi
