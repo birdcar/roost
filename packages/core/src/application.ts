@@ -4,6 +4,11 @@ import { Pipeline } from './middleware.js';
 import { ServiceProvider } from './provider.js';
 import type { Container, Handler, Middleware, MiddlewareClass, ServiceProviderClass } from './types.js';
 
+interface RoostExecutionContext {
+  waitUntil(promise: Promise<unknown>): void;
+  passThroughOnException(): void;
+}
+
 export class Application {
   readonly container: Container;
   readonly config: ConfigManager;
@@ -13,6 +18,7 @@ export class Application {
   private globalMiddleware: Array<{ middleware: Middleware | MiddlewareClass; args: string[] }> = [];
   private _booted = false;
   private dispatcher?: Handler;
+  private _ctx: RoostExecutionContext | undefined;
 
   get isBooted(): boolean {
     return this._booted;
@@ -41,6 +47,10 @@ export class Application {
     return this;
   }
 
+  defer(promise: Promise<unknown>): void {
+    this._ctx?.waitUntil(promise);
+  }
+
   onDispatch(handler: Handler): this {
     this.dispatcher = handler;
     return this;
@@ -62,12 +72,16 @@ export class Application {
     this._booted = true;
   }
 
-  async handle(request: Request): Promise<Response> {
+  async handle(request: Request, ctx?: RoostExecutionContext): Promise<Response> {
+    this._ctx = ctx;
+
     if (!this._booted) {
       await this.boot();
     }
 
     const scoped = this.container.scoped();
+    scoped.bind('ctx', () => this._ctx);
+    (request as any).__roostContainer = scoped;
     const pipeline = new Pipeline().withContainer(scoped);
 
     for (const { middleware, args } of this.globalMiddleware) {

@@ -125,4 +125,53 @@ describe('Application', () => {
     const app = Application.create({}, { app: { name: 'test' } });
     expect(app.config.get('app.name')).toBe('test');
   });
+
+  test('defer calls waitUntil on the ExecutionContext', async () => {
+    const waitUntilCalls: Promise<unknown>[] = [];
+    const ctx = {
+      waitUntil: (p: Promise<unknown>) => waitUntilCalls.push(p),
+      passThroughOnException: () => {},
+    };
+
+    const app = Application.create({});
+    app.onDispatch(async () => new Response('ok'));
+    await app.handle(makeRequest(), ctx);
+
+    const deferred = Promise.resolve('background work');
+    app.defer(deferred);
+
+    expect(waitUntilCalls).toHaveLength(1);
+    expect(waitUntilCalls[0]).toBe(deferred);
+  });
+
+  test('defer is a no-op when no ExecutionContext is provided', async () => {
+    const app = Application.create({});
+    app.onDispatch(async () => new Response('ok'));
+    await app.handle(makeRequest());
+
+    expect(() => app.defer(Promise.resolve())).not.toThrow();
+  });
+
+  test('ctx is resolvable from the scoped container inside middleware', async () => {
+    const ctx = {
+      waitUntil: () => {},
+      passThroughOnException: () => {},
+    };
+
+    let resolvedCtx: unknown;
+
+    const mw: Middleware = {
+      async handle(req, next) {
+        resolvedCtx = (req as any).__roostContainer?.resolve('ctx');
+        return next(req);
+      },
+    };
+
+    const app = Application.create({});
+    app.useMiddleware(mw);
+    app.onDispatch(async () => new Response('ok'));
+    await app.handle(makeRequest(), ctx);
+
+    expect(resolvedCtx).toBe(ctx);
+  });
 });

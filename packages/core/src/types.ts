@@ -25,3 +25,5 @@ export type MiddlewareClass = new (...args: any[]) => Middleware;
 export type Handler = (request: Request) => Promise<Response>;
 
 export type ServiceProviderClass = new (app: Application) => import('./provider.js').ServiceProvider;
+
+export type { LogLevel, LogContext, LogEntry } from './logger.js';

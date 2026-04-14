@@ -3,6 +3,8 @@ export { ServiceProvider } from './provider.js';
 export { ConfigManager } from './config.js';
 export { Pipeline } from './middleware.js';
 export { Application } from './application.js';
+export { Logger, FakeLogger } from './logger.js';
+export { RequestIdMiddleware } from './middleware/request-id.js';
 
 export type {
   Container,
@@ -12,4 +14,7 @@ export type {
   MiddlewareClass,
   Handler,
   ServiceProviderClass,
+  LogLevel,
+  LogContext,
+  LogEntry,
 } from './types.js';

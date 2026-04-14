@@ -103,14 +103,22 @@ export default defineConfig({
 });
 `);
 
-  await writeFile(join(dir, 'wrangler.jsonc'), JSON.stringify({
-    $schema: 'node_modules/wrangler/config-schema.json',
-    name: kebab,
-    compatibility_date: new Date().toISOString().split('T')[0],
-    compatibility_flags: ['nodejs_compat'],
-    main: '@tanstack/react-start/server-entry',
-    observability: { enabled: true },
-  }, null, 2) + '\n');
+  const compatDate = new Date().toISOString().split('T')[0];
+  await writeFile(join(dir, 'wrangler.jsonc'), `{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "${kebab}",
+  "compatibility_date": "${compatDate}",
+  "compatibility_flags": ["nodejs_compat"],
+  "main": "@tanstack/react-start/server-entry",
+  "observability": { "enabled": true },
+  "limits": { "cpu_ms": 50 },
+  "placement": { "mode": "smart" }
+
+  // Gradual rollout: deploy with \`wrangler deploy --x-versions\` to enable version management.
+  // Use \`wrangler deployments list\` to see active versions and traffic splits.
+  // Use \`wrangler rollback\` to instantly revert a bad deploy.
+}
+`);
 
   await writeFile(join(dir, '.gitignore'), `node_modules/
 dist/
