@@ -7,6 +7,7 @@ export type { Tool, ToolRequest } from './tool.js';
 export { createToolRequest } from './tool.js';
 
 export { CloudflareAIProvider } from './providers/cloudflare.js';
+export { GatewayAIProvider } from './providers/gateway.js';
 export type { AIProvider } from './providers/interface.js';
 
 export { AiServiceProvider } from './provider.js';
@@ -15,6 +16,7 @@ export type {
   AgentConfig,
   AgentMessage,
   AgentResponse,
+  PromptResult,
   ToolCall,
   ToolResult,
   StreamEvent,

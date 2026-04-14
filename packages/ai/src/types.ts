@@ -7,6 +7,7 @@ export interface AgentConfig {
   maxTokens?: number;
   temperature?: number;
   timeout?: number;
+  queued?: boolean;
 }
 
 export interface AgentMessage {
@@ -34,6 +35,10 @@ export interface AgentResponse {
   usage?: { promptTokens: number; completionTokens: number };
 }
 
+export type PromptResult =
+  | { queued: false; text: string; messages: AgentMessage[]; toolCalls: ToolCall[]; usage?: { promptTokens: number; completionTokens: number } }
+  | { queued: true; taskId: string };
+
 export interface StreamEvent {
   type: 'text-delta' | 'tool-call' | 'tool-result' | 'done';
   text?: string;
@@ -47,6 +52,7 @@ export interface ProviderRequest {
   tools?: ProviderTool[];
   maxTokens?: number;
   temperature?: number;
+  queueRequest?: boolean;
 }
 
 export interface ProviderTool {
@@ -59,4 +65,5 @@ export interface ProviderResponse {
   text: string;
   toolCalls: ToolCall[];
   usage?: { promptTokens: number; completionTokens: number };
+  taskId?: string;
 }
