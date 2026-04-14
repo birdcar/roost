@@ -2865,12 +2865,11 @@ Related: [ORM guides](/docs/guides/orm.md) for model definitions, [@roostjs/orm 
 
 # @roostjs/feature-flags Guides
 
-> Task-oriented instructions for defining flags, checking them in handlers, prefetching with middleware, and testing flag-gated behavior.
+> Task-oriented instructions for defining flags in WorkOS, checking them in handlers, scoped user/org evaluation, prefetching with middleware, and testing flag-gated behavior.
 
 ## How to register the feature flag provider
 
-Add `FeatureFlagServiceProvider` to your app's provider list. It connects
-`FeatureFlag` to a Cloudflare KV namespace named `FLAGS_KV` by default.
+Add `FeatureFlagServiceProvider` to your app's provider list. With `WORKOS_API_KEY` in env and a `FLAGS_KV` binding, it automatically uses WorkOS for evaluation with KV edge caching.
 
 ```ts title="src/app.ts"
 
@@ -2882,25 +2881,23 @@ export const app = createApp({
 });
 ```
 
-If your KV binding has a different name, set it in the app config before
-registering:
+To use KV-only mode (no WorkOS), set `flags.provider` in config:
 
 ```ts
-
 export const app = createApp({
-  config: { flags: { kv: 'FEATURE_FLAGS_KV' } },
+  config: { flags: { provider: 'kv', kv: 'FLAGS_KV' } },
   providers: [new FeatureFlagServiceProvider()],
 });
 ```
 
 ## How to check a feature flag in a route handler
 
-Call `FeatureFlag.isEnabled()` anywhere after the provider has registered.
+Call `FeatureFlag.isEnabled()` or `FeatureFlag.active()` anywhere after the provider has registered. Both are identical — use whichever reads more naturally.
 
 ```ts title="src/handlers/billing.ts"
 
 export async function handleCheckout(request: Request): Promise<Response> {
-  const newCheckoutEnabled = await FeatureFlag.isEnabled('new-checkout');
+  const newCheckoutEnabled = await FeatureFlag.active('new-checkout');
 
   if (newCheckoutEnabled) {
     return handleNewCheckout(request);
@@ -2910,30 +2907,41 @@ export async function handleCheckout(request: Request): Promise<Response> {
 }
 ```
 
+## How to evaluate a flag for a specific user or organization
+
+Use `FeatureFlag.for(context)` to create a scoped evaluator that passes user/org context to the provider. WorkOS uses this context when evaluating targeting rules configured in the dashboard.
+
+```ts
+
+export async function handleDashboard(request: Request, userId: string, orgId: string) {
+  const scoped = FeatureFlag.for({ userId, organizationId: orgId });
+
+  if (await scoped.active('new-dashboard')) {
+    return renderNewDashboard(request);
+  }
+
+  return renderLegacyDashboard(request);
+}
+```
+
 ## How to read a typed flag value
 
-Use `getValue<T>()` when you need the raw value rather than a boolean.
+Use `value<T>()` on a scoped evaluator, or `getValue<T>()` on the static class, when you need the raw value rather than a boolean.
 
 ```ts
 
-const limit = await FeatureFlag.getValue<number>('api-rate-limit');
-// limit is number | null
+// With a default value (never throws)
+const limit = await FeatureFlag.value<number>('api-rate-limit', 100);
+
+// Scoped to a user
+const color = await FeatureFlag.for({ userId }).value<string>('button-color', 'blue');
 ```
 
-`getValue()` throws `FlagNotFoundError` if the key is missing. If you want a
-default instead, wrap it:
-
-```ts
-const limit = await FeatureFlag
-  .getValue<number>('api-rate-limit')
-  .catch(() => 100);
-```
+`getValue()` and `value()` throw `FlagNotFoundError` if the key is missing and no default is provided.
 
 ## How to prefetch flags for a request
 
-Use `FeatureFlagMiddleware` to batch-fetch flags at the start of each request.
-Downstream calls to `isEnabled(flag, request)` read from the per-request cache
-rather than hitting KV again.
+Use `FeatureFlagMiddleware` to batch-fetch flags at the start of each request. Downstream calls to `isEnabled(flag, request)` or `active(flag, request)` read from the per-request cache rather than hitting the provider again.
 
 ```ts title="src/app.ts"
 
@@ -2945,40 +2953,28 @@ export const app = createApp({
 });
 ```
 
-Then pass `request` when checking flags:
+Then pass `request` when checking flags to read from the cache:
 
 ```ts
-const enabled = await FeatureFlag.isEnabled('new-checkout', request);
+const enabled = await FeatureFlag.active('new-checkout', request);
 ```
-
-The cache is attached to the request object and scoped to that request's
-lifetime. There is no cross-request cache to invalidate.
 
 ## How to write a flag value
 
-Use `FeatureFlag.set()` to update a flag programmatically — from an admin
-panel, a seed script, or a management endpoint.
+Use `FeatureFlag.set()` to update a flag programmatically — from an admin panel, a seed script, or a management endpoint. Requires a KV binding to be configured.
 
 ```ts
 
-// Boolean flag
 await FeatureFlag.set('new-checkout', true);
-
-// Numeric flag
 await FeatureFlag.set('api-rate-limit', 500);
-
-// JSON config flag
-await FeatureFlag.set('checkout-config', {
-  maxItems: 50,
-  allowGuestCheckout: true,
-});
+await FeatureFlag.set('checkout-config', { maxItems: 50, allowGuestCheckout: true });
 ```
+
+For toggling flags in production, prefer the WorkOS dashboard — `set()` writes to the KV cache layer, not the WorkOS flag definition itself.
 
 ## How to test flag-gated behavior
 
-Call `FeatureFlag.fake()` with the desired flag values before running the
-code under test. Use `FeatureFlag.assertChecked()` to verify the flag was
-actually consulted.
+Call `FeatureFlag.fake()` with the desired flag values before running the code under test. Use `FeatureFlag.assertChecked()` to verify the flag was actually consulted.
 
 ```ts title="tests/handlers/billing.test.ts"
 
@@ -2991,7 +2987,6 @@ describe('handleCheckout', () => {
     const response = await handleCheckout(new Request('https://app/checkout'));
 
     FeatureFlag.assertChecked('new-checkout');
-    // assert response is from new checkout handler
   });
 
   it('falls back to legacy checkout when flag is disabled', async () => {
@@ -3000,13 +2995,13 @@ describe('handleCheckout', () => {
     const response = await handleCheckout(new Request('https://app/checkout'));
 
     FeatureFlag.assertChecked('new-checkout');
-    // assert response is from legacy checkout handler
   });
 });
 ```
 
-`FeatureFlag.fake()` accepts all flags you want to define for that test. Flags
-not in the map return `null` from `getValue()` and `false` from `isEnabled()`.
+`FeatureFlag.fake()` intercepts all evaluation including `FeatureFlag.for(context).active()` — the context is ignored in fake mode, which keeps tests simple.
+
+Flags not in the fake map return `null` from `getValue()`/`value()` and `false` from `isEnabled()`/`active()`.
 
 
 ---
@@ -6860,7 +6855,7 @@ class EventFake {
 
 # @roostjs/feature-flags
 
-> Feature flag evaluation backed by Cloudflare KV. FeatureFlag static API, per-request caching, middleware, and service provider.
+> Feature flag evaluation backed by WorkOS with KV edge caching. FeatureFlag static API, scoped evaluation, per-request caching, middleware, providers, and service provider.
 
 ## Installation
 
@@ -6870,7 +6865,9 @@ bun add @roostjs/feature-flags
 
 ## Configuration
 
-Declare a Cloudflare KV namespace binding in `wrangler.jsonc`:
+`FeatureFlagServiceProvider` auto-selects a provider based on available environment bindings.
+
+**WorkOS + KV (recommended):** Set `WORKOS_API_KEY` and declare a KV namespace:
 
 ```jsonc title="wrangler.jsonc"
 {
@@ -6880,25 +6877,37 @@ Declare a Cloudflare KV namespace binding in `wrangler.jsonc`:
 }
 ```
 
-The default binding name is `FLAGS_KV`. Override it via `flags.kv` in the app
-config before registering the provider.
+**WorkOS only:** Set `WORKOS_API_KEY` — no KV binding required.
+
+**KV only:** Omit `WORKOS_API_KEY` and set `flags.provider: 'kv'` in app config.
+
+The default KV binding name is `FLAGS_KV`. Override via `flags.kv` in app config.
 
 ## FeatureFlag API
 
-`FeatureFlag` is a static class. All methods are called directly on the class.
-There is no instance to construct.
+`FeatureFlag` is a static class. `Feature` is an alias — both names are exported and interchangeable.
 
 ### Static Methods
 
-#### `static configure(flagStore: FlagStore): void`
+#### `static for(context: FlagContext): ScopedFeatureFlag`
 
-Set the backing `FlagStore`. Called automatically by `FeatureFlagServiceProvider`.
-Call this directly in tests or custom bootstrapping when bypassing the provider.
+Create a scoped evaluator that passes user/org context to the provider for targeted evaluation.
+
+```ts
+const result = await FeatureFlag.for({ userId: 'u_1', organizationId: 'org_1' }).active('beta');
+```
+
+#### `static async active(flag: string, request?: Request): Promise<boolean>`
+
+Alias for `isEnabled()`. Returns `true` if the flag evaluates to a truthy value.
+
+#### `static async value<T>(flag: string, defaultValue?: T): Promise<T | null>`
+
+Returns the raw flag value cast to `T`. Returns `defaultValue` when the flag is missing and a default is provided. Throws `FlagNotFoundError` when the flag is missing and no default is given.
 
 #### `static async isEnabled(flag: string, request?: Request): Promise<boolean>`
 
-Returns `true` if the flag evaluates to a truthy value. Accepts an optional
-`request` to read from the per-request cache set by `FeatureFlagMiddleware`.
+Returns `true` if the flag evaluates to a truthy value. Accepts an optional `request` to read from the per-request cache set by `FeatureFlagMiddleware`.
 
 Truthy rules:
 - `boolean`: the value itself
@@ -6906,37 +6915,55 @@ Truthy rules:
 - `number`: positive numbers are truthy, `0` and negatives are falsy
 - `null` / missing: falsy
 
-Swallows store errors and returns `false` rather than throwing.
+Swallows provider errors and returns `false` rather than throwing.
 
 #### `static async getValue<T extends FlagValue>(flag: string, request?: Request): Promise<T | null>`
 
-Returns the raw flag value cast to `T`. Throws `FlagNotFoundError` if the flag
-does not exist in the store. Use `isEnabled()` when you only need a boolean.
+Returns the raw flag value cast to `T`. Throws `FlagNotFoundError` if the flag does not exist. Use `isEnabled()` when you only need a boolean.
 
 #### `static async set<T extends FlagValue>(flag: string, value: T): Promise<void>`
 
-Write a flag value to the store. Used for programmatic flag management.
-Throws `FlagStoreNotConfiguredError` if no store is configured.
+Write a flag value to the store. Requires a writable `FlagStore` to be configured (available when KV is present). Throws if only a read-only provider is active.
+
+#### `static configure(flagStore: FlagStore): void`
+
+Set a legacy `FlagStore` directly. Clears any active provider. Called by `FeatureFlagServiceProvider` for KV-only mode; also useful in tests or custom bootstrapping.
+
+#### `static configureProvider(flagProvider: FlagProvider): void`
+
+Set a `FlagProvider` as the evaluation backend. Clears the legacy store.
+
+#### `static configureProviderWithStore(flagProvider: FlagProvider, flagStore: FlagStore): void`
+
+Set both a `FlagProvider` for reads and a `FlagStore` for writes. Used by `FeatureFlagServiceProvider` when WorkOS handles evaluation and KV handles `set()`.
 
 #### `static fake(flags: Record<string, FlagValue>): void`
 
-Enable fake mode with a static set of flag values. All subsequent calls to
-`isEnabled()` and `getValue()` read from the in-memory fake.
+Enable fake mode with a static set of flag values. All subsequent calls to `isEnabled()`, `active()`, `getValue()`, and `value()` read from the in-memory fake.
 
 #### `static restore(): void`
 
-Disable fake mode and clear the configured store.
+Disable fake mode and clear the configured store and provider.
 
 #### `static assertChecked(flag: string): void`
 
-Assert that `isEnabled()` or `getValue()` was called for `flag` during the test.
-Throws if `fake()` was not called first, or if the flag was not accessed.
+Assert that `isEnabled()`, `active()`, `getValue()`, or `value()` was called for `flag` during the test. Throws if `fake()` was not called first, or if the flag was not accessed.
+
+## ScopedFeatureFlag API
+
+Returned by `FeatureFlag.for(context)`.
+
+#### `async active(flag: string): Promise<boolean>`
+
+Evaluate `flag` with the bound context. Returns `true` if truthy.
+
+#### `async value<T>(flag: string, defaultValue?: T): Promise<T | null>`
+
+Return the raw value for `flag` with the bound context. Returns `defaultValue` when missing and a default is provided. Throws `FlagNotFoundError` otherwise.
 
 ## FeatureFlagMiddleware API
 
-Prefetches a set of flag values at the start of each request and attaches them
-to the request object. Downstream code that calls `FeatureFlag.isEnabled(flag, request)`
-reads from the cache without hitting KV again.
+Prefetches a set of flag values at the start of each request and attaches them to the request object. Downstream calls to `FeatureFlag.isEnabled(flag, request)` read from the cache without another provider round-trip.
 
 #### `constructor(flags: string[])`
 
@@ -6944,24 +6971,63 @@ Pass the list of flag names to prefetch on every request.
 
 #### `async handle(request: Request, next: (r: Request) => Promise<Response>): Promise<Response>`
 
-Fetches all configured flags in parallel, populates the per-request cache, then
-calls `next`.
+Fetches all configured flags in parallel, populates the per-request cache, then calls `next`.
 
 ## FeatureFlagServiceProvider API
 
-Bootstraps `FeatureFlag` with a `KVStore` backed by the configured binding.
+Bootstraps `FeatureFlag` with the appropriate provider based on available environment bindings.
 
 #### `register(): void`
 
-Resolves the KV binding from `app.env` using the name from `app.config.get('flags.kv', 'FLAGS_KV')`.
-Calls `FeatureFlag.configure()` with a `FlagStore` that reads and writes JSON
-values via `@roostjs/cloudflare`'s `KVStore`. Logs a warning and returns without
-configuring if the binding is not found.
+Provider selection logic:
+
+| `WORKOS_API_KEY` | KV binding | `flags.provider` config | Result |
+|---|---|---|---|
+| ✓ | ✓ | `'workos'` (default) | `KVCacheFlagProvider(WorkOSFlagProvider)` + KV write store |
+| ✓ | — | `'workos'` (default) | `WorkOSFlagProvider` (no writes) |
+| — | ✓ | any | `KVFlagProvider` + KV write store |
+| — | — | any | Warning logged; all flags throw |
+
+## Provider Classes
+
+### `WorkOSFlagProvider`
+
+```ts
+new WorkOSFlagProvider(apiKey: string)
+```
+
+Calls `workos.featureFlags.getFeatureFlag(slug)` and returns `flag.enabled`. Targeting rules (which users/orgs see the flag) are configured in the WorkOS dashboard.
+
+### `KVCacheFlagProvider`
+
+```ts
+new KVCacheFlagProvider(inner: FlagProvider, kv: KVNamespace, ttlSeconds?: number)
+```
+
+Wraps any `FlagProvider` with KV-backed edge caching. Default TTL is 60 seconds. Cache keys include the flag slug plus any `userId` and `organizationId` from context, so each targeted subject has an independent cache entry.
+
+### `KVFlagProvider`
+
+```ts
+new KVFlagProvider(kv: KVNamespace)
+```
+
+Reads/writes flags stored directly in KV as JSON. Suitable for infrastructure flags that don't need WorkOS dashboard management (maintenance mode, kill switches). Supports `set()`.
 
 ## Types
 
 ```ts
 type FlagValue = boolean | number | string | Record<string, unknown>;
+
+interface FlagContext {
+  userId?: string;
+  organizationId?: string;
+  [key: string]: unknown;
+}
+
+interface FlagProvider {
+  evaluate(key: string, context?: FlagContext): Promise<FlagValue>;
+}
 
 interface FlagStore {
   get<T = FlagValue>(flag: string): Promise<T | null>;
@@ -6973,19 +7039,17 @@ interface FlagStore {
 
 #### `FlagStoreNotConfiguredError`
 
-Thrown by `isEnabled()`, `getValue()`, and `set()` when no store has been
-configured and no fake is active.
+Thrown by `isEnabled()`, `active()`, `getValue()`, `value()`, and `set()` when no store or provider has been configured and no fake is active.
 
 #### `FlagNotFoundError`
 
-Thrown by `getValue()` when the flag key does not exist in the store.
+Thrown by `getValue()` and `value()` when the flag key does not exist in the store/provider.
 
 ## Testing
 
 #### `FeatureFlagFake`
 
-Internal fake state managed by `FeatureFlag.fake()`. Tracks which flags were
-checked so `assertChecked()` can verify access.
+Internal fake state managed by `FeatureFlag.fake()`. Tracks which flags were checked so `assertChecked()` can verify access.
 
 ```ts
 class FeatureFlagFake {
@@ -6997,18 +7061,15 @@ class FeatureFlagFake {
 
 ## Cache Utilities
 
-Used internally by `FeatureFlagMiddleware` and `FeatureFlag.isEnabled()`. Exposed
-for advanced use cases.
+Used internally by `FeatureFlagMiddleware` and `FeatureFlag.isEnabled()`. Exposed for advanced use cases.
 
 #### `getRequestCache(request: Request): Map<string, FlagValue> | null`
 
-Read the per-request flag cache attached to `request`. Returns `null` if no
-cache has been set.
+Read the per-request flag cache attached to `request`. Returns `null` if no cache has been set.
 
 #### `setRequestCache(request: Request, cache: Map<string, FlagValue>): void`
 
-Attach a flag cache map to `request`. The cache is keyed by `FLAG_CACHE_KEY`
-(a unique symbol) to avoid namespace collisions.
+Attach a flag cache map to `request`. The cache is keyed by `FLAG_CACHE_KEY` (a unique symbol) to avoid namespace collisions.
 
 #### `FLAG_CACHE_KEY: unique symbol`
 
@@ -10422,80 +10483,68 @@ level.
 
 # @roostjs/feature-flags
 
-> Why feature flags belong in KV, the per-request caching model, the Pennant-style API design, and when to use flags vs config vs environment variables.
+> Why WorkOS is the primary feature flag provider, the KV edge-cache model, the Pennant-style API design, and when to use flags vs config vs environment variables.
 
-## Why Cloudflare KV for Feature Flags
+## WorkOS as the Primary Provider
 
-Feature flags need to be fast to read, easy to update without a deployment, and
-globally consistent within acceptable latency bounds. Cloudflare KV satisfies all
-three constraints for Workers applications.
+Feature flags need centralized management, user/org targeting, and fast reads at the edge. Roost uses WorkOS as the primary provider for flag definitions and evaluation, with Cloudflare KV as an optional edge-cache layer.
 
-KV is a globally distributed key-value store. Reads are served from edge caches
-with single-digit millisecond latency. Updates propagate to all edge locations
-within ~60 seconds. For feature flags, eventual consistency is a reasonable
-trade-off: a user might see the old value for one request after a flag is
-changed, but that is acceptable for most flag scenarios.
+WorkOS provides a dashboard for managing flags — creating them, enabling/disabling them globally, and targeting specific users or organizations. The Roost SDK calls `workos.featureFlags.getFeatureFlag(slug)` to evaluate a flag at request time.
 
-The alternative — storing flags in a Durable Object or D1 database — provides
-stronger consistency but adds latency to every flag check. KV's write-rarely,
-read-frequently pattern is a natural fit for feature flag data.
+## The KV Edge-Cache Layer
+
+Calling the WorkOS API on every request adds network latency. `KVCacheFlagProvider` wraps `WorkOSFlagProvider` and caches evaluation results in Cloudflare KV with a configurable TTL (default 60 seconds). On a cache hit the flag is served from the nearest edge node without a round-trip to WorkOS.
+
+Cache keys encode the flag slug plus any user/org context, so different users receive their own cached values independently.
+
+When both `WORKOS_API_KEY` and a `FLAGS_KV` binding are present, `FeatureFlagServiceProvider` automatically composes `WorkOSFlagProvider` inside `KVCacheFlagProvider`. No extra configuration is needed.
 
 ## The Per-Request Cache
 
-Even with KV's edge caching, calling `FeatureFlag.isEnabled()` for the same
-flag multiple times in one request is wasteful. `FeatureFlagMiddleware` solves
-this with a per-request in-memory cache.
+Even with KV's edge caching, calling `FeatureFlag.isEnabled()` for the same flag multiple times in one request is wasteful. `FeatureFlagMiddleware` provides a per-request in-memory cache.
 
-At the start of each request, the middleware prefetches all configured flags in
-parallel and attaches the results to the request object under a unique symbol.
-Any call to `isEnabled(flag, request)` or `getValue(flag, request)` that passes
-the request reads from this cache without another KV round-trip.
+At the start of each request the middleware prefetches all configured flags in parallel and attaches the results to the request object under a unique symbol. Any call to `isEnabled(flag, request)` or `getValue(flag, request)` that passes the request reads from this cache without another KV or WorkOS round-trip.
 
-The cache is scoped to the request lifetime. There is no shared cache between
-requests, so there are no cross-request invalidation concerns. The trade-off is
-that the prefetch list must be known at middleware registration time — flags
-accessed outside the prefetch list will still hit KV.
+The cache is scoped to the request lifetime. There are no cross-request invalidation concerns.
 
 ## Pennant-Style API
 
-`FeatureFlag`'s static API is inspired by Laravel Pennant. Pennant popularized
-the approach of treating feature flags as first-class language constructs rather
-than string lookups in a third-party SDK. The `isEnabled()` / `getValue()` /
-`set()` interface is intentionally minimal: there is one place to check a flag,
-one place to write it, and one place to configure the store.
+`FeatureFlag`'s static API is inspired by Laravel Pennant. The `isEnabled()` / `active()` / `getValue()` / `value()` / `for()` interface is intentionally minimal: one place to check a flag, one place to write it, one place to configure the provider.
 
-The static API means there is no flag client instance to thread through the
-application. Any file that imports `FeatureFlag` can check a flag. This is a
-deliberate trade-off: it reduces boilerplate at the cost of making the flag store
-a global. The test helpers (`fake()`, `restore()`, `assertChecked()`) address
-the testing concern that globals usually introduce.
+The static API means there is no flag client instance to thread through the application. Any file that imports `FeatureFlag` or `Feature` can check a flag. The test helpers (`fake()`, `restore()`, `assertChecked()`) address the testing concern that globals usually introduce.
+
+`Feature` is an alias for `FeatureFlag` — both names work.
+
+## Provider Architecture
+
+Three provider types are available:
+
+- **`WorkOSFlagProvider`** — calls the WorkOS API. Primary for all flag definitions and global enable/disable. Supports user/org targeting configured in the WorkOS dashboard.
+- **`KVCacheFlagProvider`** — wraps any provider with KV-backed edge caching. Cache keys include flag slug and user/org context so each targeted subject has an independent cache entry.
+- **`KVFlagProvider`** — reads/writes flags stored directly in KV. Suitable for infrastructure kill switches or maintenance-mode flags that do not need WorkOS dashboard management.
+
+`FeatureFlagServiceProvider` selects a provider automatically:
+
+| `WORKOS_API_KEY` | `FLAGS_KV` binding | Active provider |
+|---|---|---|
+| ✓ | ✓ | `KVCacheFlagProvider(WorkOSFlagProvider)` |
+| ✓ | — | `WorkOSFlagProvider` |
+| — | ✓ | `KVFlagProvider` |
+| — | — | None (warns; all flags throw) |
+
+Override with `flags.provider: 'kv'` in app config to force KV-only mode even when `WORKOS_API_KEY` is present.
 
 ## Flags vs Config vs Environment Variables
 
-Three mechanisms are commonly used for runtime behavior switching. Choosing the
-right one depends on who needs to change the value and how often.
+**Environment variables** are set at deploy time. Use them for values that require a deployment to update: API keys, external service URLs, resource limits.
 
-**Environment variables** are set at deploy time in `wrangler.jsonc` or the
-Cloudflare dashboard. They are the right choice for values that change rarely
-and require a deployment to update: API keys, external service URLs, resource
-limits that are part of the infrastructure definition.
+**App config** (`app.config.get(...)`) layers over environment variables with structured defaults. Use it for values that vary between environments but are set at deploy time.
 
-**App config** (`app.config.get(...)`) is a layer over environment variables
-with structured defaults. Use it for values that vary between environments
-(development, staging, production) but are set at deploy time.
-
-**Feature flags** are for values that need to change without a deployment: A/B
-tests, gradual rollouts, kill switches, beta feature gates. The key distinction
-is that feature flag values are changed at runtime by operators, not developers.
-A developer deploys the flag check; an operator flips the flag.
-
-Do not reach for feature flags for values that will never change after initial
-setup. The additional KV read is unnecessary overhead for static configuration.
+**Feature flags** are for values that need to change without a deployment: A/B tests, gradual rollouts, kill switches, beta feature gates. A developer deploys the flag check; an operator flips the flag in the WorkOS dashboard.
 
 ## Truthy Evaluation Rules
 
-`FeatureFlag.isEnabled()` converts any `FlagValue` to a boolean using
-intentionally simple rules:
+`FeatureFlag.isEnabled()` and `FeatureFlag.active()` convert any `FlagValue` to a boolean:
 
 - `true` → truthy
 - `false` → falsy
@@ -10503,13 +10552,12 @@ intentionally simple rules:
 - positive number → truthy; `0` or negative → falsy
 - `null` / missing flag → falsy
 
-This means `isEnabled()` is safe to call even if a flag has not been set yet
-— it returns `false` rather than throwing, making flag check-in before initial
-configuration safe.
+`isEnabled()` is safe to call before a flag is created in WorkOS — it returns `false` rather than throwing.
 
 ## Further Reading
 
 - [@roostjs/feature-flags reference — FeatureFlag, middleware, and provider API](/docs/reference/feature-flags.md)
+- [WorkOS Feature Flags Documentation](https://workos.com/docs/feature-flags)
 - [Cloudflare KV Documentation](https://developers.cloudflare.com/kv/)
 
 

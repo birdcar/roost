@@ -6,7 +6,9 @@ bun add @roostjs/feature-flags
 
 ## Configuration
 
-Declare a Cloudflare KV namespace binding in `wrangler.jsonc`:
+`FeatureFlagServiceProvider` auto-selects a provider based on available environment bindings.
+
+**WorkOS + KV (recommended):** Set `WORKOS_API_KEY` and declare a KV namespace:
 
 ```jsonc title="wrangler.jsonc"
 {
@@ -16,25 +18,37 @@ Declare a Cloudflare KV namespace binding in `wrangler.jsonc`:
 }
 ```
 
-The default binding name is `FLAGS_KV`. Override it via `flags.kv` in the app
-config before registering the provider.
+**WorkOS only:** Set `WORKOS_API_KEY` — no KV binding required.
+
+**KV only:** Omit `WORKOS_API_KEY` and set `flags.provider: 'kv'` in app config.
+
+The default KV binding name is `FLAGS_KV`. Override via `flags.kv` in app config.
 
 ## FeatureFlag API
 
-`FeatureFlag` is a static class. All methods are called directly on the class.
-There is no instance to construct.
+`FeatureFlag` is a static class. `Feature` is an alias — both names are exported and interchangeable.
 
 ### Static Methods
 
-#### `static configure(flagStore: FlagStore): void`
+#### `static for(context: FlagContext): ScopedFeatureFlag`
 
-Set the backing `FlagStore`. Called automatically by `FeatureFlagServiceProvider`.
-Call this directly in tests or custom bootstrapping when bypassing the provider.
+Create a scoped evaluator that passes user/org context to the provider for targeted evaluation.
+
+```ts
+const result = await FeatureFlag.for({ userId: 'u_1', organizationId: 'org_1' }).active('beta');
+```
+
+#### `static async active(flag: string, request?: Request): Promise<boolean>`
+
+Alias for `isEnabled()`. Returns `true` if the flag evaluates to a truthy value.
+
+#### `static async value<T>(flag: string, defaultValue?: T): Promise<T | null>`
+
+Returns the raw flag value cast to `T`. Returns `defaultValue` when the flag is missing and a default is provided. Throws `FlagNotFoundError` when the flag is missing and no default is given.
 
 #### `static async isEnabled(flag: string, request?: Request): Promise<boolean>`
 
-Returns `true` if the flag evaluates to a truthy value. Accepts an optional
-`request` to read from the per-request cache set by `FeatureFlagMiddleware`.
+Returns `true` if the flag evaluates to a truthy value. Accepts an optional `request` to read from the per-request cache set by `FeatureFlagMiddleware`.
 
 Truthy rules:
 - `boolean`: the value itself
@@ -42,37 +56,55 @@ Truthy rules:
 - `number`: positive numbers are truthy, `0` and negatives are falsy
 - `null` / missing: falsy
 
-Swallows store errors and returns `false` rather than throwing.
+Swallows provider errors and returns `false` rather than throwing.
 
 #### `static async getValue<T extends FlagValue>(flag: string, request?: Request): Promise<T | null>`
 
-Returns the raw flag value cast to `T`. Throws `FlagNotFoundError` if the flag
-does not exist in the store. Use `isEnabled()` when you only need a boolean.
+Returns the raw flag value cast to `T`. Throws `FlagNotFoundError` if the flag does not exist. Use `isEnabled()` when you only need a boolean.
 
 #### `static async set<T extends FlagValue>(flag: string, value: T): Promise<void>`
 
-Write a flag value to the store. Used for programmatic flag management.
-Throws `FlagStoreNotConfiguredError` if no store is configured.
+Write a flag value to the store. Requires a writable `FlagStore` to be configured (available when KV is present). Throws if only a read-only provider is active.
+
+#### `static configure(flagStore: FlagStore): void`
+
+Set a legacy `FlagStore` directly. Clears any active provider. Called by `FeatureFlagServiceProvider` for KV-only mode; also useful in tests or custom bootstrapping.
+
+#### `static configureProvider(flagProvider: FlagProvider): void`
+
+Set a `FlagProvider` as the evaluation backend. Clears the legacy store.
+
+#### `static configureProviderWithStore(flagProvider: FlagProvider, flagStore: FlagStore): void`
+
+Set both a `FlagProvider` for reads and a `FlagStore` for writes. Used by `FeatureFlagServiceProvider` when WorkOS handles evaluation and KV handles `set()`.
 
 #### `static fake(flags: Record<string, FlagValue>): void`
 
-Enable fake mode with a static set of flag values. All subsequent calls to
-`isEnabled()` and `getValue()` read from the in-memory fake.
+Enable fake mode with a static set of flag values. All subsequent calls to `isEnabled()`, `active()`, `getValue()`, and `value()` read from the in-memory fake.
 
 #### `static restore(): void`
 
-Disable fake mode and clear the configured store.
+Disable fake mode and clear the configured store and provider.
 
 #### `static assertChecked(flag: string): void`
 
-Assert that `isEnabled()` or `getValue()` was called for `flag` during the test.
-Throws if `fake()` was not called first, or if the flag was not accessed.
+Assert that `isEnabled()`, `active()`, `getValue()`, or `value()` was called for `flag` during the test. Throws if `fake()` was not called first, or if the flag was not accessed.
+
+## ScopedFeatureFlag API
+
+Returned by `FeatureFlag.for(context)`.
+
+#### `async active(flag: string): Promise<boolean>`
+
+Evaluate `flag` with the bound context. Returns `true` if truthy.
+
+#### `async value<T>(flag: string, defaultValue?: T): Promise<T | null>`
+
+Return the raw value for `flag` with the bound context. Returns `defaultValue` when missing and a default is provided. Throws `FlagNotFoundError` otherwise.
 
 ## FeatureFlagMiddleware API
 
-Prefetches a set of flag values at the start of each request and attaches them
-to the request object. Downstream code that calls `FeatureFlag.isEnabled(flag, request)`
-reads from the cache without hitting KV again.
+Prefetches a set of flag values at the start of each request and attaches them to the request object. Downstream calls to `FeatureFlag.isEnabled(flag, request)` read from the cache without another provider round-trip.
 
 #### `constructor(flags: string[])`
 
@@ -80,24 +112,63 @@ Pass the list of flag names to prefetch on every request.
 
 #### `async handle(request: Request, next: (r: Request) => Promise<Response>): Promise<Response>`
 
-Fetches all configured flags in parallel, populates the per-request cache, then
-calls `next`.
+Fetches all configured flags in parallel, populates the per-request cache, then calls `next`.
 
 ## FeatureFlagServiceProvider API
 
-Bootstraps `FeatureFlag` with a `KVStore` backed by the configured binding.
+Bootstraps `FeatureFlag` with the appropriate provider based on available environment bindings.
 
 #### `register(): void`
 
-Resolves the KV binding from `app.env` using the name from `app.config.get('flags.kv', 'FLAGS_KV')`.
-Calls `FeatureFlag.configure()` with a `FlagStore` that reads and writes JSON
-values via `@roostjs/cloudflare`'s `KVStore`. Logs a warning and returns without
-configuring if the binding is not found.
+Provider selection logic:
+
+| `WORKOS_API_KEY` | KV binding | `flags.provider` config | Result |
+|---|---|---|---|
+| ✓ | ✓ | `'workos'` (default) | `KVCacheFlagProvider(WorkOSFlagProvider)` + KV write store |
+| ✓ | — | `'workos'` (default) | `WorkOSFlagProvider` (no writes) |
+| — | ✓ | any | `KVFlagProvider` + KV write store |
+| — | — | any | Warning logged; all flags throw |
+
+## Provider Classes
+
+### `WorkOSFlagProvider`
+
+```ts
+new WorkOSFlagProvider(apiKey: string)
+```
+
+Calls `workos.featureFlags.getFeatureFlag(slug)` and returns `flag.enabled`. Targeting rules (which users/orgs see the flag) are configured in the WorkOS dashboard.
+
+### `KVCacheFlagProvider`
+
+```ts
+new KVCacheFlagProvider(inner: FlagProvider, kv: KVNamespace, ttlSeconds?: number)
+```
+
+Wraps any `FlagProvider` with KV-backed edge caching. Default TTL is 60 seconds. Cache keys include the flag slug plus any `userId` and `organizationId` from context, so each targeted subject has an independent cache entry.
+
+### `KVFlagProvider`
+
+```ts
+new KVFlagProvider(kv: KVNamespace)
+```
+
+Reads/writes flags stored directly in KV as JSON. Suitable for infrastructure flags that don't need WorkOS dashboard management (maintenance mode, kill switches). Supports `set()`.
 
 ## Types
 
 ```ts
 type FlagValue = boolean | number | string | Record<string, unknown>;
+
+interface FlagContext {
+  userId?: string;
+  organizationId?: string;
+  [key: string]: unknown;
+}
+
+interface FlagProvider {
+  evaluate(key: string, context?: FlagContext): Promise<FlagValue>;
+}
 
 interface FlagStore {
   get<T = FlagValue>(flag: string): Promise<T | null>;
@@ -109,19 +180,17 @@ interface FlagStore {
 
 #### `FlagStoreNotConfiguredError`
 
-Thrown by `isEnabled()`, `getValue()`, and `set()` when no store has been
-configured and no fake is active.
+Thrown by `isEnabled()`, `active()`, `getValue()`, `value()`, and `set()` when no store or provider has been configured and no fake is active.
 
 #### `FlagNotFoundError`
 
-Thrown by `getValue()` when the flag key does not exist in the store.
+Thrown by `getValue()` and `value()` when the flag key does not exist in the store/provider.
 
 ## Testing
 
 #### `FeatureFlagFake`
 
-Internal fake state managed by `FeatureFlag.fake()`. Tracks which flags were
-checked so `assertChecked()` can verify access.
+Internal fake state managed by `FeatureFlag.fake()`. Tracks which flags were checked so `assertChecked()` can verify access.
 
 ```ts
 class FeatureFlagFake {
@@ -133,18 +202,15 @@ class FeatureFlagFake {
 
 ## Cache Utilities
 
-Used internally by `FeatureFlagMiddleware` and `FeatureFlag.isEnabled()`. Exposed
-for advanced use cases.
+Used internally by `FeatureFlagMiddleware` and `FeatureFlag.isEnabled()`. Exposed for advanced use cases.
 
 #### `getRequestCache(request: Request): Map<string, FlagValue> | null`
 
-Read the per-request flag cache attached to `request`. Returns `null` if no
-cache has been set.
+Read the per-request flag cache attached to `request`. Returns `null` if no cache has been set.
 
 #### `setRequestCache(request: Request, cache: Map<string, FlagValue>): void`
 
-Attach a flag cache map to `request`. The cache is keyed by `FLAG_CACHE_KEY`
-(a unique symbol) to avoid namespace collisions.
+Attach a flag cache map to `request`. The cache is keyed by `FLAG_CACHE_KEY` (a unique symbol) to avoid namespace collisions.
 
 #### `FLAG_CACHE_KEY: unique symbol`
 
