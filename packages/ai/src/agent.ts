@@ -1,5 +1,5 @@
 import type { Tool } from './tool.js';
-import type { AgentConfig, AgentMessage, AgentResponse } from './types.js';
+import type { AgentConfig, AgentMessage, AgentResponse, PromptResult } from './types.js';
 import type { AIProvider } from './providers/interface.js';
 import { getAgentConfig } from './decorators.js';
 import { createToolRequest, toolToProviderTool } from './tool.js';
@@ -32,7 +32,7 @@ export abstract class Agent implements AgentInterface {
     providers.delete(this);
   }
 
-  async prompt(input: string, options?: Partial<AgentConfig>): Promise<AgentResponse> {
+  async prompt(input: string, options?: Partial<AgentConfig>): Promise<PromptResult> {
     const ctor = this.constructor as typeof Agent;
 
     const fake = fakes.get(ctor);
@@ -55,6 +55,21 @@ export abstract class Agent implements AgentInterface {
 
     const tools = (this as unknown as HasTools).tools?.()
       ?.map(toolToProviderTool) ?? [];
+
+    if (config.queued) {
+      const response = await provider.chat({
+        model: config.model ?? '@cf/meta/llama-3.1-8b-instruct',
+        messages,
+        tools: tools.length > 0 ? tools : undefined,
+        maxTokens: config.maxTokens,
+        temperature: config.temperature,
+        queueRequest: true,
+      });
+
+      if ('taskId' in response && typeof response.taskId === 'string') {
+        return { queued: true, taskId: response.taskId };
+      }
+    }
 
     const maxSteps = config.maxSteps ?? 5;
     let currentMessages = [...messages];
@@ -98,19 +113,29 @@ export abstract class Agent implements AgentInterface {
     );
 
     return {
+      queued: false,
       text: lastResponse,
       messages: currentMessages,
       toolCalls: [],
     };
   }
 
-  async stream(input: string): Promise<ReadableStream<Uint8Array>> {
-    const response = await this.prompt(input);
+  async stream(input: string, options?: Partial<AgentConfig>): Promise<ReadableStream<Uint8Array>> {
+    if (options?.queued) {
+      throw new Error('Cannot stream a queued request — use Agent.prompt({ queued: true }) and poll for results');
+    }
+
+    const result = await this.prompt(input, options);
+
+    if (result.queued) {
+      throw new Error('Cannot stream a queued request — use Agent.prompt({ queued: true }) and poll for results');
+    }
+
     const encoder = new TextEncoder();
 
     return new ReadableStream({
       start(controller) {
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'text-delta', text: response.text })}\n\n`));
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'text-delta', text: result.text })}\n\n`));
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'done' })}\n\n`));
         controller.close();
       },
@@ -153,10 +178,10 @@ class AgentFake {
     this.prompts.push(input);
   }
 
-  nextResponse(): AgentResponse {
+  nextResponse(): PromptResult {
     const text = this.responses[this.responseIndex] ?? this.responses[this.responses.length - 1] ?? '';
     this.responseIndex++;
-    return { text, messages: [], toolCalls: [] };
+    return { queued: false, text, messages: [], toolCalls: [] };
   }
 
   assertPrompted(textOrFn: string | ((prompt: string) => boolean)): void {
@@ -177,7 +202,7 @@ export function agent(options: {
   instructions: string;
   tools?: Tool[];
   provider?: AIProvider;
-}): { prompt: (input: string) => Promise<AgentResponse> } {
+}): { prompt: (input: string, options?: Partial<AgentConfig>) => Promise<PromptResult> } {
   const anon = new (class extends Agent {
     instructions() { return options.instructions; }
     tools() { return options.tools ?? []; }
@@ -188,6 +213,6 @@ export function agent(options: {
   }
 
   return {
-    prompt: (input: string) => anon.prompt(input),
+    prompt: (input: string, opts?: Partial<AgentConfig>) => anon.prompt(input, opts),
   };
 }
