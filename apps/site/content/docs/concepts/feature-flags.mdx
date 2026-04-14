@@ -1,80 +1,68 @@
 ---
 title: "@roost/feature-flags"
-description: Why feature flags belong in KV, the per-request caching model, the Pennant-style API design, and when to use flags vs config vs environment variables.
+description: Why WorkOS is the primary feature flag provider, the KV edge-cache model, the Pennant-style API design, and when to use flags vs config vs environment variables.
 ---
 
-## Why Cloudflare KV for Feature Flags
+## WorkOS as the Primary Provider
 
-Feature flags need to be fast to read, easy to update without a deployment, and
-globally consistent within acceptable latency bounds. Cloudflare KV satisfies all
-three constraints for Workers applications.
+Feature flags need centralized management, user/org targeting, and fast reads at the edge. Roost uses WorkOS as the primary provider for flag definitions and evaluation, with Cloudflare KV as an optional edge-cache layer.
 
-KV is a globally distributed key-value store. Reads are served from edge caches
-with single-digit millisecond latency. Updates propagate to all edge locations
-within ~60 seconds. For feature flags, eventual consistency is a reasonable
-trade-off: a user might see the old value for one request after a flag is
-changed, but that is acceptable for most flag scenarios.
+WorkOS provides a dashboard for managing flags — creating them, enabling/disabling them globally, and targeting specific users or organizations. The Roost SDK calls `workos.featureFlags.getFeatureFlag(slug)` to evaluate a flag at request time.
 
-The alternative — storing flags in a Durable Object or D1 database — provides
-stronger consistency but adds latency to every flag check. KV's write-rarely,
-read-frequently pattern is a natural fit for feature flag data.
+## The KV Edge-Cache Layer
+
+Calling the WorkOS API on every request adds network latency. `KVCacheFlagProvider` wraps `WorkOSFlagProvider` and caches evaluation results in Cloudflare KV with a configurable TTL (default 60 seconds). On a cache hit the flag is served from the nearest edge node without a round-trip to WorkOS.
+
+Cache keys encode the flag slug plus any user/org context, so different users receive their own cached values independently.
+
+When both `WORKOS_API_KEY` and a `FLAGS_KV` binding are present, `FeatureFlagServiceProvider` automatically composes `WorkOSFlagProvider` inside `KVCacheFlagProvider`. No extra configuration is needed.
 
 ## The Per-Request Cache
 
-Even with KV's edge caching, calling `FeatureFlag.isEnabled()` for the same
-flag multiple times in one request is wasteful. `FeatureFlagMiddleware` solves
-this with a per-request in-memory cache.
+Even with KV's edge caching, calling `FeatureFlag.isEnabled()` for the same flag multiple times in one request is wasteful. `FeatureFlagMiddleware` provides a per-request in-memory cache.
 
-At the start of each request, the middleware prefetches all configured flags in
-parallel and attaches the results to the request object under a unique symbol.
-Any call to `isEnabled(flag, request)` or `getValue(flag, request)` that passes
-the request reads from this cache without another KV round-trip.
+At the start of each request the middleware prefetches all configured flags in parallel and attaches the results to the request object under a unique symbol. Any call to `isEnabled(flag, request)` or `getValue(flag, request)` that passes the request reads from this cache without another KV or WorkOS round-trip.
 
-The cache is scoped to the request lifetime. There is no shared cache between
-requests, so there are no cross-request invalidation concerns. The trade-off is
-that the prefetch list must be known at middleware registration time — flags
-accessed outside the prefetch list will still hit KV.
+The cache is scoped to the request lifetime. There are no cross-request invalidation concerns.
 
 ## Pennant-Style API
 
-`FeatureFlag`'s static API is inspired by Laravel Pennant. Pennant popularized
-the approach of treating feature flags as first-class language constructs rather
-than string lookups in a third-party SDK. The `isEnabled()` / `getValue()` /
-`set()` interface is intentionally minimal: there is one place to check a flag,
-one place to write it, and one place to configure the store.
+`FeatureFlag`'s static API is inspired by Laravel Pennant. The `isEnabled()` / `active()` / `getValue()` / `value()` / `for()` interface is intentionally minimal: one place to check a flag, one place to write it, one place to configure the provider.
 
-The static API means there is no flag client instance to thread through the
-application. Any file that imports `FeatureFlag` can check a flag. This is a
-deliberate trade-off: it reduces boilerplate at the cost of making the flag store
-a global. The test helpers (`fake()`, `restore()`, `assertChecked()`) address
-the testing concern that globals usually introduce.
+The static API means there is no flag client instance to thread through the application. Any file that imports `FeatureFlag` or `Feature` can check a flag. The test helpers (`fake()`, `restore()`, `assertChecked()`) address the testing concern that globals usually introduce.
+
+`Feature` is an alias for `FeatureFlag` — both names work.
+
+## Provider Architecture
+
+Three provider types are available:
+
+- **`WorkOSFlagProvider`** — calls the WorkOS API. Primary for all flag definitions and global enable/disable. Supports user/org targeting configured in the WorkOS dashboard.
+- **`KVCacheFlagProvider`** — wraps any provider with KV-backed edge caching. Cache keys include flag slug and user/org context so each targeted subject has an independent cache entry.
+- **`KVFlagProvider`** — reads/writes flags stored directly in KV. Suitable for infrastructure kill switches or maintenance-mode flags that do not need WorkOS dashboard management.
+
+`FeatureFlagServiceProvider` selects a provider automatically:
+
+| `WORKOS_API_KEY` | `FLAGS_KV` binding | Active provider |
+|---|---|---|
+| ✓ | ✓ | `KVCacheFlagProvider(WorkOSFlagProvider)` |
+| ✓ | — | `WorkOSFlagProvider` |
+| — | ✓ | `KVFlagProvider` |
+| — | — | None (warns; all flags throw) |
+
+Override with `flags.provider: 'kv'` in app config to force KV-only mode even when `WORKOS_API_KEY` is present.
 
 ## Flags vs Config vs Environment Variables
 
-Three mechanisms are commonly used for runtime behavior switching. Choosing the
-right one depends on who needs to change the value and how often.
+**Environment variables** are set at deploy time. Use them for values that require a deployment to update: API keys, external service URLs, resource limits.
 
-**Environment variables** are set at deploy time in `wrangler.jsonc` or the
-Cloudflare dashboard. They are the right choice for values that change rarely
-and require a deployment to update: API keys, external service URLs, resource
-limits that are part of the infrastructure definition.
+**App config** (`app.config.get(...)`) layers over environment variables with structured defaults. Use it for values that vary between environments but are set at deploy time.
 
-**App config** (`app.config.get(...)`) is a layer over environment variables
-with structured defaults. Use it for values that vary between environments
-(development, staging, production) but are set at deploy time.
-
-**Feature flags** are for values that need to change without a deployment: A/B
-tests, gradual rollouts, kill switches, beta feature gates. The key distinction
-is that feature flag values are changed at runtime by operators, not developers.
-A developer deploys the flag check; an operator flips the flag.
-
-Do not reach for feature flags for values that will never change after initial
-setup. The additional KV read is unnecessary overhead for static configuration.
+**Feature flags** are for values that need to change without a deployment: A/B tests, gradual rollouts, kill switches, beta feature gates. A developer deploys the flag check; an operator flips the flag in the WorkOS dashboard.
 
 ## Truthy Evaluation Rules
 
-`FeatureFlag.isEnabled()` converts any `FlagValue` to a boolean using
-intentionally simple rules:
+`FeatureFlag.isEnabled()` and `FeatureFlag.active()` convert any `FlagValue` to a boolean:
 
 - `true` → truthy
 - `false` → falsy
@@ -82,11 +70,10 @@ intentionally simple rules:
 - positive number → truthy; `0` or negative → falsy
 - `null` / missing flag → falsy
 
-This means `isEnabled()` is safe to call even if a flag has not been set yet
-— it returns `false` rather than throwing, making flag check-in before initial
-configuration safe.
+`isEnabled()` is safe to call before a flag is created in WorkOS — it returns `false` rather than throwing.
 
 ## Further Reading
 
 - [@roost/feature-flags reference — FeatureFlag, middleware, and provider API](/docs/reference/feature-flags)
+- [WorkOS Feature Flags Documentation](https://workos.com/docs/feature-flags)
 - [Cloudflare KV Documentation](https://developers.cloudflare.com/kv/)
