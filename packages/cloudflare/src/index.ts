@@ -20,3 +20,8 @@ export { DORateLimiter } from './rate-limiting/do-rate-limiter.js';
 export { RateLimiterDO } from './rate-limiting/durable-object.js';
 export { RateLimiterFake, fakeRateLimiter, restoreRateLimiter } from './rate-limiting/fake.js';
 export type { RateLimiterConfig, KeyExtractor, RateLimitResult, WindowState } from './rate-limiting/types.js';
+
+export { HtmlTransformer } from './html/transformer.js';
+export type { ScriptPosition, AbVariant } from './html/transformer.js';
+export { VersionedKVStore } from './bindings/versioned-kv.js';
+export type { VersionedKVOptions } from './bindings/versioned-kv.js';
