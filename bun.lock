@@ -245,6 +245,7 @@
       "dependencies": {
         "@roost/cloudflare": "workspace:*",
         "@roost/core": "workspace:*",
+        "@workos-inc/node": "^7.0.0",
       },
       "devDependencies": {
         "@cloudflare/workers-types": "catalog:",
