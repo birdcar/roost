@@ -12,3 +12,6 @@ export type {
   McpResourceDefinition,
   McpPromptDefinition,
 } from './types.js';
+
+export { AiSearchResource } from './resources/ai-search.js';
+export type { AiSearchQuery, AiSearchResult } from './resources/ai-search.js';
