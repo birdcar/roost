@@ -227,6 +227,119 @@ export class ${pascal}Workflow extends Workflow<Env, ${pascal}Params> {
   await writeIfNotExists(join('src', 'workflows', `${kebab}.ts`), content);
 }
 
+export async function makeEvent(name: string, options: { broadcast?: boolean } = {}): Promise<void> {
+  const pascal = toPascalCase(name);
+  const kebab = toKebabCase(name);
+
+  const content = options.broadcast
+    ? `import { Event } from '@roost/events';
+import { type BroadcastableEvent, PrivateChannel } from '@roost/broadcast';
+
+export class ${pascal} extends Event implements BroadcastableEvent {
+  constructor(readonly id: string) {
+    super();
+  }
+
+  broadcastOn() {
+    return [new PrivateChannel(\`${kebab}.\${this.id}\`)];
+  }
+
+  broadcastWith() {
+    return { id: this.id };
+  }
+}
+`
+    : `import { Event } from '@roost/events';
+
+export class ${pascal} extends Event {
+  constructor(
+    // Add event properties here
+  ) {
+    super();
+  }
+}
+`;
+
+  await writeIfNotExists(join('src', 'events', `${kebab}.ts`), content);
+}
+
+export async function makeListener(
+  name: string,
+  options: { event?: string; queued?: boolean } = {}
+): Promise<void> {
+  const pascal = toPascalCase(name);
+  const kebab = toKebabCase(name);
+
+  let content: string;
+
+  if (options.queued) {
+    const eventImport = options.event
+      ? `import type { ${toPascalCase(options.event)} } from '../events/${toKebabCase(options.event)}.js';\n`
+      : '';
+    const eventType = options.event ? toPascalCase(options.event) : 'unknown';
+    content = `import { Job } from '@roost/queue';
+import type { Listener, ShouldQueue } from '@roost/events';
+${eventImport}
+export class ${pascal} extends Job<${eventType}> implements Listener<${eventType}>, ShouldQueue {
+  readonly shouldQueue = true as const;
+
+  async handle(): Promise<void> {
+    const event = this.payload;
+    // Handle the event
+    void event;
+  }
+}
+`;
+  } else {
+    const eventImport = options.event
+      ? `import type { ${toPascalCase(options.event)} } from '../events/${toKebabCase(options.event)}.js';\n`
+      : '';
+    const eventType = options.event ? toPascalCase(options.event) : 'unknown';
+    content = `import type { Listener } from '@roost/events';
+${eventImport}
+export class ${pascal} implements Listener<${eventType}> {
+  async handle(event: ${eventType}): Promise<void> {
+    // Handle the event
+    void event;
+  }
+}
+`;
+  }
+
+  await writeIfNotExists(join('src', 'listeners', `${kebab}.ts`), content);
+}
+
+export async function makeChannel(name: string, options: { presence?: boolean } = {}): Promise<void> {
+  const pascal = toPascalCase(name);
+  const kebab = toKebabCase(name);
+
+  const content = options.presence
+    ? `export class ${pascal} {
+  static authorize(userId: string, channelParams: Record<string, string>): boolean {
+    // Implement authorization logic
+    void userId;
+    void channelParams;
+    return false;
+  }
+
+  static presenceData(userId: string): Record<string, unknown> {
+    return { id: userId };
+  }
+}
+`
+    : `export class ${pascal} {
+  static authorize(userId: string, channelParams: Record<string, string>): boolean {
+    // Implement authorization logic
+    void userId;
+    void channelParams;
+    return false;
+  }
+}
+`;
+
+  await writeIfNotExists(join('src', 'channels', `${kebab}.ts`), content);
+}
+
 export async function makeController(name: string): Promise<void> {
   const pascal = toPascalCase(name);
   const kebab = toKebabCase(name);

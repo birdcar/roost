@@ -1,20 +1,28 @@
 #!/usr/bin/env bun
 
 import { newProject } from './commands/new.js';
-import { makeModel, makeAgent, makeTool, makeJob, makeMiddleware, makeMcpServer, makeController, makeRateLimiter, makeWorkflow } from './commands/make.js';
+import { makeModel, makeAgent, makeTool, makeJob, makeMiddleware, makeMcpServer, makeController, makeRateLimiter, makeWorkflow, makeEvent, makeListener, makeChannel } from './commands/make.js';
 import { run } from './process.js';
 
 const args = process.argv.slice(2);
 const command = args[0];
 const rest = args.slice(1);
 
-function parseFlags(args: string[]): { positional: string[]; flags: Record<string, boolean> } {
+function parseFlags(args: string[]): { positional: string[]; flags: Record<string, boolean | string> } {
   const positional: string[] = [];
-  const flags: Record<string, boolean> = {};
+  const flags: Record<string, boolean | string> = {};
 
-  for (const arg of args) {
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
     if (arg.startsWith('--')) {
-      flags[arg.slice(2)] = true;
+      const key = arg.slice(2);
+      const next = args[i + 1];
+      if (next !== undefined && !next.startsWith('--')) {
+        flags[key] = next;
+        i++;
+      } else {
+        flags[key] = true;
+      }
     } else {
       positional.push(arg);
     }
@@ -34,7 +42,7 @@ async function main() {
   switch (command) {
     case 'new':
       if (!positional[0]) { console.error('Usage: roost new <name>'); process.exit(1); }
-      await newProject(positional[0], flags);
+      await newProject(positional[0], flags as Record<string, boolean>);
       break;
 
     case 'make:model':
@@ -80,6 +88,26 @@ async function main() {
     case 'make:workflow':
       if (!positional[0]) { console.error('Usage: roost make:workflow <Name>'); process.exit(1); }
       await makeWorkflow(positional[0]);
+      break;
+
+    case 'make:event':
+      if (!positional[0]) { console.error('Usage: roost make:event <Name> [--broadcast]'); process.exit(1); }
+      await makeEvent(positional[0], { broadcast: Boolean(flags['broadcast']) });
+      break;
+
+    case 'make:listener': {
+      if (!positional[0]) { console.error('Usage: roost make:listener <Name> [--event <EventName>] [--queued]'); process.exit(1); }
+      const eventFlag = flags['event'];
+      await makeListener(positional[0], {
+        event: typeof eventFlag === 'string' ? eventFlag : undefined,
+        queued: Boolean(flags['queued']),
+      });
+      break;
+    }
+
+    case 'make:channel':
+      if (!positional[0]) { console.error('Usage: roost make:channel <Name> [--presence]'); process.exit(1); }
+      await makeChannel(positional[0], { presence: Boolean(flags['presence']) });
       break;
 
     case 'dev':
@@ -136,6 +164,9 @@ function printHelp() {
     make:middleware <Name> Generate a middleware class
     make:rate-limiter <Name>  Generate a rate limiter middleware (--do for exact DO variant)
     make:workflow <Name>  Generate a durable workflow class
+    make:event <Name>     Generate an event class (--broadcast for BroadcastableEvent)
+    make:listener <Name>  Generate a listener class (--event <Name>, --queued for ShouldQueue)
+    make:channel <Name>   Generate a channel authorization class (--presence for presence data)
 
     dev                   Start the dev server
     build                 Build for production
