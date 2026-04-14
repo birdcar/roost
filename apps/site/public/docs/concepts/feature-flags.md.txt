@@ -1,0 +1,87 @@
+## Why Cloudflare KV for Feature Flags
+
+Feature flags need to be fast to read, easy to update without a deployment, and
+globally consistent within acceptable latency bounds. Cloudflare KV satisfies all
+three constraints for Workers applications.
+
+KV is a globally distributed key-value store. Reads are served from edge caches
+with single-digit millisecond latency. Updates propagate to all edge locations
+within ~60 seconds. For feature flags, eventual consistency is a reasonable
+trade-off: a user might see the old value for one request after a flag is
+changed, but that is acceptable for most flag scenarios.
+
+The alternative — storing flags in a Durable Object or D1 database — provides
+stronger consistency but adds latency to every flag check. KV's write-rarely,
+read-frequently pattern is a natural fit for feature flag data.
+
+## The Per-Request Cache
+
+Even with KV's edge caching, calling `FeatureFlag.isEnabled()` for the same
+flag multiple times in one request is wasteful. `FeatureFlagMiddleware` solves
+this with a per-request in-memory cache.
+
+At the start of each request, the middleware prefetches all configured flags in
+parallel and attaches the results to the request object under a unique symbol.
+Any call to `isEnabled(flag, request)` or `getValue(flag, request)` that passes
+the request reads from this cache without another KV round-trip.
+
+The cache is scoped to the request lifetime. There is no shared cache between
+requests, so there are no cross-request invalidation concerns. The trade-off is
+that the prefetch list must be known at middleware registration time — flags
+accessed outside the prefetch list will still hit KV.
+
+## Pennant-Style API
+
+`FeatureFlag`'s static API is inspired by Laravel Pennant. Pennant popularized
+the approach of treating feature flags as first-class language constructs rather
+than string lookups in a third-party SDK. The `isEnabled()` / `getValue()` /
+`set()` interface is intentionally minimal: there is one place to check a flag,
+one place to write it, and one place to configure the store.
+
+The static API means there is no flag client instance to thread through the
+application. Any file that imports `FeatureFlag` can check a flag. This is a
+deliberate trade-off: it reduces boilerplate at the cost of making the flag store
+a global. The test helpers (`fake()`, `restore()`, `assertChecked()`) address
+the testing concern that globals usually introduce.
+
+## Flags vs Config vs Environment Variables
+
+Three mechanisms are commonly used for runtime behavior switching. Choosing the
+right one depends on who needs to change the value and how often.
+
+**Environment variables** are set at deploy time in `wrangler.jsonc` or the
+Cloudflare dashboard. They are the right choice for values that change rarely
+and require a deployment to update: API keys, external service URLs, resource
+limits that are part of the infrastructure definition.
+
+**App config** (`app.config.get(...)`) is a layer over environment variables
+with structured defaults. Use it for values that vary between environments
+(development, staging, production) but are set at deploy time.
+
+**Feature flags** are for values that need to change without a deployment: A/B
+tests, gradual rollouts, kill switches, beta feature gates. The key distinction
+is that feature flag values are changed at runtime by operators, not developers.
+A developer deploys the flag check; an operator flips the flag.
+
+Do not reach for feature flags for values that will never change after initial
+setup. The additional KV read is unnecessary overhead for static configuration.
+
+## Truthy Evaluation Rules
+
+`FeatureFlag.isEnabled()` converts any `FlagValue` to a boolean using
+intentionally simple rules:
+
+- `true` → truthy
+- `false` → falsy
+- `"true"` → truthy; any other string → falsy
+- positive number → truthy; `0` or negative → falsy
+- `null` / missing flag → falsy
+
+This means `isEnabled()` is safe to call even if a flag has not been set yet
+— it returns `false` rather than throwing, making flag check-in before initial
+configuration safe.
+
+## Further Reading
+
+- [@roost/feature-flags reference — FeatureFlag, middleware, and provider API](/docs/reference/feature-flags.md)
+- [Cloudflare KV Documentation](https://developers.cloudflare.com/kv/)

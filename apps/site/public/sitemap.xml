@@ -56,7 +56,17 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://roost.dev/docs/guides/events</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://roost.dev/docs/guides/migrations</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://roost.dev/docs/guides/feature-flags</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -96,7 +106,17 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://roost.dev/docs/guides/broadcast</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://roost.dev/docs/guides/deployment</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://roost.dev/docs/guides/workflow</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -141,6 +161,16 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://roost.dev/docs/reference/events</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://roost.dev/docs/reference/feature-flags</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://roost.dev/docs/reference/index</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
@@ -162,6 +192,16 @@
   </url>
   <url>
     <loc>https://roost.dev/docs/reference/core</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://roost.dev/docs/reference/broadcast</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://roost.dev/docs/reference/workflow</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
@@ -211,6 +251,16 @@
     <priority>0.6</priority>
   </url>
   <url>
+    <loc>https://roost.dev/docs/concepts/events</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://roost.dev/docs/concepts/feature-flags</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
     <loc>https://roost.dev/docs/concepts/index</loc>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
@@ -242,6 +292,16 @@
   </url>
   <url>
     <loc>https://roost.dev/docs/concepts/core</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://roost.dev/docs/concepts/broadcast</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://roost.dev/docs/concepts/workflow</loc>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>

@@ -46,6 +46,80 @@ can be passed as constructor functions, and the pipeline resolves them from the 
 container. This means middleware can have injected dependencies like any other service —
 the pipeline instantiates them from the container rather than requiring manual construction.
 
+## Structured Logging and Request Tracing
+
+Cloudflare Workers emit logs to a runtime-managed stream. There is no file system, no
+process-level logger, and no log aggregator available at the language level. The only
+output mechanism is `console.log`, which Workers forwards to the Cloudflare dashboard
+and any configured log drain. Roost's `Logger` class leans into this: it serializes
+every entry as a single-line JSON object and writes it with `console.log`.
+
+Structured JSON logging matters because Workers often run thousands of requests
+concurrently. Plain text messages are impossible to correlate across requests. By
+embedding a `requestId` in every log entry, an operator can filter a log drain by
+`requestId` and see the complete trace for a single request — across middleware,
+handlers, and any background work — without any additional instrumentation.
+
+`RequestIdMiddleware` is the source of truth for the request ID. It reads `cf-ray`
+from the incoming request headers when present (Cloudflare sets this on every request
+that passes through the edge network) or generates a UUID for direct-to-Worker traffic.
+The middleware binds a pre-configured `Logger` into the request-scoped container so
+that every downstream component resolves the same logger with the same `requestId`,
+without any manual threading of context.
+
+The `FakeLogger` exists because `console.log` is a side effect. Tests that assert on
+logging must replace the logger with something that captures output rather than emitting
+it. `Logger.fake()` returns a `FakeLogger` with the same interface as `Logger` but
+stores entries in `entries` for inspection. `assertLogged` and `assertNotLogged` provide
+concise assertion methods that produce readable failure messages.
+
+## The Request Lifecycle
+
+A request to a Roost application passes through four stages:
+
+1. **Scope creation.** `Application.handle()` calls `container.scoped()` to create a
+   child container for this request. The scoped container inherits all application-level
+   singletons but maintains its own bindings for request-specific data.
+
+2. **Middleware pipeline.** The scoped container is attached to the request object.
+   Each middleware in registration order receives the request, optionally modifies it or
+   the container, then calls `next` to continue. Middleware can short-circuit by returning
+   a response without calling `next`.
+
+3. **Dispatch.** After all middleware, the dispatcher receives the final request and
+   returns a response. This is where routing and handler logic lives.
+
+4. **Background work.** Promises registered with `app.defer()` run after the response
+   is returned to the client, inside the Worker's `waitUntil()` budget. The runtime
+   keeps the isolate alive until all deferred promises settle.
+
+`defer()` decouples latency-sensitive work from fire-and-forget side effects. Writing
+analytics, sending audit events, or warming a downstream cache are all candidates for
+`defer()`. The client receives its response immediately; the background work completes
+asynchronously without adding to response time.
+
+## Webhook Security
+
+Webhooks are unauthenticated HTTP callbacks by default. Any party that knows your
+endpoint URL can POST to it. Signature verification is the standard mitigation: the
+provider signs each payload with a shared secret, and the receiver verifies the signature
+before processing the event.
+
+Roost's `verifyWebhook` handles the cryptographic details — HMAC-SHA256, HMAC-SHA512,
+and Ed25519 — and also validates the timestamp when the provider includes one. Timestamp
+validation prevents replay attacks: a captured webhook payload cannot be replayed after
+the tolerance window (default 300 seconds) has elapsed.
+
+The `WebhookPresets` map provider-specific header names and payload formats onto the
+generic `WebhookVerifyOptions` interface. Stripe embeds the timestamp inside the
+signature header itself; GitHub uses a simple `sha256=` prefix; Svix uses separate
+headers and Ed25519. The presets encapsulate this variation so application code stays
+uniform across providers.
+
+`WebhookMiddleware` wraps `verifyWebhook` as a `Middleware`-compatible class. It catches
+`WebhookVerificationError` and returns a `401` response with a JSON error body, so
+routes that use it do not need to handle verification failures explicitly.
+
 ## Further Reading
 
 - [Service Container — the DI model in depth](/docs/concepts/service-container.md)

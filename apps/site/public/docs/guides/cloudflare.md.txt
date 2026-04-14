@@ -198,3 +198,232 @@ await vectorize.deleteByIds(['doc_1', 'doc_2']);
 ```
 
 The Vectorize index dimension must match your embedding model's output size. `bge-base-en-v1.5` outputs 768 dimensions.
+
+## How to call another Worker with ServiceClient
+
+Declare a service binding in `wrangler.jsonc`, then resolve a `ServiceClient` from the
+container. `CloudflareServiceProvider` auto-detects `Fetcher` bindings and wraps them.
+
+```json title="wrangler.jsonc"
+{
+  "services": [
+    { "binding": "PAYMENTS_SERVICE", "service": "payments-worker" }
+  ]
+}
+```
+
+```ts title="src/handlers/checkout.ts"
+
+// Resolved automatically by CloudflareServiceProvider
+const payments = container.resolve<ServiceClient>('PAYMENTS_SERVICE');
+
+const response = await payments.post('/charge', {
+  amount: 2000,
+  currency: 'usd',
+  customerId: 'cus_123',
+});
+
+if (!response.ok) {
+  throw new Error(`Payment failed: ${await response.text()}`);
+}
+```
+
+Use `call()` for typed RPC when the remote Worker follows the `/rpc/{method}` convention:
+
+```ts
+const result = await payments.call<{ chargeId: string }>('createCharge', {
+  amount: 2000,
+  currency: 'usd',
+});
+```
+
+## How to dispatch to customer Workers with DispatchNamespaceClient
+
+Workers for Platforms lets you dispatch inbound requests to tenant-owned scripts. Declare
+a dispatch namespace binding, then use `DispatchNamespaceClient` to route by script name.
+
+```json title="wrangler.jsonc"
+{
+  "dispatch_namespaces": [
+    { "binding": "DISPATCH", "namespace": "customer-scripts" }
+  ]
+}
+```
+
+```ts title="src/handlers/tenant.ts"
+
+const dispatch = container.resolve<DispatchNamespaceClient>('DISPATCH');
+
+// Get a ServiceClient for a specific tenant script
+const tenantClient = dispatch.dispatchClient(tenantScriptName);
+const response = await tenantClient.get('/status');
+```
+
+For full control, use `dispatch()` to get the raw `Fetcher`:
+
+```ts
+const fetcher = dispatch.dispatch(tenantScriptName, { trust: 'trusted' });
+const response = await fetcher.fetch('https://worker/path');
+```
+
+## How to communicate with a Cloudflare Container
+
+`ContainerClient` wraps a `DurableObjectNamespace` binding that fronts a container
+deployment. Declare the DO binding in `wrangler.jsonc` and reference it by name.
+
+```ts title="src/handlers/render.ts"
+
+const containers = container.resolve<ContainerClient>('RENDER_CONTAINER');
+
+// Optional: pre-warm before serving traffic
+const ready = await containers.warmup('renderer-1');
+
+// Send a request to the named container instance
+const response = await containers.send('renderer-1', '/render', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ template: 'invoice', data: invoiceData }),
+});
+```
+
+Each unique name maps to a separate container instance via `idFromName`. Roost does not
+automatically register `ContainerClient` — instantiate it directly if your binding is not
+auto-detected as a `DurableObjectNamespace`.
+
+## How to transform HTML responses at the edge
+
+Use `HtmlTransformer` to modify HTML as it streams through the Worker. Chain methods to
+compose transformations, then call `transform()` on the response.
+
+```ts title="src/middleware/html-enrichment.ts"
+
+export async function enrichHtml(
+  request: Request,
+  next: (r: Request) => Promise<Response>
+): Promise<Response> {
+  const response = await next(request);
+
+  if (!response.headers.get('content-type')?.includes('text/html')) {
+    return response;
+  }
+
+  return new HtmlTransformer()
+    .injectScript('/dist/analytics.js')
+    .setMetaTag('og:site_name', 'Acme Corp')
+    .transform(response);
+}
+```
+
+For A/B testing, provide a variant map and an assignment function that reads a cookie or
+header to select the variant:
+
+```ts
+const transformer = new HtmlTransformer().abTest(
+  '#hero-cta',
+  {
+    control: '<a href="/signup">Get started</a>',
+    variant_a: '<a href="/signup">Start free trial</a>',
+  },
+  (req) => getCookieVariant(req) ?? 'control'
+);
+
+return transformer.transform(response, request);
+```
+
+## How to use VersionedKVStore for content-addressed caching
+
+`VersionedKVStore` is suited to data that changes infrequently and where you want
+cache-hit detection by hash rather than by TTL.
+
+```ts title="src/services/config-cache.ts"
+
+const kv = container.resolve<KVStore>('CONFIG_KV');
+const store = new VersionedKVStore(kv, { contentTtl: 3600 });
+
+// Write — returns the SHA-256 content hash
+const hash = await store.put('app-config', { featureFlags: { darkMode: true } });
+
+// Read
+const config = await store.get<AppConfig>('app-config');
+
+// Skip re-fetching if the caller already has the current version
+const currentHash = await store.getVersion('app-config');
+if (currentHash === localHash) {
+  // Already up to date
+} else {
+  const fresh = await store.get<AppConfig>('app-config');
+}
+```
+
+`VersionedKVStore` uses last-writer-wins semantics. Do not use it for keys with concurrent
+writes from multiple isolates without external coordination.
+
+## How to add rate limiting
+
+### KV-backed rate limiting
+
+`KVRateLimiter` uses a fixed window per IP and is appropriate for moderate-traffic
+Workers where eventual consistency is acceptable.
+
+```ts title="src/app.ts"
+
+const app = Application.create(env);
+
+app.useMiddleware(
+  new KVRateLimiter(new KVStore(env.RATE_LIMIT_KV), {
+    limit: 100,
+    window: 60, // 100 requests per 60 seconds per IP
+  })
+);
+```
+
+### Durable Object-backed rate limiting
+
+`DORateLimiter` routes checks to a named Durable Object instance, providing stronger
+consistency under concurrent requests from the same key.
+
+```ts title="src/app.ts"
+
+app.useMiddleware(
+  new DORateLimiter(new DurableObjectClient(env.RATE_LIMITER_DO), {
+    limit: 50,
+    window: 60,
+    keyExtractor: (req) => req.headers.get('Authorization') ?? 'anonymous',
+  })
+);
+```
+
+Export `RateLimiterDO` from your Worker entry and declare the binding:
+
+```json title="wrangler.jsonc"
+{
+  "durable_objects": {
+    "bindings": [{ "name": "RATE_LIMITER_DO", "class_name": "RateLimiterDO" }]
+  }
+}
+```
+
+```ts title="src/index.ts"
+export { RateLimiterDO } from '@roost/cloudflare';
+```
+
+### Testing rate limiting
+
+Use `fakeRateLimiter()` to replace KV and DO checks with an in-memory fake:
+
+```ts title="src/handlers/api.test.ts"
+
+test('returns 429 when rate limited', async () => {
+  const fake = fakeRateLimiter();
+  fake.limitKey('192.0.2.1');
+
+  const response = await app.handle(
+    new Request('https://example.com/api', {
+      headers: { 'CF-Connecting-IP': '192.0.2.1' },
+    })
+  );
+
+  expect(response.status).toBe(429);
+  fake.assertLimited('192.0.2.1');
+  restoreRateLimiter();
+});

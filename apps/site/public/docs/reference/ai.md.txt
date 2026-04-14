@@ -185,6 +185,7 @@ interface AgentConfig {
   maxTokens?: number;
   temperature?: number;
   timeout?: number;
+  queued?: boolean;
 }
 
 interface AgentMessage {
@@ -201,6 +202,10 @@ interface AgentResponse {
   usage?: { promptTokens: number; completionTokens: number };
 }
 
+type PromptResult =
+  | { queued: false; text: string; messages: AgentMessage[]; toolCalls: ToolCall[]; usage?: { promptTokens: number; completionTokens: number } }
+  | { queued: true; taskId: string };
+
 interface ToolCall {
   id: string;
   name: string;
@@ -213,11 +218,214 @@ interface ProviderRequest {
   tools?: ProviderTool[];
   maxTokens?: number;
   temperature?: number;
+  queueRequest?: boolean;
 }
 
 interface ProviderResponse {
   text: string;
   toolCalls: ToolCall[];
   usage?: { promptTokens: number; completionTokens: number };
+  taskId?: string;
 }
+```
+
+## GatewayAIProvider
+
+Routes inference requests through [Cloudflare AI Gateway](https://developers.cloudflare.com/ai-gateway/) instead of the direct Workers AI binding. Adds observability, request caching, and automatic fallback.
+
+The gateway URL format used is:
+`https://gateway.ai.cloudflare.com/v1/{accountId}/{gatewayId}/workers-ai/{model}`
+
+#### `constructor(config: GatewayConfig, fallback: CloudflareAIProvider)`
+
+Construct with an account/gateway pair and a fallback provider. The fallback is called automatically when the gateway returns a non-2xx status or is unreachable.
+
+```ts
+interface GatewayConfig {
+  accountId: string;
+  gatewayId: string;
+}
+```
+
+#### `async chat(request: ProviderRequest): Promise<ProviderResponse>`
+
+Send a chat request through the AI Gateway REST endpoint. If the request contains more than one non-system message, the `x-session-affinity: true` header is included automatically to enable prefix caching on the gateway. Falls back to the direct `CloudflareAIProvider` on any error.
+
+### Session Affinity and Prefix Caching
+
+`GatewayAIProvider` automatically adds `x-session-affinity: true` to requests that contain conversation history (more than one non-system message). This header instructs the AI Gateway to route the request to the same backend replica, enabling KV-based prefix cache hits for repeated conversation prefixes. No manual configuration is required.
+
+### Usage
+
+```ts title="src/app.ts"
+
+const directProvider = new CloudflareAIProvider(new AIClient(env.AI));
+const gatewayProvider = new GatewayAIProvider(
+  { accountId: env.CF_ACCOUNT_ID, gatewayId: env.AI_GATEWAY_ID },
+  directProvider,
+);
+
+MyAgent.setProvider(gatewayProvider);
+```
+
+## Async Inference
+
+Pass `queued: true` in the options to `Agent.prompt()` to dispatch the inference request asynchronously. The model call is enqueued on Cloudflare's side and the call returns immediately with a `taskId`.
+
+#### `async prompt(input: string, options?: Partial<AgentConfig>): Promise<PromptResult>`
+
+When `options.queued` is `true`, the return value has shape `{ queued: true; taskId: string }`. Otherwise it has shape `{ queued: false; text: string; messages: AgentMessage[]; toolCalls: ToolCall[] }`. Use the `queued` discriminant before accessing `text` or `taskId`.
+
+```ts
+const result = await agent.prompt('Summarize this document', { queued: true });
+
+if (result.queued) {
+  // Stash result.taskId and poll later
+} else {
+  console.log(result.text);
+}
+```
+
+`agent.stream()` throws if called with `queued: true`.
+
+## AIClient.poll()
+
+Check the status of a queued async inference task via the Cloudflare REST API. Located in `@roost/cloudflare`.
+
+#### `async poll<T = string>(taskId: string, fetcher: typeof fetch, accountId: string): Promise<{ status: 'running' } | { status: 'done'; result: T }>`
+
+Polls `https://api.cloudflare.com/client/v4/accounts/{accountId}/ai/run/tasks/{taskId}`. The `fetcher` must carry an `Authorization: Bearer <CF_API_TOKEN>` header. Returns `{ status: 'running' }` while the task is in progress and `{ status: 'done'; result: T }` when complete.
+
+```ts
+
+const client = new AIClient(env.AI);
+const poll = await client.poll(taskId, fetch.bind(env), env.CF_ACCOUNT_ID);
+
+if (poll.status === 'done') {
+  console.log(poll.result);
+}
+```
+
+## RAG Pipeline
+
+Import from `@roost/ai/rag`.
+
+### Chunkers
+
+Abstract base class:
+
+```ts
+abstract class Chunker {
+  abstract chunk(document: Document): Chunk[];
+}
+```
+
+#### `TextChunker`
+
+Splits a document into fixed-size token windows with configurable overlap.
+
+```ts
+new TextChunker(options?: { chunkSize?: number; overlapPercent?: number })
+```
+
+| Option | Default | Description |
+|---|---|---|
+| `chunkSize` | `400` | Target token count per chunk (estimated as `chars / 4`). |
+| `overlapPercent` | `0.10` | Fraction of the previous chunk's words to repeat at the start of the next chunk. |
+
+#### `SemanticChunker`
+
+Splits on Markdown headings and double newlines first, merges segments below 10 % of `chunkSize`, then falls back to `TextChunker` for segments that still exceed `chunkSize`.
+
+```ts
+new SemanticChunker(options?: { chunkSize?: number; overlapPercent?: number })
+```
+
+Accepts the same options as `TextChunker`.
+
+### EmbeddingPipeline
+
+Wraps the `AIClient` to produce embedding vectors from text.
+
+#### `constructor(client: AIClient, model?: string)`
+
+Default model: `@cf/baai/bge-base-en-v1.5` (768 dimensions). The model must match the dimensionality of the Vectorize index.
+
+#### `async embed(texts: string[]): Promise<number[][]>`
+
+Returns one embedding vector per input string. Throws `EmbeddingError` if the binding returns no data or a mismatched count.
+
+### RAGPipeline
+
+Orchestrates chunking, embedding, and vector storage/retrieval.
+
+#### `constructor(store: VectorStore, embeddings: EmbeddingPipeline, chunker: Chunker, config?: RAGPipelineConfig)`
+
+#### `async ingest(documents: Document[]): Promise<{ inserted: number }>`
+
+Chunk all documents, embed each chunk, and insert the resulting vectors into the `VectorStore`. Returns the number of vectors inserted.
+
+#### `async query(text: string): Promise<QueryResult[]>`
+
+Embed the query text, search the vector store for the top-K nearest chunks, filter by `similarityThreshold`, and return results sorted by descending score.
+
+#### `static fake(responses?: QueryResult[][]): void`
+
+Enable fake mode. `query()` returns from the `responses` array in order.
+
+#### `static restore(): void`
+
+Disable fake mode.
+
+#### `static assertIngested(predicate?: (docs: Document[]) => boolean): void`
+
+Assert that `ingest()` was called at least once. Provide a predicate to assert on the specific documents passed.
+
+#### `static assertQueried(predicate?: (text: string) => boolean): void`
+
+Assert that `query()` was called at least once. Provide a predicate to match against the query text.
+
+### RAG Types
+
+```ts
+interface Document {
+  id: string;
+  text: string;
+  metadata?: Record<string, unknown>;
+}
+
+interface Chunk {
+  id: string;           // `${document.id}:${chunkIndex}`
+  documentId: string;
+  text: string;
+  tokenCount: number;
+  metadata?: Record<string, unknown>;
+}
+
+interface ChunkVector {
+  chunk: Chunk;
+  embedding: number[];
+}
+
+interface QueryResult {
+  chunk: Chunk;
+  score: number;
+}
+
+interface RAGPipelineConfig {
+  /** Default: 400 */
+  chunkSize?: number;
+  /** Default: 0.10 */
+  overlapPercent?: number;
+  /** Default: '@cf/baai/bge-base-en-v1.5' */
+  embeddingModel?: string;
+  /** Default: 5 */
+  topK?: number;
+  /** Default: 0.75 */
+  similarityThreshold?: number;
+  /** Vectorize namespace for multi-tenancy */
+  namespace?: string;
+}
+
+class EmbeddingError extends Error {}
 ```

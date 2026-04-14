@@ -19,7 +19,9 @@
 - [@roost/queue Guides](https://roost.dev/docs/guides/queue.md): Task-oriented instructions for defining jobs, dispatching, chaining, batching, and testing.
 - [@roost/cli Guides](https://roost.dev/docs/guides/cli.md): Task-oriented instructions for scaffolding, code generation, migrations, and deployment.
 - [@roost/cloudflare Guides](https://roost.dev/docs/guides/cloudflare.md): Task-oriented instructions for Cloudflare bindings: D1, R2, KV, Queues, Workers AI, and Vectorize.
+- [@roost/events Guides](https://roost.dev/docs/guides/events.md): Task-oriented instructions for defining events, registering listeners, using subscribers, deferring listeners to the queue, and testing dispatches.
 - [Migrations](https://roost.dev/docs/guides/migrations.md): Task-oriented instructions for creating, running, and managing database schema changes.
+- [@roost/feature-flags Guides](https://roost.dev/docs/guides/feature-flags.md): Task-oriented instructions for defining flags, checking them in handlers, prefetching with middleware, and testing flag-gated behavior.
 - [How-to Guides](https://roost.dev/docs/guides/index.md): Task-oriented instructions for accomplishing specific goals with Roost.
 - [@roost/auth Guides](https://roost.dev/docs/guides/auth.md): Task-oriented instructions for authentication, authorization, sessions, and multi-tenancy.
 - [@roost/testing Guides](https://roost.dev/docs/guides/testing.md): Task-oriented instructions for HTTP tests, response assertions, fakes, and database isolation.
@@ -27,7 +29,9 @@
 - [Environment](https://roost.dev/docs/guides/environment.md): Task-oriented instructions for managing environment variables and secrets across local and production environments.
 - [Error Handling](https://roost.dev/docs/guides/error-handling.md): Task-oriented instructions for handling errors in routes, jobs, and across the stack.
 - [@roost/core Guides](https://roost.dev/docs/guides/core.md): Task-oriented instructions for the container, config, middleware, and service providers.
+- [@roost/broadcast Guides](https://roost.dev/docs/guides/broadcast.md): Task-oriented instructions for setting up broadcasting, creating broadcastable events, connecting a client, authorizing private channels, and testing.
 - [Deployment](https://roost.dev/docs/guides/deployment.md): Task-oriented instructions for deploying Roost applications to Cloudflare Workers.
+- [@roost/workflow Guides](https://roost.dev/docs/guides/workflow.md): Task-oriented instructions for defining workflows, running durable steps, implementing sagas with Compensable, and testing without Cloudflare.
 - [@roost/ai Guides](https://roost.dev/docs/guides/ai.md): Task-oriented instructions for agents, tools, streaming, and testing. Powered by Cloudflare Workers AI — no API keys required.
 - [@roost/billing Guides](https://roost.dev/docs/guides/billing.md): Task-oriented instructions for Stripe integration, subscriptions, webhooks, and metered billing.
 - [@roost/orm Guides](https://roost.dev/docs/guides/orm.md): Task-oriented instructions for models, querying, relationships, factories, and testing.
@@ -39,11 +43,15 @@
 - [@roost/queue](https://roost.dev/docs/reference/queue.md): Background job processing on Cloudflare Queues. Typed job classes with retry configuration, dispatch methods, chaining, batching, and lifecycle hooks.
 - [@roost/cli](https://roost.dev/docs/reference/cli.md): The roost command-line tool for project scaffolding, code generation, database operations, and deployment.
 - [@roost/cloudflare](https://roost.dev/docs/reference/cloudflare.md): Typed wrappers around all Cloudflare Worker bindings: D1, KV, R2, Queues, AI, Vectorize, Durable Objects, and Hyperdrive.
+- [@roost/events](https://roost.dev/docs/reference/events.md): In-process event dispatching with listener registration, subscriber classes, optional queue integration, and broadcast interop.
+- [@roost/feature-flags](https://roost.dev/docs/reference/feature-flags.md): Feature flag evaluation backed by Cloudflare KV. FeatureFlag static API, per-request caching, middleware, and service provider.
 - [Reference](https://roost.dev/docs/reference/index.md): Technical descriptions of every package, class, and method in the Roost framework.
 - [@roost/auth](https://roost.dev/docs/reference/auth.md): WorkOS-backed authentication with session management, middleware guards, CSRF protection, RBAC, and multi-tenancy support.
 - [@roost/testing](https://roost.dev/docs/reference/testing.md): HTTP test client, response assertions, unified fakes, and test setup utilities for Roost applications on bun:test.
 - [@roost/start](https://roost.dev/docs/reference/start.md): Bridges the Roost framework with TanStack Start. Provides the context bridge, middleware factory, and server function wrappers.
 - [@roost/core](https://roost.dev/docs/reference/core.md): Dependency injection container, configuration management, middleware pipeline, application lifecycle, and service provider base class.
+- [@roost/broadcast](https://roost.dev/docs/reference/broadcast.md): Real-time WebSocket broadcasting via Cloudflare Durable Objects. Channel types, ChannelDO, BroadcastManager, client helper, and testing utilities.
+- [@roost/workflow](https://roost.dev/docs/reference/workflow.md): Durable multi-step workflows on Cloudflare Workflows. Workflow base class, WorkflowClient, Compensable, and service provider.
 - [@roost/ai](https://roost.dev/docs/reference/ai.md): Class-based AI agents with typed tools, conversation memory, and streaming. Powered exclusively by Cloudflare Workers AI — no API keys required.
 - [@roost/billing](https://roost.dev/docs/reference/billing.md): Abstract billing provider interface with a Stripe adapter. Implemented using only fetch for Cloudflare Worker compatibility — no Node.js SDK.
 - [@roost/orm](https://roost.dev/docs/reference/orm.md): Laravel-inspired ORM built on Drizzle for D1 databases. Model classes, query builder, relationships, lifecycle hooks, factories.
@@ -56,6 +64,8 @@
 - [Service Container](https://roost.dev/docs/concepts/service-container.md): How Roost manages dependencies, why dependency injection matters at the edge, and how service providers wire everything together.
 - [@roost/cli](https://roost.dev/docs/concepts/cli.md): The code generation philosophy behind Roost's generators, how scaffolding reduces decision fatigue, and convention enforcement through generators.
 - [@roost/cloudflare](https://roost.dev/docs/concepts/cloudflare.md): Why Roost wraps Cloudflare's native bindings, how typed clients improve the developer experience, and how binding names are resolved.
+- [@roost/events](https://roost.dev/docs/concepts/events.md): The observer pattern in Roost, how in-process event dispatching differs from message queues, listener vs subscriber design, and the ShouldQueue escape hatch.
+- [@roost/feature-flags](https://roost.dev/docs/concepts/feature-flags.md): Why feature flags belong in KV, the per-request caching model, the Pennant-style API design, and when to use flags vs config vs environment variables.
 - [Concepts](https://roost.dev/docs/concepts/index.md): Explanations of architecture, design decisions, and how things work under the hood.
 - [Testing Philosophy](https://roost.dev/docs/concepts/testing-philosophy.md): Why Roost uses fakes over mocks, how TestClient eliminates server setup, and what testing on Workers requires differently.
 - [@roost/auth](https://roost.dev/docs/concepts/auth.md): Why Roost delegates authentication to WorkOS, how sessions are stored on KV, and the organization model that makes multi-tenancy a first-class concern.
@@ -63,6 +73,8 @@
 - [Application Architecture](https://roost.dev/docs/concepts/architecture.md): How a Roost application is structured, what happens at boot time, and how a request travels from the Cloudflare edge to a response.
 - [@roost/start](https://roost.dev/docs/concepts/start.md): Why Roost integrates with TanStack Start, how the context bridge connects server and client, and what SSR looks like on Workers.
 - [@roost/core](https://roost.dev/docs/concepts/core.md): Why Roost has a service container, how the pipeline middleware model works, and what the Application class is actually doing.
+- [@roost/broadcast](https://roost.dev/docs/concepts/broadcast.md): How Durable Objects power per-channel WebSocket state, the three channel types and their authorization model, and how broadcast integrates with the events system.
+- [@roost/workflow](https://roost.dev/docs/concepts/workflow.md): How Cloudflare Workflows differ from queues, the durable execution model, saga patterns with Compensable, and when to use workflows vs jobs.
 - [@roost/ai](https://roost.dev/docs/concepts/ai.md): Why agents are classes, how the agentic loop works, and why Cloudflare Workers AI means no external API keys or network calls.
 - [@roost/billing](https://roost.dev/docs/concepts/billing.md): Why billing is an abstract interface, how the adapter pattern lets you swap providers, and the subscription lifecycle model.
 - [@roost/orm](https://roost.dev/docs/concepts/orm.md): Why Roost uses Active Record on D1, why it is not Prisma, and the design of the query builder and migration system.

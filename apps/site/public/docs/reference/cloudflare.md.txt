@@ -203,3 +203,294 @@ are read from the Worker `env` passed to `Application.create()`.
 The following bindings are registered by convention: `DB` → `D1Database`,
 `KV` → `KVStore`, `FILES` → `R2Storage`,
 `AI` → `AIClient`.
+
+Auto-detection covers all supported binding types by duck-typing each value in `env`.
+The detection order is significant — more-specific guards run first:
+
+| Detected type | Registered wrapper |
+|---|---|
+| `R2Bucket` | `R2Storage` |
+| `KVNamespace` | `KVStore` |
+| `D1Database` | `D1Database` |
+| `Queue` | `QueueSender` |
+| `Ai` | `AIClient` |
+| `VectorizeIndex` | `VectorStore` |
+| `DurableObjectNamespace` | `DurableObjectClient` |
+| `Hyperdrive` | `HyperdriveClient` |
+| `DispatchNamespace` | `DispatchNamespaceClient` |
+| `Fetcher` | `ServiceClient` |
+
+## ServiceClient API
+
+Typed wrapper around a Cloudflare Worker-to-Worker service binding (`Fetcher`).
+Provides HTTP convenience methods and a simple RPC helper.
+
+#### `constructor(fetcher: Fetcher)`
+
+#### `get raw(): Fetcher`
+
+The underlying `Fetcher` binding.
+
+#### `fetch(url: string, init?: RequestInit): Promise<Response>`
+
+Low-level fetch. Use when the convenience methods don't fit.
+
+#### `get(path: string, options?: ServiceFetchOptions): Promise<Response>`
+
+Send a `GET` request to `http://service{path}`.
+
+#### `post(path: string, body?: unknown, options?: ServiceFetchOptions): Promise<Response>`
+
+Send a `POST` request with a JSON-serialized body and `Content-Type: application/json`.
+
+#### `put(path: string, body?: unknown, options?: ServiceFetchOptions): Promise<Response>`
+
+Send a `PUT` request with a JSON-serialized body.
+
+#### `patch(path: string, body?: unknown, options?: ServiceFetchOptions): Promise<Response>`
+
+Send a `PATCH` request with a JSON-serialized body.
+
+#### `delete(path: string, options?: ServiceFetchOptions): Promise<Response>`
+
+Send a `DELETE` request.
+
+#### `call<T = unknown>(method: string, ...args: unknown[]): Promise<T>`
+
+POST to `/rpc/{method}` with `{ args }` as the JSON body. Throws `ServiceCallError` if
+the response status is not 2xx.
+
+```ts
+type ServiceFetchOptions = Omit<RequestInit, 'method'>;
+```
+
+### `ServiceCallError`
+
+```ts
+class ServiceCallError extends Error {
+  readonly method: string;
+  readonly status: number;
+  readonly body: string;
+}
+```
+
+Thrown by `ServiceClient.call()` when the remote service returns a non-2xx status.
+
+## DispatchNamespaceClient API
+
+Typed wrapper around a Cloudflare Workers for Platforms dispatch namespace binding.
+
+#### `constructor(namespace: DispatchNamespace)`
+
+#### `get raw(): DispatchNamespace`
+
+The underlying `DispatchNamespace` binding.
+
+#### `dispatch(scriptName: string, options?: DispatchOptions): Fetcher`
+
+Resolve a `Fetcher` for the named customer script. Returns the raw `Fetcher` — use this
+when you need full control over the request.
+
+#### `dispatchClient(scriptName: string, options?: DispatchOptions): ServiceClient`
+
+Resolve the named customer script and wrap it in a `ServiceClient` for convenience method
+access.
+
+```ts
+interface DispatchOptions {
+  trust?: 'untrusted' | 'trusted';
+  outboundArgs?: unknown[];
+}
+```
+
+## ContainerClient API
+
+Typed wrapper for Cloudflare Containers. Containers run via a `DurableObjectNamespace`
+binding — `ContainerClient` provides named-instance access without managing IDs manually.
+
+#### `constructor(namespace: DurableObjectNamespace)`
+
+#### `get raw(): DurableObjectNamespace`
+
+The underlying namespace binding.
+
+#### `getStub(name: string): DurableObjectStub`
+
+Resolve a `DurableObjectStub` for the given name using `idFromName`.
+
+#### `send(name: string, path: string, options?: ContainerSendOptions): Promise<Response>`
+
+Send an HTTP request to the named container instance at the given path.
+
+#### `warmup(name: string): Promise<boolean>`
+
+Send a `GET /health` request to the named instance. Returns `true` if the response is
+2xx, `false` on error or non-2xx. Use this to pre-warm containers before handling traffic.
+
+```ts
+interface ContainerSendOptions {
+  method?: string;
+  headers?: Record<string, string>;
+  body?: BodyInit | null;
+}
+```
+
+## HtmlTransformer API
+
+Chainable wrapper around Cloudflare's `HTMLRewriter` for streaming HTML transformation.
+
+#### `constructor()`
+
+#### `injectScript(src: string, position?: 'head' | 'body'): this`
+
+Append a `<script src="...">` tag inside the specified element. Defaults to `'head'`.
+
+#### `setMetaTag(name: string, content: string): this`
+
+Update the `content` attribute of an existing `<meta name="...">` tag, or insert a new
+one before `</head>` if absent.
+
+#### `replaceElement(selector: string, html: string): this`
+
+Replace the inner content of every matching element with the provided HTML string.
+
+#### `removeElement(selector: string): this`
+
+Remove every element matching the selector from the document.
+
+#### `abTest(selector: string, variants: Record<string, string>, assignmentFn: (request: Request) => string): this`
+
+Replace the inner content of the selector with a variant chosen by `assignmentFn`. The
+function receives the `Request` and returns a key into `variants`. Requires `request` to
+be passed to `transform()`.
+
+#### `transform(response: Response, request?: Request): Response`
+
+Apply all registered transformations to the response stream. `request` is required when
+`abTest()` has been used; passing it is harmless otherwise.
+
+```ts title="src/handlers/homepage.ts"
+const transformer = new HtmlTransformer()
+  .injectScript('/analytics.js')
+  .setMetaTag('description', 'Updated description')
+  .removeElement('#legacy-banner');
+
+return transformer.transform(response);
+```
+
+## VersionedKVStore API
+
+Content-addressable KV wrapper. Each `put` stores the serialized value under a SHA-256
+content hash, then writes a pointer key. Reads follow the pointer. Enables cache
+invalidation by hash comparison without re-reading the full value.
+
+#### `constructor(kv: KVStore | KVNamespace, options?: VersionedKVOptions)`
+
+Accepts either a raw `KVNamespace` or a `KVStore` instance.
+
+```ts
+interface VersionedKVOptions {
+  contentTtl?: number; // seconds; default 86400 (24h)
+}
+```
+
+#### `put<T>(key: string, value: T): Promise<string>`
+
+Serialize `value` as JSON, compute its SHA-256 hex hash, write the content under
+`content:{hash}` with `contentTtl` expiry, and update the pointer `ptr:{key}` to the
+hash. Returns the hash string.
+
+#### `get<T>(key: string): Promise<T | null>`
+
+Read the current pointer then fetch and parse the content. Returns `null` if the pointer
+or content is missing.
+
+#### `getVersion(key: string): Promise<string | null>`
+
+Return the current SHA-256 hash for the pointer without fetching content.
+
+#### `isCurrent(key: string, hash: string): Promise<boolean>`
+
+Return `true` if the stored pointer matches `hash`. Use to skip re-fetching when the
+caller already has a copy.
+
+#### `delete(key: string): Promise<void>`
+
+Delete the pointer key. Content keys expire naturally via TTL.
+
+## Rate Limiting API
+
+### `KVRateLimiter`
+
+Fixed-window rate limiter backed by KV. Implements the `Middleware` interface.
+
+#### `constructor(kv: KVStore, config: RateLimiterConfig)`
+
+```ts
+interface RateLimiterConfig {
+  limit: number;
+  window: number; // seconds
+  keyExtractor?: (request: Request) => string;
+}
+```
+
+Defaults to extracting `CF-Connecting-IP` (falling back to `X-Forwarded-For`, then
+`'unknown'`). Returns `429 Too Many Requests` with a `Retry-After` header when the limit
+is exceeded.
+
+### `DORateLimiter`
+
+Fixed-window rate limiter backed by a Durable Object. Uses `DurableObjectClient.get()`
+to route each check to a named DO instance. More consistent than KV under concurrent
+traffic from the same key.
+
+#### `constructor(doClient: DurableObjectClient, config: RateLimiterConfig)`
+
+### `RateLimiterDO`
+
+The Durable Object class that `DORateLimiter` communicates with. Export it from your
+Worker and declare it as a `durable_objects` binding in `wrangler.jsonc`.
+
+#### `constructor(state: DurableObjectState)`
+
+#### `fetch(request: Request): Promise<Response>`
+
+Handles `POST /check` with `{ key, limit, window }` JSON body. Returns
+`{ allowed: boolean, remaining: number, retryAfter?: number }`.
+
+### `RateLimiterFake`
+
+In-memory test double that bypasses KV and DO. Activate via `fakeRateLimiter()`.
+
+#### `limitKey(key: string): void`
+
+Mark a key as rate-limited for subsequent checks.
+
+#### `allowKey(key: string): void`
+
+Remove a key from the limited set.
+
+#### `assertLimited(key: string): void`
+
+Throw if the key was not checked, or was allowed.
+
+#### `assertAllowed(key: string): void`
+
+Throw if the key was not checked, or was limited.
+
+#### `assertChecked(key: string): void`
+
+Throw if the key was never checked by a rate limiter.
+
+#### `reset(): void`
+
+Clear all state. Call between tests.
+
+### `fakeRateLimiter(): RateLimiterFake`
+
+Activate the global fake and return it. Both `KVRateLimiter` and `DORateLimiter` detect
+the active fake and defer to it instead of hitting KV or DO.
+
+### `restoreRateLimiter(): void`
+
+Deactivate the global fake.

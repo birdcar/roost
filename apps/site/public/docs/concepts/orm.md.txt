@@ -51,6 +51,34 @@ away from down migrations, arguing they are rarely used and often wrong. Roost t
 position: down migrations are documentation of the schema delta, and having them in place reduces
 the cost of a bad deployment significantly.
 
+## Multi-Tenant Data Isolation
+
+Multi-tenancy means one application instance serves multiple independent organizations, with each organization's data kept strictly separate. There are two common strategies, and Roost supports both.
+
+**Row-level isolation** stores all tenants in a single database. Every tenant-owned table has an `org_id` column, and every query includes `WHERE org_id = ?`. This is operationally simple — one database, one schema, one set of migrations — and works well until either data volume or compliance requirements demand stronger separation.
+
+**Database-per-tenant** gives each organization its own D1 database. The application resolves which binding to use at request time based on the active org. This provides complete data isolation at the infrastructure level: a bug that leaks data between rows in one database cannot affect a different tenant's database. The tradeoff is operational overhead — each tenant requires a separate D1 database, and schema migrations must be applied to every tenant database independently.
+
+Roost's `OrmServiceProvider` supports both strategies via the `database.tenantStrategy` config key. Most applications start with row-level isolation and migrate to database-per-tenant only when required by compliance or scale.
+
+## Global Scopes Pattern
+
+The automatic `tenantColumn` filtering in Roost's ORM is an instance of the Global Scopes pattern. A global scope is a query constraint that is transparently applied to every query on a model class, without the caller needing to specify it.
+
+Laravel's Eloquent has had global scopes since version 5. Roost implements the same idea with a simpler mechanism: rather than a general-purpose scope registry, `TenantContext` is the single global scope, and it is applied if and only if `tenantColumn` is set on the model. This is a deliberate constraint — it covers the overwhelmingly common case (tenant isolation) without building a general-purpose scope API that would add complexity for rarely-needed use cases.
+
+The `withoutTenantScope()` escape hatch is the explicit acknowledgement that global scopes occasionally need to be bypassed. Making the bypass explicit — rather than allowing callers to simply omit the column — means the intent is visible in the code and auditable. A grep for `withoutTenantScope` in a codebase shows every place where cross-tenant data access is intentional.
+
+## D1 Consistency and the Sessions API
+
+D1 is a distributed SQLite database. Cloudflare replicates writes across multiple read replicas for availability and low-latency reads. The consequence is eventual consistency: a write committed on the primary may not be immediately visible on a replica that handles the next read, particularly if that read is served from a different edge location.
+
+For most read operations this is acceptable. For operations where a user writes data and immediately reads it back — creating a post and then redirecting to it, submitting a form and displaying the result — inconsistency produces confusing behaviour: the user sees a stale state that does not reflect their most recent action.
+
+The D1 Sessions API addresses this with session tokens. After a write, the client receives a session token representing the point in the write log that the write was applied. Subsequent reads that carry this token are routed to a replica that has caught up to at least that point, guaranteeing the write is visible.
+
+`D1SessionHandle` wraps this API. `markWritten()` records that a write has occurred. `sessionAwareRaw()` returns a D1 handle that carries the session token on subsequent reads. The ORM uses this transparently when `database.useSession` is enabled — callers only need to call `markWritten()` after writes that require immediate read-your-writes consistency.
+
 ## Further Reading
 
 - [Laravel Patterns — the Eloquent model and what Roost adapts](/docs/concepts/laravel-patterns.md)

@@ -1,0 +1,140 @@
+## How to register the feature flag provider
+
+Add `FeatureFlagServiceProvider` to your app's provider list. It connects
+`FeatureFlag` to a Cloudflare KV namespace named `FLAGS_KV` by default.
+
+```ts title="src/app.ts"
+
+export const app = createApp({
+  providers: [
+    new FeatureFlagServiceProvider(),
+    // ...other providers
+  ],
+});
+```
+
+If your KV binding has a different name, set it in the app config before
+registering:
+
+```ts
+
+export const app = createApp({
+  config: { flags: { kv: 'FEATURE_FLAGS_KV' } },
+  providers: [new FeatureFlagServiceProvider()],
+});
+```
+
+## How to check a feature flag in a route handler
+
+Call `FeatureFlag.isEnabled()` anywhere after the provider has registered.
+
+```ts title="src/handlers/billing.ts"
+
+export async function handleCheckout(request: Request): Promise<Response> {
+  const newCheckoutEnabled = await FeatureFlag.isEnabled('new-checkout');
+
+  if (newCheckoutEnabled) {
+    return handleNewCheckout(request);
+  }
+
+  return handleLegacyCheckout(request);
+}
+```
+
+## How to read a typed flag value
+
+Use `getValue<T>()` when you need the raw value rather than a boolean.
+
+```ts
+
+const limit = await FeatureFlag.getValue<number>('api-rate-limit');
+// limit is number | null
+```
+
+`getValue()` throws `FlagNotFoundError` if the key is missing. If you want a
+default instead, wrap it:
+
+```ts
+const limit = await FeatureFlag
+  .getValue<number>('api-rate-limit')
+  .catch(() => 100);
+```
+
+## How to prefetch flags for a request
+
+Use `FeatureFlagMiddleware` to batch-fetch flags at the start of each request.
+Downstream calls to `isEnabled(flag, request)` read from the per-request cache
+rather than hitting KV again.
+
+```ts title="src/app.ts"
+
+export const app = createApp({
+  providers: [new FeatureFlagServiceProvider()],
+  middleware: [
+    new FeatureFlagMiddleware(['new-checkout', 'beta-dashboard', 'api-rate-limit']),
+  ],
+});
+```
+
+Then pass `request` when checking flags:
+
+```ts
+const enabled = await FeatureFlag.isEnabled('new-checkout', request);
+```
+
+The cache is attached to the request object and scoped to that request's
+lifetime. There is no cross-request cache to invalidate.
+
+## How to write a flag value
+
+Use `FeatureFlag.set()` to update a flag programmatically — from an admin
+panel, a seed script, or a management endpoint.
+
+```ts
+
+// Boolean flag
+await FeatureFlag.set('new-checkout', true);
+
+// Numeric flag
+await FeatureFlag.set('api-rate-limit', 500);
+
+// JSON config flag
+await FeatureFlag.set('checkout-config', {
+  maxItems: 50,
+  allowGuestCheckout: true,
+});
+```
+
+## How to test flag-gated behavior
+
+Call `FeatureFlag.fake()` with the desired flag values before running the
+code under test. Use `FeatureFlag.assertChecked()` to verify the flag was
+actually consulted.
+
+```ts title="tests/handlers/billing.test.ts"
+
+describe('handleCheckout', () => {
+  afterEach(() => FeatureFlag.restore());
+
+  it('uses the new checkout when flag is enabled', async () => {
+    FeatureFlag.fake({ 'new-checkout': true });
+
+    const response = await handleCheckout(new Request('https://app/checkout'));
+
+    FeatureFlag.assertChecked('new-checkout');
+    // assert response is from new checkout handler
+  });
+
+  it('falls back to legacy checkout when flag is disabled', async () => {
+    FeatureFlag.fake({ 'new-checkout': false });
+
+    const response = await handleCheckout(new Request('https://app/checkout'));
+
+    FeatureFlag.assertChecked('new-checkout');
+    // assert response is from legacy checkout handler
+  });
+});
+```
+
+`FeatureFlag.fake()` accepts all flags you want to define for that test. Flags
+not in the map return `null` from `getValue()` and `false` from `isEnabled()`.

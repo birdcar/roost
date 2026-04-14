@@ -2322,6 +2322,411 @@ await vectorize.deleteByIds(['doc_1', 'doc_2']);
 
 The Vectorize index dimension must match your embedding model's output size. `bge-base-en-v1.5` outputs 768 dimensions.
 
+## How to call another Worker with ServiceClient
+
+Declare a service binding in `wrangler.jsonc`, then resolve a `ServiceClient` from the
+container. `CloudflareServiceProvider` auto-detects `Fetcher` bindings and wraps them.
+
+```json title="wrangler.jsonc"
+{
+  "services": [
+    { "binding": "PAYMENTS_SERVICE", "service": "payments-worker" }
+  ]
+}
+```
+
+```ts title="src/handlers/checkout.ts"
+
+// Resolved automatically by CloudflareServiceProvider
+const payments = container.resolve<ServiceClient>('PAYMENTS_SERVICE');
+
+const response = await payments.post('/charge', {
+  amount: 2000,
+  currency: 'usd',
+  customerId: 'cus_123',
+});
+
+if (!response.ok) {
+  throw new Error(`Payment failed: ${await response.text()}`);
+}
+```
+
+Use `call()` for typed RPC when the remote Worker follows the `/rpc/{method}` convention:
+
+```ts
+const result = await payments.call<{ chargeId: string }>('createCharge', {
+  amount: 2000,
+  currency: 'usd',
+});
+```
+
+## How to dispatch to customer Workers with DispatchNamespaceClient
+
+Workers for Platforms lets you dispatch inbound requests to tenant-owned scripts. Declare
+a dispatch namespace binding, then use `DispatchNamespaceClient` to route by script name.
+
+```json title="wrangler.jsonc"
+{
+  "dispatch_namespaces": [
+    { "binding": "DISPATCH", "namespace": "customer-scripts" }
+  ]
+}
+```
+
+```ts title="src/handlers/tenant.ts"
+
+const dispatch = container.resolve<DispatchNamespaceClient>('DISPATCH');
+
+// Get a ServiceClient for a specific tenant script
+const tenantClient = dispatch.dispatchClient(tenantScriptName);
+const response = await tenantClient.get('/status');
+```
+
+For full control, use `dispatch()` to get the raw `Fetcher`:
+
+```ts
+const fetcher = dispatch.dispatch(tenantScriptName, { trust: 'trusted' });
+const response = await fetcher.fetch('https://worker/path');
+```
+
+## How to communicate with a Cloudflare Container
+
+`ContainerClient` wraps a `DurableObjectNamespace` binding that fronts a container
+deployment. Declare the DO binding in `wrangler.jsonc` and reference it by name.
+
+```ts title="src/handlers/render.ts"
+
+const containers = container.resolve<ContainerClient>('RENDER_CONTAINER');
+
+// Optional: pre-warm before serving traffic
+const ready = await containers.warmup('renderer-1');
+
+// Send a request to the named container instance
+const response = await containers.send('renderer-1', '/render', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ template: 'invoice', data: invoiceData }),
+});
+```
+
+Each unique name maps to a separate container instance via `idFromName`. Roost does not
+automatically register `ContainerClient` — instantiate it directly if your binding is not
+auto-detected as a `DurableObjectNamespace`.
+
+## How to transform HTML responses at the edge
+
+Use `HtmlTransformer` to modify HTML as it streams through the Worker. Chain methods to
+compose transformations, then call `transform()` on the response.
+
+```ts title="src/middleware/html-enrichment.ts"
+
+export async function enrichHtml(
+  request: Request,
+  next: (r: Request) => Promise<Response>
+): Promise<Response> {
+  const response = await next(request);
+
+  if (!response.headers.get('content-type')?.includes('text/html')) {
+    return response;
+  }
+
+  return new HtmlTransformer()
+    .injectScript('/dist/analytics.js')
+    .setMetaTag('og:site_name', 'Acme Corp')
+    .transform(response);
+}
+```
+
+For A/B testing, provide a variant map and an assignment function that reads a cookie or
+header to select the variant:
+
+```ts
+const transformer = new HtmlTransformer().abTest(
+  '#hero-cta',
+  {
+    control: '<a href="/signup">Get started</a>',
+    variant_a: '<a href="/signup">Start free trial</a>',
+  },
+  (req) => getCookieVariant(req) ?? 'control'
+);
+
+return transformer.transform(response, request);
+```
+
+## How to use VersionedKVStore for content-addressed caching
+
+`VersionedKVStore` is suited to data that changes infrequently and where you want
+cache-hit detection by hash rather than by TTL.
+
+```ts title="src/services/config-cache.ts"
+
+const kv = container.resolve<KVStore>('CONFIG_KV');
+const store = new VersionedKVStore(kv, { contentTtl: 3600 });
+
+// Write — returns the SHA-256 content hash
+const hash = await store.put('app-config', { featureFlags: { darkMode: true } });
+
+// Read
+const config = await store.get<AppConfig>('app-config');
+
+// Skip re-fetching if the caller already has the current version
+const currentHash = await store.getVersion('app-config');
+if (currentHash === localHash) {
+  // Already up to date
+} else {
+  const fresh = await store.get<AppConfig>('app-config');
+}
+```
+
+`VersionedKVStore` uses last-writer-wins semantics. Do not use it for keys with concurrent
+writes from multiple isolates without external coordination.
+
+## How to add rate limiting
+
+### KV-backed rate limiting
+
+`KVRateLimiter` uses a fixed window per IP and is appropriate for moderate-traffic
+Workers where eventual consistency is acceptable.
+
+```ts title="src/app.ts"
+
+const app = Application.create(env);
+
+app.useMiddleware(
+  new KVRateLimiter(new KVStore(env.RATE_LIMIT_KV), {
+    limit: 100,
+    window: 60, // 100 requests per 60 seconds per IP
+  })
+);
+```
+
+### Durable Object-backed rate limiting
+
+`DORateLimiter` routes checks to a named Durable Object instance, providing stronger
+consistency under concurrent requests from the same key.
+
+```ts title="src/app.ts"
+
+app.useMiddleware(
+  new DORateLimiter(new DurableObjectClient(env.RATE_LIMITER_DO), {
+    limit: 50,
+    window: 60,
+    keyExtractor: (req) => req.headers.get('Authorization') ?? 'anonymous',
+  })
+);
+```
+
+Export `RateLimiterDO` from your Worker entry and declare the binding:
+
+```json title="wrangler.jsonc"
+{
+  "durable_objects": {
+    "bindings": [{ "name": "RATE_LIMITER_DO", "class_name": "RateLimiterDO" }]
+  }
+}
+```
+
+```ts title="src/index.ts"
+export { RateLimiterDO } from '@roost/cloudflare';
+```
+
+### Testing rate limiting
+
+Use `fakeRateLimiter()` to replace KV and DO checks with an in-memory fake:
+
+```ts title="src/handlers/api.test.ts"
+
+test('returns 429 when rate limited', async () => {
+  const fake = fakeRateLimiter();
+  fake.limitKey('192.0.2.1');
+
+  const response = await app.handle(
+    new Request('https://example.com/api', {
+      headers: { 'CF-Connecting-IP': '192.0.2.1' },
+    })
+  );
+
+  expect(response.status).toBe(429);
+  fake.assertLimited('192.0.2.1');
+  restoreRateLimiter();
+});
+
+
+---
+
+# @roost/events Guides
+
+> Task-oriented instructions for defining events, registering listeners, using subscribers, deferring listeners to the queue, and testing dispatches.
+
+## How to define an event
+
+Extend `Event` with a typed constructor. Store all event data as public properties.
+
+```ts title="src/events/UserRegistered.ts"
+
+export class UserRegistered extends Event {
+  constructor(
+    public readonly userId: string,
+    public readonly email: string,
+    public readonly plan: 'free' | 'pro'
+  ) {
+    super();
+  }
+}
+```
+
+## How to define a listener
+
+Implement the `Listener<T>` interface. The `handle()` method receives the
+dispatched event instance.
+
+```ts title="src/listeners/SendWelcomeEmailListener.ts"
+
+export class SendWelcomeEmailListener implements Listener<UserRegistered> {
+  async handle(event: UserRegistered): Promise<void> {
+    await sendEmail({
+      to: event.email,
+      subject: 'Welcome!',
+      template: 'welcome',
+      data: { userId: event.userId, plan: event.plan },
+    });
+  }
+}
+```
+
+## How to register events and listeners
+
+Extend `EventServiceProvider` and override `listen()` to map event classes to
+listener classes.
+
+```ts title="src/providers/AppEventServiceProvider.ts"
+
+export class AppEventServiceProvider extends EventServiceProvider {
+  protected listen() {
+    return new Map([
+      [UserRegistered, [SendWelcomeEmailListener, CreateTrialSubscriptionListener]],
+    ]);
+  }
+}
+```
+
+Register the provider in your app:
+
+```ts title="src/app.ts"
+
+export const app = createApp({
+  providers: [new AppEventServiceProvider()],
+});
+```
+
+## How to dispatch an event
+
+Call the static `dispatch()` method on the event class.
+
+```ts
+
+// After creating a user record
+await UserRegistered.dispatch(new UserRegistered(user.id, user.email, 'free'));
+```
+
+All registered listeners for `UserRegistered` execute in parallel before
+`dispatch()` resolves.
+
+## How to use a subscriber for multiple events
+
+Use `Subscriber` to group related event handlers in one class instead of
+defining a separate listener class per event.
+
+```ts title="src/subscribers/NotificationSubscriber.ts"
+
+export class NotificationSubscriber extends Subscriber {
+  subscribe(): Map<EventClass<Event>, string> {
+    return new Map([
+      [UserRegistered, 'onUserRegistered'],
+      [OrderPlaced, 'onOrderPlaced'],
+    ]);
+  }
+
+  async onUserRegistered(event: UserRegistered): Promise<void> {
+    await notifyAdmins(`New user: ${event.email}`);
+  }
+
+  async onOrderPlaced(event: OrderPlaced): Promise<void> {
+    await notifyFulfillment(event.orderId);
+  }
+}
+```
+
+Register the subscriber in the service provider:
+
+```ts title="src/providers/AppEventServiceProvider.ts"
+
+export class AppEventServiceProvider extends EventServiceProvider {
+  protected subscribers() {
+    return [NotificationSubscriber];
+  }
+}
+```
+
+## How to defer a listener to the queue
+
+Add the `ShouldQueue` interface to a listener that also extends `Job<TEvent>`
+from `@roost/queue`. The event dispatcher will dispatch the listener as a job
+rather than calling `handle()` inline.
+
+```ts title="src/listeners/GenerateInvoiceListener.ts"
+
+export class GenerateInvoiceListener
+  extends Job<OrderPlaced>
+  implements Listener<OrderPlaced>, ShouldQueue
+{
+  readonly shouldQueue = true as const;
+
+  async handle(event: OrderPlaced): Promise<void> {
+    await generatePdfInvoice(event.orderId);
+    await emailInvoice(event.customerEmail);
+  }
+}
+```
+
+Requires `@roost/queue` to be installed and configured.
+
+## How to test event dispatches
+
+Call `Event.fake()` to intercept dispatches without running listeners.
+Use `assertDispatched()` and `assertNotDispatched()` to make assertions.
+
+```ts title="tests/events/UserRegistered.test.ts"
+
+describe('UserRegistered', () => {
+  afterEach(() => UserRegistered.restore());
+
+  it('is dispatched after successful registration', async () => {
+    UserRegistered.fake();
+
+    await registerUser({ email: 'alice@example.com', plan: 'free' });
+
+    UserRegistered.assertDispatched();
+  });
+
+  it('is dispatched with correct email', async () => {
+    UserRegistered.fake();
+
+    await registerUser({ email: 'bob@example.com', plan: 'pro' });
+
+    UserRegistered.assertDispatched((event) => event.email === 'bob@example.com');
+  });
+
+  it('is not dispatched when registration fails', async () => {
+    UserRegistered.fake();
+
+    await registerUser({ email: 'invalid', plan: 'free' }).catch(() => {});
+
+    UserRegistered.assertNotDispatched();
+  });
+});
+```
+
 
 ---
 
@@ -2454,6 +2859,154 @@ export default {
 ```
 
 Related: [ORM guides](/docs/guides/orm.md) for model definitions, [@roost/orm reference](/docs/reference/orm.md) for the full Model and QueryBuilder API.
+
+
+---
+
+# @roost/feature-flags Guides
+
+> Task-oriented instructions for defining flags, checking them in handlers, prefetching with middleware, and testing flag-gated behavior.
+
+## How to register the feature flag provider
+
+Add `FeatureFlagServiceProvider` to your app's provider list. It connects
+`FeatureFlag` to a Cloudflare KV namespace named `FLAGS_KV` by default.
+
+```ts title="src/app.ts"
+
+export const app = createApp({
+  providers: [
+    new FeatureFlagServiceProvider(),
+    // ...other providers
+  ],
+});
+```
+
+If your KV binding has a different name, set it in the app config before
+registering:
+
+```ts
+
+export const app = createApp({
+  config: { flags: { kv: 'FEATURE_FLAGS_KV' } },
+  providers: [new FeatureFlagServiceProvider()],
+});
+```
+
+## How to check a feature flag in a route handler
+
+Call `FeatureFlag.isEnabled()` anywhere after the provider has registered.
+
+```ts title="src/handlers/billing.ts"
+
+export async function handleCheckout(request: Request): Promise<Response> {
+  const newCheckoutEnabled = await FeatureFlag.isEnabled('new-checkout');
+
+  if (newCheckoutEnabled) {
+    return handleNewCheckout(request);
+  }
+
+  return handleLegacyCheckout(request);
+}
+```
+
+## How to read a typed flag value
+
+Use `getValue<T>()` when you need the raw value rather than a boolean.
+
+```ts
+
+const limit = await FeatureFlag.getValue<number>('api-rate-limit');
+// limit is number | null
+```
+
+`getValue()` throws `FlagNotFoundError` if the key is missing. If you want a
+default instead, wrap it:
+
+```ts
+const limit = await FeatureFlag
+  .getValue<number>('api-rate-limit')
+  .catch(() => 100);
+```
+
+## How to prefetch flags for a request
+
+Use `FeatureFlagMiddleware` to batch-fetch flags at the start of each request.
+Downstream calls to `isEnabled(flag, request)` read from the per-request cache
+rather than hitting KV again.
+
+```ts title="src/app.ts"
+
+export const app = createApp({
+  providers: [new FeatureFlagServiceProvider()],
+  middleware: [
+    new FeatureFlagMiddleware(['new-checkout', 'beta-dashboard', 'api-rate-limit']),
+  ],
+});
+```
+
+Then pass `request` when checking flags:
+
+```ts
+const enabled = await FeatureFlag.isEnabled('new-checkout', request);
+```
+
+The cache is attached to the request object and scoped to that request's
+lifetime. There is no cross-request cache to invalidate.
+
+## How to write a flag value
+
+Use `FeatureFlag.set()` to update a flag programmatically — from an admin
+panel, a seed script, or a management endpoint.
+
+```ts
+
+// Boolean flag
+await FeatureFlag.set('new-checkout', true);
+
+// Numeric flag
+await FeatureFlag.set('api-rate-limit', 500);
+
+// JSON config flag
+await FeatureFlag.set('checkout-config', {
+  maxItems: 50,
+  allowGuestCheckout: true,
+});
+```
+
+## How to test flag-gated behavior
+
+Call `FeatureFlag.fake()` with the desired flag values before running the
+code under test. Use `FeatureFlag.assertChecked()` to verify the flag was
+actually consulted.
+
+```ts title="tests/handlers/billing.test.ts"
+
+describe('handleCheckout', () => {
+  afterEach(() => FeatureFlag.restore());
+
+  it('uses the new checkout when flag is enabled', async () => {
+    FeatureFlag.fake({ 'new-checkout': true });
+
+    const response = await handleCheckout(new Request('https://app/checkout'));
+
+    FeatureFlag.assertChecked('new-checkout');
+    // assert response is from new checkout handler
+  });
+
+  it('falls back to legacy checkout when flag is disabled', async () => {
+    FeatureFlag.fake({ 'new-checkout': false });
+
+    const response = await handleCheckout(new Request('https://app/checkout'));
+
+    FeatureFlag.assertChecked('new-checkout');
+    // assert response is from legacy checkout handler
+  });
+});
+```
+
+`FeatureFlag.fake()` accepts all flags you want to define for that test. Flags
+not in the map return `null` from `getValue()` and `false` from `isEnabled()`.
 
 
 ---
@@ -2633,6 +3186,61 @@ app.register(AuthServiceProvider);
 ```
 
 After the callback, the user is redirected to the URL in `return_to`, or to `/dashboard` if absent. To customize the post-login destination, set `auth.defaultRedirect` in your config.
+
+## How to connect OrgResolver to tenant-scoped ORM
+
+`OrgResolver` detects which organization a request belongs to. `TenantScopeMiddleware` takes that result, looks up the org's database ID, and sets it on `TenantContext` so every model query in the request is automatically scoped. Wire them together once at application startup.
+
+### 1. Register both service providers
+
+```ts title="src/app.ts"
+
+app.register(AuthServiceProvider);
+app.register(
+  new OrmServiceProvider().withModels([Post, Organization])
+);
+```
+
+### 2. Add tenant-scoped middleware
+
+```ts title="src/app.ts"
+
+const resolver = new OrgResolver(['subdomain']); // or 'path-prefix', 'header'
+const ctx = app.container.resolve(TenantContext);
+
+app.useMiddleware(
+  new TenantScopeMiddleware(
+    resolver,
+    async (slug) =>
+      Organization.withoutTenantScope(() =>
+        Organization.where('slug', slug).first(),
+      ),
+    ctx,
+  ),
+);
+```
+
+The org lookup uses `withoutTenantScope` because `Organization` itself is a tenant-scoped model — looking up by slug must bypass the scope to find the org record before the context is populated.
+
+### 3. Models are now automatically scoped
+
+Any model with `tenantColumn` set will filter by the resolved org on every query, with no changes to controller or route code:
+
+```ts title="src/controllers/PostsController.ts"
+// org_id is injected automatically — no need to pass it
+const posts = await Post.where('status', 'published').all();
+const post = await Post.create({ title, body });
+```
+
+### Choosing a resolution strategy
+
+| Strategy | URL pattern | When to use |
+|---|---|---|
+| `'subdomain'` | `acme.myapp.com` | SaaS with per-org subdomains |
+| `'path-prefix'` | `/org/acme/dashboard` | Shared domain with org prefix |
+| `'header'` | `X-Org-Slug: acme` | API clients, internal services |
+
+Strategies can be combined: `new OrgResolver(['subdomain', 'header'])` tries subdomain first, then falls back to the header.
 
 ## How to add CSRF protection
 
@@ -3447,6 +4055,357 @@ const pipeline = new Pipeline()
   .use(AuthMiddlewareClass);
 ```
 
+## How to add structured logging with request tracing
+
+Add `RequestIdMiddleware` as the first global middleware. It generates a trace ID from
+the `cf-ray` header (or `crypto.randomUUID()`) and binds a `Logger` into the
+request-scoped container so every handler can resolve it.
+
+```ts title="src/app.ts"
+
+const app = Application.create(env);
+app.useMiddleware(RequestIdMiddleware);
+```
+
+Resolve the logger inside a handler or downstream middleware:
+
+```ts title="src/handlers/users.ts"
+
+export async function getUser(request: Request): Promise<Response> {
+  const container = (request as any).__roostContainer;
+  const logger = container.resolve(Logger);
+
+  logger.info('user.fetch', { userId: request.params?.id });
+
+  const user = await User.find(request.params.id);
+  if (!user) {
+    logger.warn('user.not_found', { userId: request.params?.id });
+    return new Response('Not Found', { status: 404 });
+  }
+
+  return Response.json(user);
+}
+```
+
+Every log line is emitted as a single-line JSON object including `requestId`, `method`,
+`path`, `level`, `message`, and `timestamp`. The `requestId` is also set on the response
+as `X-Request-Id`.
+
+## How to test logging
+
+Use `Logger.fake()` to get a `FakeLogger` that captures entries in memory instead of
+writing to `console.log`.
+
+```ts title="src/handlers/users.test.ts"
+
+test('logs a warning when user is not found', async () => {
+  const logger = Logger.fake();
+
+  await getUser(fakeRequest({ params: { id: 'missing' } }), logger);
+
+  logger.assertLogged('warn', 'user.not_found');
+  logger.assertNotLogged('error');
+  logger.restore();
+});
+```
+
+`Logger.fake()` accepts an optional `Partial<LogContext>` to override default values
+(`requestId: 'fake-request-id'`, `method: 'GET'`, `path: '/'`).
+
+## How to run background work after a response
+
+Use `app.defer()` to register a promise that should complete after the response is sent.
+The Worker runtime will not terminate the isolate until all deferred promises settle.
+
+```ts title="src/app.ts"
+
+const app = Application.create(env);
+
+app.onDispatch(async (request) => {
+  const result = await handleRequest(request);
+
+  // This write completes after the response is returned to the client
+  app.defer(analytics.track({ event: 'request.completed', path: new URL(request.url).pathname }));
+
+  return Response.json(result);
+});
+```
+
+Pass the Cloudflare `ExecutionContext` to `app.handle()` so `defer()` has a context to
+call `waitUntil()` on:
+
+```ts title="src/index.ts"
+export default {
+  fetch(request: Request, env: Env, ctx: ExecutionContext) {
+    return app.handle(request, ctx);
+  },
+};
+```
+
+`defer()` silently does nothing when no context is available, so tests that call
+`app.handle(request)` without a second argument work without modification.
+
+## How to verify webhook signatures
+
+### Using a preset
+
+Most providers are covered by `WebhookPresets`. Override the `secret` field with your
+signing key and pass the options to `WebhookMiddleware`.
+
+```ts title="src/routes/webhooks/stripe.ts"
+
+const middleware = new WebhookMiddleware({
+  ...WebhookPresets.stripe(),
+  secret: env.STRIPE_WEBHOOK_SECRET,
+});
+
+// Wire into a route-level pipeline or app.useMiddleware() for a prefix group
+```
+
+Available presets: `WebhookPresets.stripe()`, `WebhookPresets.github()`,
+`WebhookPresets.svix()`.
+
+### Calling verifyWebhook directly
+
+For providers not covered by a preset, call `verifyWebhook` directly and supply custom
+parsing logic.
+
+```ts title="src/routes/webhooks/custom.ts"
+
+export async function handleCustomWebhook(request: Request): Promise<Response> {
+  let body: string;
+  try {
+    body = await verifyWebhook(request, {
+      secret: env.CUSTOM_WEBHOOK_SECRET,
+      headerName: 'x-custom-signature',
+      algorithm: 'hmac-sha256',
+      buildSignedPayload: (_ts, b) => b,
+      tolerance: 0,
+    });
+  } catch (err) {
+    if (err instanceof WebhookVerificationError) {
+      return new Response('Unauthorized', { status: 401 });
+    }
+    throw err;
+  }
+
+  const payload = JSON.parse(body);
+  // ...
+  return new Response(null, { status: 204 });
+}
+```
+
+
+---
+
+# @roost/broadcast Guides
+
+> Task-oriented instructions for setting up broadcasting, creating broadcastable events, connecting a client, authorizing private channels, and testing.
+
+## How to set up broadcasting
+
+**1. Add the Durable Object binding in `wrangler.jsonc`:**
+
+```jsonc title="wrangler.jsonc"
+{
+  "durable_objects": {
+    "bindings": [
+      { "name": "BROADCAST_DO", "class_name": "ChannelDO" }
+    ]
+  },
+  "migrations": [
+    { "tag": "v1", "new_classes": ["ChannelDO"] }
+  ]
+}
+```
+
+**2. Export `ChannelDO` from your Worker entry point:**
+
+```ts title="src/index.ts"
+export { ChannelDO } from '@roost/broadcast';
+export { app } from './app';
+```
+
+**3. Register `BroadcastServiceProvider` in your app:**
+
+```ts title="src/app.ts"
+
+export const app = createApp({
+  providers: [new BroadcastServiceProvider()],
+});
+```
+
+## How to create a broadcastable event
+
+Implement `BroadcastableEvent` on any event class. If you are also using
+`@roost/events`, extend `Event` as well to get in-process listener support
+alongside broadcasting.
+
+```ts title="src/events/OrderShipped.ts"
+
+export class OrderShipped extends Event implements BroadcastableEvent {
+  constructor(
+    public readonly orderId: string,
+    public readonly userId: string,
+    public readonly trackingNumber: string
+  ) {
+    super();
+  }
+
+  broadcastOn() {
+    return [new PrivateChannel(`users.${this.userId}`)];
+  }
+
+  broadcastWith() {
+    return {
+      orderId: this.orderId,
+      trackingNumber: this.trackingNumber,
+    };
+  }
+
+  broadcastAs() {
+    return 'order.shipped';
+  }
+}
+```
+
+Dispatch the event normally. If `@roost/events`' `EventDispatcher` is
+configured, it forwards broadcastable events to `BroadcastManager` automatically.
+
+```ts
+await OrderShipped.dispatch(
+  new OrderShipped(order.id, order.userId, order.trackingNumber)
+);
+```
+
+## How to broadcast directly without an event class
+
+Use `BroadcastManager.broadcast()` when you want to push a message without
+defining an event class.
+
+```ts
+
+const manager = BroadcastManager.get();
+
+await manager.broadcast({
+  broadcastOn: () => [new Channel('announcements')],
+  broadcastWith: () => ({ message: 'Server maintenance in 5 minutes' }),
+});
+```
+
+## How to connect a WebSocket client
+
+Use `createBroadcastClient` from `@roost/broadcast/client` in browser or client-side code.
+
+```ts title="src/client/notifications.ts"
+
+const client = createBroadcastClient(
+  () => `/ws/channel/users.${currentUserId}?token=${getAuthToken()}`,
+  {
+    onConnect: () => console.log('Connected'),
+    onDisconnect: (code, reason) => console.log('Disconnected', code, reason),
+  }
+);
+
+const unsubscribe = client.subscribe('users.*', (event, data) => {
+  if (event === 'order.shipped') {
+    showToast(`Your order shipped! Tracking: ${(data as { trackingNumber: string }).trackingNumber}`);
+  }
+});
+
+// Later, clean up
+unsubscribe();
+client.close();
+```
+
+The client reconnects automatically with exponential backoff when the connection
+drops. Pass a factory function as the URL to generate a fresh token on each reconnect.
+
+## How to authorize private and presence channels
+
+Override `authorize()` in a subclass of `ChannelDO` to validate tokens against
+your authentication system.
+
+<Callout type="warning">
+  The default `authorize()` implementation accepts any non-empty bearer token.
+  Always override this in production.
+</Callout>
+
+```ts title="src/durable-objects/AppChannelDO.ts"
+
+const workos = new WorkOS(process.env.WORKOS_API_KEY!);
+
+export class AppChannelDO extends ChannelDO {
+  protected async authorize(request: Request): Promise<{ ok: boolean }> {
+    const token = request.headers.get('Authorization')?.replace('Bearer ', '');
+    if (!token) return { ok: false };
+
+    try {
+      await workos.userManagement.authenticateWithSessionCookie({ sessionData: token });
+      return { ok: true };
+    } catch {
+      return { ok: false };
+    }
+  }
+
+  protected extractUserId(request: Request): string | undefined {
+    const url = new URL(request.url);
+    return url.searchParams.get('userId') ?? undefined;
+  }
+}
+```
+
+Export `AppChannelDO` from your Worker entry point and update `wrangler.jsonc` to
+use `class_name: "AppChannelDO"`.
+
+## How to use presence channels
+
+Presence channels emit `presence:join` and `presence:leave` events when users
+connect and disconnect. Subscribe to these on the client.
+
+```ts
+const client = createBroadcastClient(
+  `/ws/channel/room.${roomId}?type=presence&userId=${currentUserId}&token=${token}`
+);
+
+client.subscribe('room.*', (event, data) => {
+  if (event === 'presence:join') {
+    addMemberToList((data as { member: { id: string } }).member);
+  }
+  if (event === 'presence:leave') {
+    removeMemberFromList((data as { member: { id: string } }).member);
+  }
+});
+```
+
+## How to test broadcasting
+
+Call `BroadcastManager.fake()` before the code that would broadcast. Use
+`assertBroadcast()` and `assertBroadcastOn()` for assertions.
+
+```ts title="tests/events/OrderShipped.test.ts"
+
+describe('OrderShipped', () => {
+  afterEach(() => BroadcastManager.restore());
+
+  it('broadcasts when an order is shipped', async () => {
+    BroadcastManager.fake();
+
+    await shipOrder({ orderId: 'ord-1', userId: 'user-1', trackingNumber: 'TRK123' });
+
+    BroadcastManager.assertBroadcast(OrderShipped);
+  });
+
+  it('broadcasts on the user private channel', async () => {
+    BroadcastManager.fake();
+
+    await shipOrder({ orderId: 'ord-1', userId: 'user-1', trackingNumber: 'TRK123' });
+
+    BroadcastManager.assertBroadcastOn('users.user-1');
+  });
+});
+```
+
 
 ---
 
@@ -3546,6 +4505,215 @@ jobs:
 ```
 
 Related: [Environment guide](/docs/guides/environment.md) for managing per-environment configuration, [Migrations guide](/docs/guides/migrations.md) for running migrations post-deploy.
+
+
+---
+
+# @roost/workflow Guides
+
+> Task-oriented instructions for defining workflows, running durable steps, implementing sagas with Compensable, and testing without Cloudflare.
+
+## How to define a workflow
+
+Extend `Workflow<Env, TParams>` with a typed params interface and implement `run()`.
+
+```ts title="src/workflows/ProvisionTenant.ts"
+
+interface ProvisionTenantParams {
+  organizationId: string;
+  plan: 'starter' | 'pro' | 'enterprise';
+}
+
+export class ProvisionTenant extends Workflow<Env, ProvisionTenantParams> {
+  async run(
+    event: WorkflowEvent<ProvisionTenantParams>,
+    step: WorkflowStep
+  ): Promise<void> {
+    const { organizationId, plan } = event.payload;
+
+    await step.do('create-database', async () => {
+      await createTenantDatabase(organizationId);
+    });
+
+    await step.do('seed-defaults', async () => {
+      await seedDefaultData(organizationId, plan);
+    });
+
+    await step.do('send-welcome-email', async () => {
+      await sendWelcomeEmail(organizationId);
+    });
+  }
+}
+```
+
+Each `step.do()` call is a durable checkpoint. If the workflow is interrupted
+between steps, Cloudflare replays from the last completed checkpoint rather
+than re-running from the beginning.
+
+## How to register and dispatch a workflow
+
+Register the workflow class in `WorkflowServiceProvider.withWorkflows()`, then
+resolve the `WorkflowClient` from the container and call `create()`.
+
+```ts title="src/providers/AppServiceProvider.ts"
+
+export const workflowProvider = new WorkflowServiceProvider()
+  .withWorkflows([
+    { workflowClass: ProvisionTenant, binding: 'PROVISION_TENANT_WORKFLOW' },
+  ]);
+```
+
+```ts title="src/handlers/organizations.ts"
+
+export async function handleCreateOrganization(
+  container: AppContainer,
+  body: { organizationId: string; plan: 'starter' | 'pro' | 'enterprise' }
+) {
+  const client = container.resolve<WorkflowClient>(
+    'workflow:ProvisionTenant'
+  );
+
+  const handle = await client.create({
+    params: { organizationId: body.organizationId, plan: body.plan },
+  });
+
+  return { workflowId: handle.id };
+}
+```
+
+## How to implement a saga with Compensable
+
+Use `Compensable` to register rollback operations as you go. If a step fails,
+call `compensate()` to undo completed work in reverse order.
+
+```ts title="src/workflows/OnboardUser.ts"
+
+interface OnboardUserParams {
+  userId: string;
+  email: string;
+}
+
+export class OnboardUser extends Workflow<Env, OnboardUserParams> {
+  async run(
+    event: WorkflowEvent<OnboardUserParams>,
+    step: WorkflowStep
+  ): Promise<void> {
+    const { userId, email } = event.payload;
+    const saga = new Compensable();
+
+    try {
+      await step.do('create-profile', async () => {
+        await createUserProfile(userId);
+        saga.register(async () => deleteUserProfile(userId));
+      });
+
+      await step.do('provision-storage', async () => {
+        await provisionUserStorage(userId);
+        saga.register(async () => deprovisionUserStorage(userId));
+      });
+
+      await step.do('send-activation-email', async () => {
+        await sendActivationEmail(email);
+      });
+    } catch (err) {
+      await saga.compensate();
+      throw err;
+    }
+  }
+}
+```
+
+Compensations run in reverse registration order. Errors in individual
+compensations are swallowed so the remaining compensations still execute.
+
+## How to pause, resume, and check workflow status
+
+Retrieve an existing instance handle and call the control methods.
+
+```ts
+const client = container.resolve<WorkflowClient>('workflow:ProvisionTenant');
+
+// Check status
+const handle = await client.get(workflowId);
+const status = await handle.status();
+// { status: 'running' | 'paused' | 'complete' | 'errored' | 'terminated', ... }
+
+// Pause and resume
+await handle.pause();
+await handle.resume();
+
+// Terminate
+await client.terminate(workflowId);
+```
+
+## How to test workflows without Cloudflare
+
+Call `MyWorkflow.fake()` before the code that would create a workflow instance.
+The `WorkflowServiceProvider` detects the fake and substitutes a
+`FakeWorkflowClient` that records creation calls without contacting Cloudflare.
+
+```ts title="tests/workflows/ProvisionTenant.test.ts"
+
+describe('ProvisionTenant', () => {
+  afterEach(() => ProvisionTenant.restore());
+
+  it('is created when an organization is provisioned', async () => {
+    ProvisionTenant.fake();
+
+    await handleCreateOrganization(container, {
+      organizationId: 'org-123',
+      plan: 'pro',
+    });
+
+    ProvisionTenant.assertCreated();
+  });
+
+  it('is created with the correct organization ID', async () => {
+    ProvisionTenant.fake();
+
+    await handleCreateOrganization(container, {
+      organizationId: 'org-456',
+      plan: 'starter',
+    });
+
+    ProvisionTenant.assertCreated('org-456');
+  });
+
+  it('is not created when the request is invalid', async () => {
+    ProvisionTenant.fake();
+
+    await handleCreateOrganization(container, {
+      organizationId: '',
+      plan: 'starter',
+    }).catch(() => {});
+
+    ProvisionTenant.assertNotCreated();
+  });
+});
+```
+
+## How to signal a permanent (non-retryable) failure
+
+Throw `NonRetryableError` inside `run()` or a `step.do()` callback to tell
+Cloudflare not to retry the workflow.
+
+```ts
+
+export class ImportData extends Workflow<Env, { fileKey: string }> {
+  async run(event: WorkflowEvent<{ fileKey: string }>, step: WorkflowStep) {
+    await step.do('parse-file', async () => {
+      const file = await fetchFile(event.payload.fileKey);
+      if (!file) {
+        throw new NonRetryableError(`File ${event.payload.fileKey} not found`);
+      }
+      await processFile(file);
+    });
+  }
+}
+```
+
+Use `NonRetryableError` for business-logic failures where retrying would never
+succeed: missing resources, invalid input, or permission denials.
 
 
 ---
@@ -3703,6 +4871,159 @@ export class SupportAgent extends Agent {
     return 'You are a helpful support agent.' + context;
   }
 }
+```
+
+## How to route inference through AI Gateway
+
+Use `GatewayAIProvider` when you want Cloudflare AI Gateway observability, request caching, or per-request fallback behaviour. The gateway provider wraps a direct `CloudflareAIProvider` and calls it automatically if the gateway is unavailable.
+
+1. Create an AI Gateway in the Cloudflare dashboard and note the **account ID** and **gateway ID**.
+2. Add both as secrets or config values:
+
+```sh title=".dev.vars"
+CF_ACCOUNT_ID=abc123
+AI_GATEWAY_ID=my-gateway
+```
+
+3. Wire up the provider at application startup:
+
+```ts title="src/app.ts"
+
+const direct = new CloudflareAIProvider(new AIClient(env.AI));
+const gateway = new GatewayAIProvider(
+  { accountId: env.CF_ACCOUNT_ID, gatewayId: env.AI_GATEWAY_ID },
+  direct,
+);
+
+// Apply to a specific agent class
+MyAgent.setProvider(gateway);
+```
+
+Session affinity is applied automatically — once a conversation has more than one turn, subsequent requests carry `x-session-affinity: true` so the gateway routes them to the same cached context.
+
+## How to run async inference
+
+Use `queued: true` to enqueue a long-running inference request and return a task ID immediately. Poll for the result separately.
+
+```ts title="src/functions/summarize.ts"
+
+export async function startSummary(text: string): Promise<string> {
+  const agent = new SummarizeAgent();
+  const result = await agent.prompt(text, { queued: true });
+
+  if (!result.queued) throw new Error('Expected queued result');
+  return result.taskId; // Store this in KV or return to the client
+}
+```
+
+Poll with `AIClient.poll()` from a separate endpoint or Durable Object alarm:
+
+```ts title="src/functions/checkSummary.ts"
+
+export async function checkSummary(taskId: string, env: Env) {
+  const client = new AIClient(env.AI);
+
+  // fetch must carry a CF API token for the REST API
+  const authenticatedFetch = (url: string) =>
+    fetch(url, { headers: { Authorization: `Bearer ${env.CF_API_TOKEN}` } });
+
+  const result = await client.poll(taskId, authenticatedFetch, env.CF_ACCOUNT_ID);
+
+  if (result.status === 'done') {
+    return result.result; // The model output
+  }
+
+  return null; // Still running
+}
+```
+
+## How to build a RAG pipeline
+
+A RAG pipeline chunks documents, embeds the chunks, stores them in Vectorize, then retrieves the most relevant chunks for a query.
+
+### 1. Configure the Vectorize index and AI binding
+
+```jsonc title="wrangler.jsonc"
+{
+  "ai": { "binding": "AI" },
+  "vectorize": [
+    { "binding": "VECTORIZE", "index_name": "my-docs-index" }
+  ]
+}
+```
+
+The index must match the embedding model's dimensionality. `@cf/baai/bge-base-en-v1.5` (the default) produces 768-dimensional vectors. Create the index with:
+
+```sh title="terminal"
+npx wrangler vectorize create my-docs-index --dimensions=768 --metric=cosine
+```
+
+### 2. Ingest documents
+
+```ts title="src/scripts/ingest.ts"
+
+const client = new AIClient(env.AI);
+const store = new VectorStore(env.VECTORIZE);
+const chunker = new SemanticChunker({ chunkSize: 400 });
+const embeddings = new EmbeddingPipeline(client);
+
+const pipeline = new RAGPipeline(store, embeddings, chunker);
+
+const docs: Document[] = [
+  { id: 'doc-1', text: '...', metadata: { source: 'handbook' } },
+  { id: 'doc-2', text: '...', metadata: { source: 'handbook' } },
+];
+
+const { inserted } = await pipeline.ingest(docs);
+console.log(`Inserted ${inserted} vectors`);
+```
+
+### 3. Query and inject context into an agent
+
+```ts title="src/agents/DocsAgent.ts"
+
+export class DocsAgent extends Agent {
+  private rag: RAGPipeline;
+
+  constructor(env: Env) {
+    super();
+    const client = new AIClient(env.AI);
+    const store = new VectorStore(env.VECTORIZE);
+    this.rag = new RAGPipeline(store, new EmbeddingPipeline(client), new SemanticChunker());
+  }
+
+  instructions(): string {
+    return 'You are a helpful assistant. Answer questions using the context provided.';
+  }
+
+  async answerWithContext(question: string): Promise<string> {
+    const results = await this.rag.query(question);
+    const context = results.map((r) => r.chunk.text).join('\n\n');
+
+    const result = await this.prompt(
+      `Context:\n${context}\n\nQuestion: ${question}`,
+    );
+
+    if (result.queued) throw new Error('unexpected queued result');
+    return result.text;
+  }
+}
+```
+
+### 4. Test the RAG pipeline without a real index
+
+```ts title="tests/DocsAgent.test.ts"
+
+const fakeResults: QueryResult[] = [
+  { chunk: { id: 'doc-1:0', documentId: 'doc-1', text: 'Roost uses D1.', tokenCount: 5 }, score: 0.92 },
+];
+
+RAGPipeline.fake([fakeResults]);
+
+// ... run your agent test ...
+
+RAGPipeline.assertQueried((text) => text.includes('database'));
+RAGPipeline.restore();
 ```
 
 ## How to test agents without calling the AI provider
@@ -4088,6 +5409,131 @@ return Response.json({
 });
 ```
 
+## How to enable row-level tenant isolation
+
+Row-level isolation keeps all tenants in a single database and filters every query by a `tenantColumn`. This is the default strategy and requires the least infrastructure.
+
+### 1. Add `org_id` to your tables
+
+```sql title="database/migrations/add_org_id_to_posts.sql"
+ALTER TABLE posts ADD COLUMN org_id TEXT NOT NULL DEFAULT '';
+CREATE INDEX idx_posts_org_id ON posts (org_id);
+```
+
+### 2. Set `tenantColumn` on the model
+
+```ts title="src/models/Post.ts"
+
+export class Post extends Model {
+  static tableName = 'posts';
+  static tenantColumn = 'org_id';
+}
+```
+
+### 3. Register TenantScopeMiddleware
+
+`TenantScopeMiddleware` reads the org from the request, looks up its ID, and sets it on the shared `TenantContext`. All subsequent model queries in the same request are automatically scoped to that org.
+
+```ts title="src/middleware/TenantMiddleware.ts"
+
+const resolver = new OrgResolver(['subdomain']);
+
+export function makeTenantMiddleware(ctx: TenantContext) {
+  return new TenantScopeMiddleware(
+    resolver,
+    async (slug) => Organization.withoutTenantScope(() =>
+      Organization.where('slug', slug).first(),
+    ),
+    ctx,
+  );
+}
+```
+
+```ts title="src/app.ts"
+
+app.register(
+  new OrmServiceProvider()
+    .withModels([Post, Organization])
+);
+
+// Apply middleware before route handlers
+app.useMiddleware(makeTenantMiddleware(app.container.resolve(TenantContext)));
+```
+
+### 4. Use the escape hatch for cross-tenant queries
+
+Administrative routes that must see all tenants use `withoutTenantScope`:
+
+```ts
+const allPosts = await Post.withoutTenantScope(() => Post.all());
+```
+
+## How to set up DB-per-tenant routing
+
+DB-per-tenant gives each organization its own D1 database binding, with no data co-mingling at the row level.
+
+### 1. Add per-tenant D1 bindings to wrangler.jsonc
+
+```jsonc title="wrangler.jsonc"
+{
+  "d1_databases": [
+    { "binding": "DB", "database_name": "shared", "database_id": "..." },
+    { "binding": "DB_TENANT_ACME", "database_name": "tenant-acme", "database_id": "..." },
+    { "binding": "DB_TENANT_GLOBEX", "database_name": "tenant-globex", "database_id": "..." }
+  ]
+}
+```
+
+### 2. Configure the database strategy
+
+```ts title="config/database.ts"
+export default {
+  tenantStrategy: 'database',
+  tenantBindingPattern: 'DB_TENANT_{SLUG}',
+  d1Binding: 'DB', // fallback for unauthenticated or admin requests
+};
+```
+
+`OrmServiceProvider` reads `tenantStrategy` at boot. When set to `'database'`, it resolves the active org slug from `TenantContext` and uses `TenantDatabaseResolver` to pick the right D1 binding. If no per-tenant binding is found, it falls back to the shared `DB`.
+
+### 3. Register providers in the correct order
+
+`TenantScopeMiddleware` must run before `OrmServiceProvider.boot()` so the context is populated before the resolver runs. Ensure `AuthServiceProvider` (which populates the session) boots before `OrmServiceProvider`.
+
+```ts title="src/app.ts"
+app.register(AuthServiceProvider);
+app.register(
+  new OrmServiceProvider().withModels([Post])
+);
+```
+
+## How to use D1 Sessions for read-your-writes consistency
+
+D1 replicates across Cloudflare's network. A write committed on one replica may not be immediately visible on a different replica that serves the next read. Enable `useSession` to enforce that reads in the same request always see the most recent write.
+
+```ts title="config/database.ts"
+export default {
+  tenantStrategy: 'row',
+  useSession: true,
+};
+```
+
+With `useSession: true`, `OrmServiceProvider` wraps the D1 binding in a `D1SessionHandle`. The handle calls `db.withSession()` automatically once `markWritten()` has been called.
+
+Call `markWritten()` after any write that must be visible to subsequent reads in the same request lifecycle:
+
+```ts title="src/controllers/PostsController.ts"
+
+const sessionHandle = app.container.resolve(D1SessionHandle);
+
+const post = await Post.create({ title, body, org_id: orgId });
+sessionHandle.markWritten(); // subsequent reads will see this post
+
+const updated = await Post.find(post.attributes.id); // guaranteed to see the new row
+```
+
+If `withSession()` is unavailable (e.g. local dev with Miniflare), the handle falls back to the plain binding and logs a warning.
+
 ## How to write and run migrations
 
 Create a migration file in `database/migrations/` using `roost make:migration`, then run it with `roost migrate`.
@@ -4361,6 +5807,61 @@ Provide specific, actionable feedback.`;
 
 Prompts can return a single `McpResponse` or an array of them. Arrays are useful for multi-turn prompt scaffolding.
 
+## How to expose AI Search via MCP
+
+Use `AiSearchResource` to make a Cloudflare AI Search index available as an MCP resource. MCP clients can then query it by URI.
+
+### 1. Add the AI Search binding to wrangler.jsonc
+
+```jsonc title="wrangler.jsonc"
+{
+  "ai_search": [
+    { "binding": "AI_SEARCH", "index_name": "my-docs" }
+  ]
+}
+```
+
+### 2. Create a subclass to capture the binding
+
+`AiSearchResource` requires constructor arguments, so wrap it in a subclass that reads from `env`:
+
+```ts title="src/mcp/resources/DocsSearch.ts"
+
+export class DocsSearch extends AiSearchResource {
+  constructor() {
+    // env must be accessible here — inject via closure or module-level reference
+    super(env.AI_SEARCH, 'docs');
+  }
+}
+```
+
+### 3. Register on your MCP server
+
+```ts title="src/mcp/AppServer.ts"
+
+export class AppServer extends McpServer {
+  resources = [DocsSearch];
+
+  serverName() { return 'My App'; }
+  serverVersion() { return '1.0.0'; }
+}
+```
+
+### 4. Query the resource from an MCP client
+
+The resource URI is `aisearch://docs`. Clients pass `query`, and optionally `metadataFilters` and `pathFilters`:
+
+```json
+{
+  "uri": "aisearch://docs",
+  "query": "how do I reset my password",
+  "metadataFilters": { "section": "support" },
+  "pathFilters": ["/help/"]
+}
+```
+
+The response contains an `answer` string and a `sources` array with `url`, `title`, and `excerpt` for each matched document.
+
 
 ---
 
@@ -4622,6 +6123,26 @@ Generate a job class at `src/jobs/<Name>.ts`.
 
 Generate a middleware class at `src/middleware/<Name>.ts`.
 
+#### `roost make:workflow <Name>`
+
+Generate a workflow class at `src/workflows/<Name>.ts`.
+
+#### `roost make:rate-limiter <Name>`
+
+Generate a rate limiter class at `src/rate-limiters/<Name>.ts`.
+
+#### `roost make:event <Name>`
+
+Generate an event class at `src/events/<Name>.ts`.
+
+#### `roost make:listener <Name>`
+
+Generate an event listener class at `src/listeners/<Name>.ts`.
+
+#### `roost make:channel <Name>`
+
+Generate a broadcast channel class at `src/channels/<Name>.ts`.
+
 ## Database Commands
 
 #### `roost migrate`
@@ -4864,6 +6385,635 @@ The following bindings are registered by convention: `DB` → `D1Database`,
 `KV` → `KVStore`, `FILES` → `R2Storage`,
 `AI` → `AIClient`.
 
+Auto-detection covers all supported binding types by duck-typing each value in `env`.
+The detection order is significant — more-specific guards run first:
+
+| Detected type | Registered wrapper |
+|---|---|
+| `R2Bucket` | `R2Storage` |
+| `KVNamespace` | `KVStore` |
+| `D1Database` | `D1Database` |
+| `Queue` | `QueueSender` |
+| `Ai` | `AIClient` |
+| `VectorizeIndex` | `VectorStore` |
+| `DurableObjectNamespace` | `DurableObjectClient` |
+| `Hyperdrive` | `HyperdriveClient` |
+| `DispatchNamespace` | `DispatchNamespaceClient` |
+| `Fetcher` | `ServiceClient` |
+
+## ServiceClient API
+
+Typed wrapper around a Cloudflare Worker-to-Worker service binding (`Fetcher`).
+Provides HTTP convenience methods and a simple RPC helper.
+
+#### `constructor(fetcher: Fetcher)`
+
+#### `get raw(): Fetcher`
+
+The underlying `Fetcher` binding.
+
+#### `fetch(url: string, init?: RequestInit): Promise<Response>`
+
+Low-level fetch. Use when the convenience methods don't fit.
+
+#### `get(path: string, options?: ServiceFetchOptions): Promise<Response>`
+
+Send a `GET` request to `http://service{path}`.
+
+#### `post(path: string, body?: unknown, options?: ServiceFetchOptions): Promise<Response>`
+
+Send a `POST` request with a JSON-serialized body and `Content-Type: application/json`.
+
+#### `put(path: string, body?: unknown, options?: ServiceFetchOptions): Promise<Response>`
+
+Send a `PUT` request with a JSON-serialized body.
+
+#### `patch(path: string, body?: unknown, options?: ServiceFetchOptions): Promise<Response>`
+
+Send a `PATCH` request with a JSON-serialized body.
+
+#### `delete(path: string, options?: ServiceFetchOptions): Promise<Response>`
+
+Send a `DELETE` request.
+
+#### `call<T = unknown>(method: string, ...args: unknown[]): Promise<T>`
+
+POST to `/rpc/{method}` with `{ args }` as the JSON body. Throws `ServiceCallError` if
+the response status is not 2xx.
+
+```ts
+type ServiceFetchOptions = Omit<RequestInit, 'method'>;
+```
+
+### `ServiceCallError`
+
+```ts
+class ServiceCallError extends Error {
+  readonly method: string;
+  readonly status: number;
+  readonly body: string;
+}
+```
+
+Thrown by `ServiceClient.call()` when the remote service returns a non-2xx status.
+
+## DispatchNamespaceClient API
+
+Typed wrapper around a Cloudflare Workers for Platforms dispatch namespace binding.
+
+#### `constructor(namespace: DispatchNamespace)`
+
+#### `get raw(): DispatchNamespace`
+
+The underlying `DispatchNamespace` binding.
+
+#### `dispatch(scriptName: string, options?: DispatchOptions): Fetcher`
+
+Resolve a `Fetcher` for the named customer script. Returns the raw `Fetcher` — use this
+when you need full control over the request.
+
+#### `dispatchClient(scriptName: string, options?: DispatchOptions): ServiceClient`
+
+Resolve the named customer script and wrap it in a `ServiceClient` for convenience method
+access.
+
+```ts
+interface DispatchOptions {
+  trust?: 'untrusted' | 'trusted';
+  outboundArgs?: unknown[];
+}
+```
+
+## ContainerClient API
+
+Typed wrapper for Cloudflare Containers. Containers run via a `DurableObjectNamespace`
+binding — `ContainerClient` provides named-instance access without managing IDs manually.
+
+#### `constructor(namespace: DurableObjectNamespace)`
+
+#### `get raw(): DurableObjectNamespace`
+
+The underlying namespace binding.
+
+#### `getStub(name: string): DurableObjectStub`
+
+Resolve a `DurableObjectStub` for the given name using `idFromName`.
+
+#### `send(name: string, path: string, options?: ContainerSendOptions): Promise<Response>`
+
+Send an HTTP request to the named container instance at the given path.
+
+#### `warmup(name: string): Promise<boolean>`
+
+Send a `GET /health` request to the named instance. Returns `true` if the response is
+2xx, `false` on error or non-2xx. Use this to pre-warm containers before handling traffic.
+
+```ts
+interface ContainerSendOptions {
+  method?: string;
+  headers?: Record<string, string>;
+  body?: BodyInit | null;
+}
+```
+
+## HtmlTransformer API
+
+Chainable wrapper around Cloudflare's `HTMLRewriter` for streaming HTML transformation.
+
+#### `constructor()`
+
+#### `injectScript(src: string, position?: 'head' | 'body'): this`
+
+Append a `<script src="...">` tag inside the specified element. Defaults to `'head'`.
+
+#### `setMetaTag(name: string, content: string): this`
+
+Update the `content` attribute of an existing `<meta name="...">` tag, or insert a new
+one before `</head>` if absent.
+
+#### `replaceElement(selector: string, html: string): this`
+
+Replace the inner content of every matching element with the provided HTML string.
+
+#### `removeElement(selector: string): this`
+
+Remove every element matching the selector from the document.
+
+#### `abTest(selector: string, variants: Record<string, string>, assignmentFn: (request: Request) => string): this`
+
+Replace the inner content of the selector with a variant chosen by `assignmentFn`. The
+function receives the `Request` and returns a key into `variants`. Requires `request` to
+be passed to `transform()`.
+
+#### `transform(response: Response, request?: Request): Response`
+
+Apply all registered transformations to the response stream. `request` is required when
+`abTest()` has been used; passing it is harmless otherwise.
+
+```ts title="src/handlers/homepage.ts"
+const transformer = new HtmlTransformer()
+  .injectScript('/analytics.js')
+  .setMetaTag('description', 'Updated description')
+  .removeElement('#legacy-banner');
+
+return transformer.transform(response);
+```
+
+## VersionedKVStore API
+
+Content-addressable KV wrapper. Each `put` stores the serialized value under a SHA-256
+content hash, then writes a pointer key. Reads follow the pointer. Enables cache
+invalidation by hash comparison without re-reading the full value.
+
+#### `constructor(kv: KVStore | KVNamespace, options?: VersionedKVOptions)`
+
+Accepts either a raw `KVNamespace` or a `KVStore` instance.
+
+```ts
+interface VersionedKVOptions {
+  contentTtl?: number; // seconds; default 86400 (24h)
+}
+```
+
+#### `put<T>(key: string, value: T): Promise<string>`
+
+Serialize `value` as JSON, compute its SHA-256 hex hash, write the content under
+`content:{hash}` with `contentTtl` expiry, and update the pointer `ptr:{key}` to the
+hash. Returns the hash string.
+
+#### `get<T>(key: string): Promise<T | null>`
+
+Read the current pointer then fetch and parse the content. Returns `null` if the pointer
+or content is missing.
+
+#### `getVersion(key: string): Promise<string | null>`
+
+Return the current SHA-256 hash for the pointer without fetching content.
+
+#### `isCurrent(key: string, hash: string): Promise<boolean>`
+
+Return `true` if the stored pointer matches `hash`. Use to skip re-fetching when the
+caller already has a copy.
+
+#### `delete(key: string): Promise<void>`
+
+Delete the pointer key. Content keys expire naturally via TTL.
+
+## Rate Limiting API
+
+### `KVRateLimiter`
+
+Fixed-window rate limiter backed by KV. Implements the `Middleware` interface.
+
+#### `constructor(kv: KVStore, config: RateLimiterConfig)`
+
+```ts
+interface RateLimiterConfig {
+  limit: number;
+  window: number; // seconds
+  keyExtractor?: (request: Request) => string;
+}
+```
+
+Defaults to extracting `CF-Connecting-IP` (falling back to `X-Forwarded-For`, then
+`'unknown'`). Returns `429 Too Many Requests` with a `Retry-After` header when the limit
+is exceeded.
+
+### `DORateLimiter`
+
+Fixed-window rate limiter backed by a Durable Object. Uses `DurableObjectClient.get()`
+to route each check to a named DO instance. More consistent than KV under concurrent
+traffic from the same key.
+
+#### `constructor(doClient: DurableObjectClient, config: RateLimiterConfig)`
+
+### `RateLimiterDO`
+
+The Durable Object class that `DORateLimiter` communicates with. Export it from your
+Worker and declare it as a `durable_objects` binding in `wrangler.jsonc`.
+
+#### `constructor(state: DurableObjectState)`
+
+#### `fetch(request: Request): Promise<Response>`
+
+Handles `POST /check` with `{ key, limit, window }` JSON body. Returns
+`{ allowed: boolean, remaining: number, retryAfter?: number }`.
+
+### `RateLimiterFake`
+
+In-memory test double that bypasses KV and DO. Activate via `fakeRateLimiter()`.
+
+#### `limitKey(key: string): void`
+
+Mark a key as rate-limited for subsequent checks.
+
+#### `allowKey(key: string): void`
+
+Remove a key from the limited set.
+
+#### `assertLimited(key: string): void`
+
+Throw if the key was not checked, or was allowed.
+
+#### `assertAllowed(key: string): void`
+
+Throw if the key was not checked, or was limited.
+
+#### `assertChecked(key: string): void`
+
+Throw if the key was never checked by a rate limiter.
+
+#### `reset(): void`
+
+Clear all state. Call between tests.
+
+### `fakeRateLimiter(): RateLimiterFake`
+
+Activate the global fake and return it. Both `KVRateLimiter` and `DORateLimiter` detect
+the active fake and defer to it instead of hitting KV or DO.
+
+### `restoreRateLimiter(): void`
+
+Deactivate the global fake.
+
+
+---
+
+# @roost/events
+
+> In-process event dispatching with listener registration, subscriber classes, optional queue integration, and broadcast interop.
+
+## Installation
+
+```bash title="terminal"
+bun add @roost/events
+```
+
+## Event API
+
+`Event` is an abstract base class. Extend it to create typed event classes.
+All dispatch and testing methods are static.
+
+### Static Methods
+
+#### `static async dispatch<T extends Event>(event: T): Promise<void>`
+
+Dispatch the event to all registered listeners. If a fake is active, records the
+event without calling listeners. If the event implements `BroadcastableEvent`
+(has a `broadcastOn()` method), the dispatcher also forwards it to
+`BroadcastManager` if `@roost/broadcast` is installed.
+
+#### `static fake(): void`
+
+Enable fake mode for this event class. Dispatches are recorded but listeners
+are not called.
+
+#### `static restore(): void`
+
+Disable fake mode for this event class.
+
+#### `static assertDispatched<T extends Event>(callback?: (event: T) => boolean): void`
+
+Assert that this event was dispatched. Pass an optional predicate to assert a
+specific dispatch. Throws if `fake()` was not called first.
+
+#### `static assertNotDispatched<T extends Event>(): void`
+
+Assert that this event was not dispatched. Throws if `fake()` was not called first.
+
+## EventDispatcher API
+
+`EventDispatcher` is the internal router that maps event classes to listener
+classes. The service provider creates and configures a dispatcher instance;
+application code typically does not need to use this directly.
+
+#### `static get(): EventDispatcher`
+
+Return the current singleton dispatcher. Creates a default instance if none has
+been set.
+
+#### `static set(dispatcher: EventDispatcher): void`
+
+Replace the singleton dispatcher. Called by `EventServiceProvider.register()`.
+
+#### `registerListener(eventClass: EventClass<Event>, listenerClass: ListenerClass): void`
+
+Register a listener class for an event class. Called during bootstrap by the
+service provider.
+
+#### `async dispatch(event: Event): Promise<void>`
+
+Instantiate and call all listeners registered for `event`'s class. If a listener
+implements `ShouldQueue`, the listener is dispatched as a Job via `@roost/queue`
+instead of being called synchronously.
+
+## Listener Interface
+
+```ts
+interface Listener<T = unknown> {
+  handle(event: T): void | Promise<void>;
+}
+```
+
+Implement this interface on any class used as a listener. The `handle()` method
+receives the dispatched event instance.
+
+## ShouldQueue Interface
+
+```ts
+interface ShouldQueue {
+  readonly shouldQueue: true;
+}
+```
+
+A marker interface. Add this to a `Listener` class that also extends `Job<TEvent>`
+from `@roost/queue` to have the listener dispatched as a background job instead
+of called inline. Requires `@roost/queue` to be installed.
+
+## Subscriber API
+
+`Subscriber` maps multiple event classes to handler methods on a single class.
+Useful when a domain module needs to react to several events.
+
+#### `abstract subscribe(): Map<EventClass<Event>, string>`
+
+Return a map of event class to method name string. The method must exist on the
+subscriber instance.
+
+```ts
+export class OrderSubscriber extends Subscriber {
+  subscribe(): Map<EventClass<Event>, string> {
+    return new Map([
+      [OrderPlaced, 'onOrderPlaced'],
+      [OrderCancelled, 'onOrderCancelled'],
+    ]);
+  }
+
+  async onOrderPlaced(event: OrderPlaced): Promise<void> {
+    // handle event
+  }
+
+  async onOrderCancelled(event: OrderCancelled): Promise<void> {
+    // handle event
+  }
+}
+```
+
+## EventServiceProvider API
+
+`EventServiceProvider` is abstract. Extend it in your application to declare
+event-listener mappings.
+
+#### `protected listen(): Map<EventClass<Event>, ListenerClass[]>`
+
+Override to return a map of event classes to arrays of listener classes.
+Defaults to an empty map.
+
+#### `protected subscribers(): SubscriberClass[]`
+
+Override to return an array of subscriber classes to register.
+Defaults to an empty array.
+
+#### `register(): void`
+
+Creates a new `EventDispatcher`, registers all listeners and subscribers, calls
+`EventDispatcher.set()`, and registers the dispatcher in the service container
+under the key `events.dispatcher`.
+
+## Types
+
+```ts
+type EventClass<T extends Event = Event> = {
+  new (...args: unknown[]): T;
+  dispatch(event: T): Promise<void>;
+  fake(): void;
+  restore(): void;
+};
+
+type ListenerClass = {
+  new (): { handle(event: unknown): void | Promise<void> };
+  name: string;
+};
+
+type SubscriberClass = {
+  new (): Subscriber;
+};
+
+type ListenerMap = Map<EventClass<Event>, ListenerClass[]>;
+```
+
+## Testing
+
+#### `EventFake`
+
+Internal state managed by `Event.fake()`.
+
+```ts
+class EventFake {
+  dispatched: Event[];
+  recordDispatch(event: Event): void;
+}
+```
+
+
+---
+
+# @roost/feature-flags
+
+> Feature flag evaluation backed by Cloudflare KV. FeatureFlag static API, per-request caching, middleware, and service provider.
+
+## Installation
+
+```bash title="terminal"
+bun add @roost/feature-flags
+```
+
+## Configuration
+
+Declare a Cloudflare KV namespace binding in `wrangler.jsonc`:
+
+```jsonc title="wrangler.jsonc"
+{
+  "kv_namespaces": [
+    { "binding": "FLAGS_KV", "id": "<your-kv-namespace-id>" }
+  ]
+}
+```
+
+The default binding name is `FLAGS_KV`. Override it via `flags.kv` in the app
+config before registering the provider.
+
+## FeatureFlag API
+
+`FeatureFlag` is a static class. All methods are called directly on the class.
+There is no instance to construct.
+
+### Static Methods
+
+#### `static configure(flagStore: FlagStore): void`
+
+Set the backing `FlagStore`. Called automatically by `FeatureFlagServiceProvider`.
+Call this directly in tests or custom bootstrapping when bypassing the provider.
+
+#### `static async isEnabled(flag: string, request?: Request): Promise<boolean>`
+
+Returns `true` if the flag evaluates to a truthy value. Accepts an optional
+`request` to read from the per-request cache set by `FeatureFlagMiddleware`.
+
+Truthy rules:
+- `boolean`: the value itself
+- `string`: `"true"` is truthy, all other strings are falsy
+- `number`: positive numbers are truthy, `0` and negatives are falsy
+- `null` / missing: falsy
+
+Swallows store errors and returns `false` rather than throwing.
+
+#### `static async getValue<T extends FlagValue>(flag: string, request?: Request): Promise<T | null>`
+
+Returns the raw flag value cast to `T`. Throws `FlagNotFoundError` if the flag
+does not exist in the store. Use `isEnabled()` when you only need a boolean.
+
+#### `static async set<T extends FlagValue>(flag: string, value: T): Promise<void>`
+
+Write a flag value to the store. Used for programmatic flag management.
+Throws `FlagStoreNotConfiguredError` if no store is configured.
+
+#### `static fake(flags: Record<string, FlagValue>): void`
+
+Enable fake mode with a static set of flag values. All subsequent calls to
+`isEnabled()` and `getValue()` read from the in-memory fake.
+
+#### `static restore(): void`
+
+Disable fake mode and clear the configured store.
+
+#### `static assertChecked(flag: string): void`
+
+Assert that `isEnabled()` or `getValue()` was called for `flag` during the test.
+Throws if `fake()` was not called first, or if the flag was not accessed.
+
+## FeatureFlagMiddleware API
+
+Prefetches a set of flag values at the start of each request and attaches them
+to the request object. Downstream code that calls `FeatureFlag.isEnabled(flag, request)`
+reads from the cache without hitting KV again.
+
+#### `constructor(flags: string[])`
+
+Pass the list of flag names to prefetch on every request.
+
+#### `async handle(request: Request, next: (r: Request) => Promise<Response>): Promise<Response>`
+
+Fetches all configured flags in parallel, populates the per-request cache, then
+calls `next`.
+
+## FeatureFlagServiceProvider API
+
+Bootstraps `FeatureFlag` with a `KVStore` backed by the configured binding.
+
+#### `register(): void`
+
+Resolves the KV binding from `app.env` using the name from `app.config.get('flags.kv', 'FLAGS_KV')`.
+Calls `FeatureFlag.configure()` with a `FlagStore` that reads and writes JSON
+values via `@roost/cloudflare`'s `KVStore`. Logs a warning and returns without
+configuring if the binding is not found.
+
+## Types
+
+```ts
+type FlagValue = boolean | number | string | Record<string, unknown>;
+
+interface FlagStore {
+  get<T = FlagValue>(flag: string): Promise<T | null>;
+  set<T = FlagValue>(flag: string, value: T): Promise<void>;
+}
+```
+
+## Errors
+
+#### `FlagStoreNotConfiguredError`
+
+Thrown by `isEnabled()`, `getValue()`, and `set()` when no store has been
+configured and no fake is active.
+
+#### `FlagNotFoundError`
+
+Thrown by `getValue()` when the flag key does not exist in the store.
+
+## Testing
+
+#### `FeatureFlagFake`
+
+Internal fake state managed by `FeatureFlag.fake()`. Tracks which flags were
+checked so `assertChecked()` can verify access.
+
+```ts
+class FeatureFlagFake {
+  get<T extends FlagValue>(flag: string): Promise<T | null>;
+  set<T extends FlagValue>(flag: string, value: T): Promise<void>;
+  wasChecked(flag: string): boolean;
+}
+```
+
+## Cache Utilities
+
+Used internally by `FeatureFlagMiddleware` and `FeatureFlag.isEnabled()`. Exposed
+for advanced use cases.
+
+#### `getRequestCache(request: Request): Map<string, FlagValue> | null`
+
+Read the per-request flag cache attached to `request`. Returns `null` if no
+cache has been set.
+
+#### `setRequestCache(request: Request, cache: Map<string, FlagValue>): void`
+
+Attach a flag cache map to `request`. The cache is keyed by `FLAG_CACHE_KEY`
+(a unique symbol) to avoid namespace collisions.
+
+#### `FLAG_CACHE_KEY: unique symbol`
+
+The symbol used to attach the cache to the request object.
+
 
 ---
 
@@ -5102,6 +7252,25 @@ Example: `/org/acme/dashboard` → `acme`.
 #### `'header'`
 
 Reads the `X-Org-Slug` request header.
+
+## TenantScopeMiddleware
+
+`TenantScopeMiddleware` is exported from `@roost/orm`, not `@roost/auth`, but it is designed to be wired together with `OrgResolver` from `@roost/auth`. See the full API reference in the [@roost/orm reference — TenantScopeMiddleware](/docs/reference/orm#tenantscopemiddleware.md).
+
+`OrgResolver` satisfies the `OrgResolvable` interface required by `TenantScopeMiddleware`:
+
+```ts
+// OrgResolver.resolve() returns { slug: string } | null
+// TenantScopeMiddleware expects OrgResolvable: { resolve(request: Request): { slug: string } | null }
+// These are structurally compatible — no adapter needed.
+
+const resolver = new OrgResolver(['subdomain']);
+const middleware = new TenantScopeMiddleware(
+  resolver,
+  async (slug) => db.findOrgBySlug(slug),
+  ctx,
+);
+```
 
 ## Types
 
@@ -5555,6 +7724,210 @@ interface Middleware {
 type MiddlewareClass = new (...args: any[]) => Middleware;
 ```
 
+## Application.defer()
+
+#### `defer(promise: Promise<unknown>): void`
+
+Register a promise as background work to complete after the response is sent. Delegates
+to `ExecutionContext.waitUntil()`. The Worker runtime will not terminate the isolate
+until all deferred promises have settled.
+
+```ts title="src/app.ts"
+app.onDispatch(async (request) => {
+  const result = await processRequest(request);
+  // Fire-and-forget: analytics write completes after the response is returned
+  app.defer(analytics.record({ path: new URL(request.url).pathname }));
+  return Response.json(result);
+});
+```
+
+`defer()` is a no-op when no `ExecutionContext` is present (e.g. in tests that call
+`app.handle(request)` directly without a second argument).
+
+## RoostExecutionContext
+
+```ts
+interface RoostExecutionContext {
+  waitUntil(promise: Promise<unknown>): void;
+  passThroughOnException(): void;
+}
+```
+
+The execution context passed to `Application.handle()` as its second argument. Matches
+the shape of the Cloudflare Worker `ExecutionContext` — pass it through directly from the
+Worker `fetch` handler.
+
+```ts title="src/index.ts"
+export default {
+  fetch(request: Request, env: Env, ctx: ExecutionContext) {
+    return app.handle(request, ctx);
+  },
+};
+```
+
+## Logger API
+
+`Logger` emits structured JSON log entries to `console.log`. Every entry carries a
+`requestId` trace identifier so log lines from the same request can be correlated.
+
+#### `constructor(context: LogContext)`
+
+```ts
+interface LogContext {
+  requestId: string;
+  method: string;
+  path: string;
+  userId?: string;
+}
+```
+
+#### `info(message: string, data?: Record<string, unknown>): void`
+#### `warn(message: string, data?: Record<string, unknown>): void`
+#### `error(message: string, data?: Record<string, unknown>): void`
+#### `debug(message: string, data?: Record<string, unknown>): void`
+
+Each method emits a `LogEntry` as a single-line JSON object. The optional `data` map is
+merged into the entry under the `data` key.
+
+```ts
+interface LogEntry extends LogContext {
+  level: 'debug' | 'info' | 'warn' | 'error';
+  message: string;
+  timestamp: string; // ISO 8601
+  data?: Record<string, unknown>;
+}
+```
+
+#### `static fake(context?: Partial<LogContext>): FakeLogger`
+
+Create a `FakeLogger` pre-filled with defaults for test use. See [FakeLogger API](#fakelogger-api) below.
+
+## FakeLogger API
+
+`FakeLogger` extends `Logger` but captures entries in memory instead of writing to
+`console.log`. Used in tests to assert on logged output.
+
+#### `readonly entries: LogEntry[]`
+
+All log entries recorded since construction or the last `restore()` call.
+
+#### `assertLogged(level: LogLevel, message: string): void`
+
+Throws if no entry matching `level` with a message containing `message` exists in
+`entries`. Useful as an assertion in unit tests.
+
+#### `assertNotLogged(level: LogLevel): void`
+
+Throws if any entry at the given level exists in `entries`.
+
+#### `restore(): void`
+
+Clear all recorded entries. Call between tests.
+
+```ts title="src/handlers/payment.test.ts"
+const logger = Logger.fake();
+
+await handler(fakeRequest, logger);
+
+logger.assertLogged('info', 'payment.processed');
+logger.assertNotLogged('error');
+logger.restore();
+```
+
+## RequestIdMiddleware
+
+Extracts or generates a request trace ID and binds a configured `Logger` instance into
+the request-scoped container.
+
+```ts
+
+```
+
+#### Behavior
+
+1. Reads `cf-ray` from request headers; falls back to `crypto.randomUUID()`.
+2. Constructs a `Logger` with `{ requestId, method, path }`.
+3. Binds the logger into the request-scoped container under `Logger`.
+4. Sets `X-Request-Id` on the outgoing response.
+
+```ts title="src/app.ts"
+
+const app = Application.create(env);
+app.useMiddleware(RequestIdMiddleware);
+```
+
+Downstream handlers and middleware can then resolve a pre-configured `Logger` from the
+scoped container.
+
+## Webhook Verification API
+
+### `verifyWebhook(request: Request, options: WebhookVerifyOptions): Promise<string>`
+
+Verify an incoming webhook's HMAC or Ed25519 signature. Returns the raw request body as
+a string on success. Throws `WebhookVerificationError` on any failure (missing header,
+invalid signature, expired timestamp).
+
+```ts
+interface WebhookVerifyOptions {
+  secret: string | Uint8Array;
+  headerName: string;
+  algorithm: 'hmac-sha256' | 'hmac-sha512' | 'ed25519';
+  timestampHeader?: string;
+  parseTimestamp?: (headerValue: string) => number;
+  parseSignature?: (headerValue: string) => string;
+  buildSignedPayload?: (timestamp: number | null, body: string) => string;
+  tolerance?: number; // seconds; default 300; 0 disables timestamp check
+}
+```
+
+### `WebhookPresets`
+
+Pre-built `WebhookVerifyOptions` factories for common providers. Call the method and
+override `secret` with your signing secret.
+
+#### `WebhookPresets.stripe(): WebhookVerifyOptions`
+
+HMAC-SHA256 using the `stripe-signature` header. Extracts `t` and `v1` from the
+comma-separated header. Tolerance: 300 seconds.
+
+#### `WebhookPresets.github(): WebhookVerifyOptions`
+
+HMAC-SHA256 using the `x-hub-signature-256` header. Strips the `sha256=` prefix.
+No timestamp tolerance.
+
+#### `WebhookPresets.svix(): WebhookVerifyOptions`
+
+Ed25519 using `svix-signature` and `svix-timestamp` headers. Extracts the `v1,` prefixed
+signature. Tolerance: 300 seconds.
+
+### `WebhookMiddleware`
+
+Route-level middleware that calls `verifyWebhook` and returns `401` on failure.
+
+#### `constructor(options: WebhookVerifyOptions)`
+
+```ts title="src/routes/webhooks.ts"
+
+const stripeWebhook = new WebhookMiddleware({
+  ...WebhookPresets.stripe(),
+  secret: env.STRIPE_WEBHOOK_SECRET,
+});
+```
+
+Pass `WebhookMiddleware` to a route-specific pipeline or via `app.useMiddleware()` for a
+prefix-matched group.
+
+### `WebhookVerificationError`
+
+```ts
+class WebhookVerificationError extends Error {
+  name: 'WebhookVerificationError';
+}
+```
+
+Thrown by `verifyWebhook` when verification fails. `WebhookMiddleware` catches this and
+responds with `401 { "error": "<message>" }`.
+
 ## Errors
 
 The following error classes are thrown at runtime but are not exported from `@roost/core`. Catch them by name or use `instanceof` checks after importing the concrete class from its internal module path (not recommended for production code — prefer guarding with defaults or `has()` checks instead).
@@ -5570,6 +7943,481 @@ Thrown when a circular dependency is detected during resolution.
 #### `ConfigKeyNotFoundError`
 
 Thrown by `ConfigManager.get()` when the key does not exist and no default is provided.
+
+#### `WebhookVerificationError`
+
+Thrown by `verifyWebhook()` when the signature header is missing, the signature does not
+match, or the timestamp is outside the tolerance window.
+
+
+---
+
+# @roost/broadcast
+
+> Real-time WebSocket broadcasting via Cloudflare Durable Objects. Channel types, ChannelDO, BroadcastManager, client helper, and testing utilities.
+
+## Installation
+
+```bash title="terminal"
+bun add @roost/broadcast
+```
+
+## Configuration
+
+Declare a Durable Object binding and class in `wrangler.jsonc`:
+
+```jsonc title="wrangler.jsonc"
+{
+  "durable_objects": {
+    "bindings": [
+      { "name": "BROADCAST_DO", "class_name": "ChannelDO" }
+    ]
+  },
+  "migrations": [
+    { "tag": "v1", "new_classes": ["ChannelDO"] }
+  ]
+}
+```
+
+Export `ChannelDO` from your Worker's entry point:
+
+```ts title="src/index.ts"
+export { ChannelDO } from '@roost/broadcast';
+```
+
+## Channel API
+
+Channel classes identify the type and name of a broadcast target.
+
+#### `new Channel(name: string)`
+
+A public channel. Any connected client can receive messages. No authorization
+required to connect.
+
+#### `new PrivateChannel(name: string)`
+
+A private channel. Requires a valid `Authorization: Bearer <token>` header on
+the WebSocket upgrade request. Override `ChannelDO.authorize()` to implement
+application-specific token validation.
+
+#### `new PresenceChannel(name: string)`
+
+A presence channel. Extends private channel behavior with join/leave events.
+Connected clients receive `presence:join` and `presence:leave` events as
+members connect and disconnect. User ID is extracted via `ChannelDO.extractUserId()`.
+
+All channel classes expose:
+
+#### `name: string`
+
+The channel name string. Used as the Durable Object key so each channel name
+maps to a distinct DO instance.
+
+## BroadcastableEvent Interface
+
+Events that implement this interface are automatically broadcast by
+`EventDispatcher` when `@roost/broadcast` is installed.
+
+```ts
+interface BroadcastableEvent {
+  broadcastOn(): Channel[];
+  broadcastWith(): Record<string, unknown>;
+  broadcastAs?(): string;
+}
+```
+
+#### `broadcastOn(): Channel[]`
+
+Return the channels this event should be broadcast on.
+
+#### `broadcastWith(): Record<string, unknown>`
+
+Return the payload to send to subscribers.
+
+#### `broadcastAs?(): string`
+
+Optional. Override the event name sent over the wire. Defaults to the class name.
+
+## BroadcastManager API
+
+`BroadcastManager` routes broadcast calls to the appropriate Durable Object
+instance for each channel.
+
+#### `constructor(doClient: DurableObjectClient)`
+
+Construct with a `DurableObjectClient` wrapping the `ChannelDO` namespace.
+Called automatically by `BroadcastServiceProvider`.
+
+#### `static get(): BroadcastManager`
+
+Return the initialized singleton. Throws if `BroadcastServiceProvider` has not
+registered it.
+
+#### `static set(manager: BroadcastManager): void`
+
+Set the singleton. Called by `BroadcastServiceProvider.register()`.
+
+#### `static fake(): void`
+
+Enable fake mode. All `broadcast()` calls are recorded but not sent to Durable Objects.
+
+#### `static restore(): void`
+
+Disable fake mode and clear the singleton.
+
+#### `static assertBroadcast(eventClass: new (...args) => BroadcastableEvent): void`
+
+Assert that an event of the given class was broadcast (in fake mode).
+
+#### `static assertBroadcastOn(channel: string): void`
+
+Assert that a broadcast was sent to the named channel (in fake mode).
+
+#### `async broadcast(event: BroadcastableEvent): Promise<void>`
+
+Broadcast the event to all channels returned by `event.broadcastOn()`. Calls
+the `ChannelDO`'s `/broadcast` endpoint via HTTP for each channel.
+
+## BroadcastServiceProvider API
+
+#### `protected bindingName(): string`
+
+Returns `'BROADCAST_DO'` by default. Override to use a different binding name.
+
+#### `register(): void`
+
+Resolves the Durable Object namespace from `app.env`, creates a
+`DurableObjectClient`, instantiates a `BroadcastManager`, and registers it in
+the service container under `broadcast.manager`.
+
+## ChannelDO API
+
+`ChannelDO` is the Durable Object that manages WebSocket connections for a
+single channel. Export it from your Worker entry point.
+
+#### `async fetch(request: Request): Promise<Response>`
+
+Routes incoming requests:
+- WebSocket upgrade requests: handled by `handleUpgrade()`
+- `POST /broadcast`: pushes a message to all connected sockets
+- `GET /presence`: returns the list of connected members
+
+#### `protected async authorize(request: Request): Promise<{ ok: boolean }>`
+
+Override to implement application-specific authorization for private and presence
+channels. The default implementation accepts any `Authorization: Bearer <token>`
+header with a non-empty token. Production applications must override this.
+
+#### `protected extractUserId(request: Request): string | undefined`
+
+Override to extract the user ID from the upgrade request. Used for presence
+channel member tracking. The default implementation reads the `userId` query
+parameter.
+
+#### `async webSocketMessage(ws: WebSocket, message: string | ArrayBuffer): Promise<void>`
+
+Handles incoming messages from connected clients. Supports `whisper` events
+for client-to-client messaging within the channel.
+
+#### `async webSocketClose(ws: WebSocket, code: number, reason: string): Promise<void>`
+
+Broadcasts a `presence:leave` event when a presence channel member disconnects.
+
+#### `async webSocketError(ws: WebSocket, error: unknown): Promise<void>`
+
+Closes the socket with code `1011` on error.
+
+## createBroadcastClient (client-side helper)
+
+```ts title="client entrypoint: @roost/broadcast/client"
+function createBroadcastClient(
+  urlOrFactory: string | (() => string),
+  options?: BroadcastClientOptions
+): BroadcastClient
+```
+
+Creates a WebSocket client with automatic reconnection. Import from
+`@roost/broadcast/client` — this module does not import any server-side code.
+
+#### `urlOrFactory: string | (() => string)`
+
+The WebSocket URL or a factory function that returns it. Use a factory when the
+URL needs a fresh auth token on each reconnect.
+
+#### `options?: BroadcastClientOptions`
+
+```ts
+interface BroadcastClientOptions {
+  initialDelay?: number;   // Default: 1000ms
+  maxDelay?: number;       // Default: 30000ms
+  onConnect?: () => void;
+  onDisconnect?: (code: number, reason: string) => void;
+}
+```
+
+### BroadcastClient Interface
+
+#### `subscribe(channel: string, handler: (event: string, data: unknown) => void): () => void`
+
+Register a handler for messages on a channel. Returns an unsubscribe function.
+The `channel` argument is used to namespace handlers; the WebSocket itself is
+channel-scoped at the connection level (one WebSocket per channel URL).
+
+#### `unsubscribe(channel: string): void`
+
+Remove all handlers registered for the given channel key.
+
+#### `whisper(channel: string, event: string, data?: unknown): void`
+
+Send a peer-to-peer message to other clients in the channel. Only sends if the
+WebSocket is open.
+
+#### `close(): void`
+
+Close the WebSocket and disable automatic reconnection.
+
+## Types
+
+```ts
+interface ConnectionMeta {
+  userId?: string;
+  joinedAt: number;
+  channelType: 'public' | 'private' | 'presence';
+}
+
+interface PresenceMember {
+  id: string;
+  joinedAt: number;
+}
+
+interface BroadcastMessage {
+  event: string;
+  data: Record<string, unknown>;
+}
+```
+
+## Testing
+
+#### `BroadcastFake`
+
+Internal state managed by `BroadcastManager.fake()`.
+
+```ts
+class BroadcastFake {
+  broadcasts: Array<{ event: BroadcastableEvent; channel: string }>;
+  recordBroadcast(event: BroadcastableEvent, channel: string): void;
+}
+```
+
+
+---
+
+# @roost/workflow
+
+> Durable multi-step workflows on Cloudflare Workflows. Workflow base class, WorkflowClient, Compensable, and service provider.
+
+## Installation
+
+```bash title="terminal"
+bun add @roost/workflow
+```
+
+## Configuration
+
+Declare a Cloudflare Workflow binding in `wrangler.jsonc`:
+
+```jsonc title="wrangler.jsonc"
+{
+  "workflows": [
+    {
+      "name": "my-workflow",
+      "binding": "MY_WORKFLOW",
+      "class_name": "MyWorkflow"
+    }
+  ]
+}
+```
+
+## Workflow API
+
+`Workflow<Env, TParams>` is an abstract base class that extends Cloudflare's
+`WorkflowEntrypoint`. Implement `run()` and register the class with
+`WorkflowServiceProvider`.
+
+### Instance Methods
+
+#### `abstract async run(event: WorkflowEvent<TParams>, step: WorkflowStep): Promise<unknown>`
+
+The workflow's main logic. `event.payload` contains the typed params passed at
+creation. Use `step.do()` for durable operations and `step.sleep()` for delays.
+Cloudflare Workflows re-runs `run()` from the start on retry; each `step.do()`
+call is replayed from the checkpoint cache rather than re-executed.
+
+### Static Methods
+
+#### `static fake(): void`
+
+Enable fake mode. `WorkflowClient.create()` calls are recorded but not sent to
+Cloudflare.
+
+#### `static restore(): void`
+
+Disable fake mode and remove the stored fake.
+
+#### `static assertCreated(id?: string): void`
+
+Assert that the workflow was created (in fake mode). Pass an `id` to assert a
+specific instance was created.
+
+#### `static assertNotCreated(): void`
+
+Assert that no workflow instance was created.
+
+#### `static _getFake(): WorkflowFake | undefined`
+
+Internal. Returns the active fake for this class, if any.
+
+## WorkflowClient API
+
+`WorkflowClient<TParams>` wraps a Cloudflare Workflow binding and returns
+typed `WorkflowInstanceHandle` objects.
+
+#### `constructor(binding: Workflow<TParams>)`
+
+Construct with the raw Cloudflare Workflow binding from the env.
+
+#### `async create(params: WorkflowCreateParams<TParams>): Promise<WorkflowInstanceHandle>`
+
+Create a new workflow instance. If `params.id` is omitted, Cloudflare generates one.
+
+#### `async get(id: string): Promise<WorkflowInstanceHandle>`
+
+Retrieve an existing workflow instance by ID.
+
+#### `async terminate(id: string): Promise<void>`
+
+Terminate a running workflow instance.
+
+## WorkflowInstanceHandle API
+
+Returned by `WorkflowClient.create()` and `WorkflowClient.get()`.
+
+#### `id: string`
+
+The unique identifier of the workflow instance.
+
+#### `async pause(): Promise<void>`
+
+Pause execution of the workflow instance.
+
+#### `async resume(): Promise<void>`
+
+Resume a paused workflow instance.
+
+#### `async abort(reason?: string): Promise<void>`
+
+Terminate the workflow instance with an optional reason string.
+
+#### `async status(): Promise<WorkflowInstanceStatus>`
+
+Fetch the current status of the instance.
+
+## Compensable API
+
+`Compensable` is a helper for saga-style rollback. Register compensation
+functions during workflow execution; if a step fails, call `compensate()` to
+undo previous operations in reverse order.
+
+#### `register(compensation: CompensationFn): void`
+
+Register a compensation function. Compensations are called last-registered-first
+on rollback.
+
+#### `async compensate(): Promise<void>`
+
+Execute all registered compensations in reverse order. Each compensation is
+called with best-effort: if one throws, the error is swallowed and execution
+continues to the next. The compensation list is cleared after running.
+
+## WorkflowServiceProvider API
+
+Registers workflow classes with the service container so they can be resolved
+by their binding name.
+
+#### `withWorkflows(workflows: Array<{ workflowClass: typeof Workflow; binding: string }>): this`
+
+Chain one or more workflow registrations. Each entry maps a `Workflow` subclass
+to its Cloudflare binding name.
+
+#### `register(): void`
+
+Called by the service container bootstrap. Resolves bindings from the env and
+registers `WorkflowClient` instances (or fakes) under the key
+`workflow:{ClassName}`.
+
+## Types
+
+```ts
+interface WorkflowCreateParams<TParams = unknown> {
+  id?: string;
+  params: TParams;
+}
+
+interface WorkflowInstanceHandle {
+  id: string;
+  pause(): Promise<void>;
+  resume(): Promise<void>;
+  abort(reason?: string): Promise<void>;
+  status(): Promise<WorkflowInstanceStatus>;
+}
+
+type WorkflowInstanceStatus = {
+  status: 'queued' | 'running' | 'paused' | 'complete' | 'errored' | 'terminated';
+  output?: unknown;
+  error?: string;
+};
+```
+
+## Errors
+
+#### `WorkflowError`
+
+Base error class for workflow-related failures. Accepts an optional `workflowId`
+property for correlation.
+
+```ts
+class WorkflowError extends Error {
+  constructor(message: string, workflowId?: string);
+  readonly workflowId?: string;
+}
+```
+
+#### `NonRetryableError`
+
+Re-exported from `cloudflare:workflows`. Throw inside `run()` to signal a
+permanent failure that should not be retried.
+
+## Testing
+
+#### `WorkflowFake`
+
+Internal fake state object managed by `Workflow.fake()`. Accessible via
+`Workflow._getFake()` for advanced assertions.
+
+```ts
+interface FakeWorkflowRecord {
+  id: string;
+  params: unknown;
+  createdAt: Date;
+}
+
+class WorkflowFake {
+  created: FakeWorkflowRecord[];
+  recordCreate(id: string, params: unknown): void;
+  assertCreated(id?: string): void;
+  assertNotCreated(): void;
+}
+```
 
 
 ---
@@ -5765,6 +8613,7 @@ interface AgentConfig {
   maxTokens?: number;
   temperature?: number;
   timeout?: number;
+  queued?: boolean;
 }
 
 interface AgentMessage {
@@ -5781,6 +8630,10 @@ interface AgentResponse {
   usage?: { promptTokens: number; completionTokens: number };
 }
 
+type PromptResult =
+  | { queued: false; text: string; messages: AgentMessage[]; toolCalls: ToolCall[]; usage?: { promptTokens: number; completionTokens: number } }
+  | { queued: true; taskId: string };
+
 interface ToolCall {
   id: string;
   name: string;
@@ -5793,13 +8646,216 @@ interface ProviderRequest {
   tools?: ProviderTool[];
   maxTokens?: number;
   temperature?: number;
+  queueRequest?: boolean;
 }
 
 interface ProviderResponse {
   text: string;
   toolCalls: ToolCall[];
   usage?: { promptTokens: number; completionTokens: number };
+  taskId?: string;
 }
+```
+
+## GatewayAIProvider
+
+Routes inference requests through [Cloudflare AI Gateway](https://developers.cloudflare.com/ai-gateway/) instead of the direct Workers AI binding. Adds observability, request caching, and automatic fallback.
+
+The gateway URL format used is:
+`https://gateway.ai.cloudflare.com/v1/{accountId}/{gatewayId}/workers-ai/{model}`
+
+#### `constructor(config: GatewayConfig, fallback: CloudflareAIProvider)`
+
+Construct with an account/gateway pair and a fallback provider. The fallback is called automatically when the gateway returns a non-2xx status or is unreachable.
+
+```ts
+interface GatewayConfig {
+  accountId: string;
+  gatewayId: string;
+}
+```
+
+#### `async chat(request: ProviderRequest): Promise<ProviderResponse>`
+
+Send a chat request through the AI Gateway REST endpoint. If the request contains more than one non-system message, the `x-session-affinity: true` header is included automatically to enable prefix caching on the gateway. Falls back to the direct `CloudflareAIProvider` on any error.
+
+### Session Affinity and Prefix Caching
+
+`GatewayAIProvider` automatically adds `x-session-affinity: true` to requests that contain conversation history (more than one non-system message). This header instructs the AI Gateway to route the request to the same backend replica, enabling KV-based prefix cache hits for repeated conversation prefixes. No manual configuration is required.
+
+### Usage
+
+```ts title="src/app.ts"
+
+const directProvider = new CloudflareAIProvider(new AIClient(env.AI));
+const gatewayProvider = new GatewayAIProvider(
+  { accountId: env.CF_ACCOUNT_ID, gatewayId: env.AI_GATEWAY_ID },
+  directProvider,
+);
+
+MyAgent.setProvider(gatewayProvider);
+```
+
+## Async Inference
+
+Pass `queued: true` in the options to `Agent.prompt()` to dispatch the inference request asynchronously. The model call is enqueued on Cloudflare's side and the call returns immediately with a `taskId`.
+
+#### `async prompt(input: string, options?: Partial<AgentConfig>): Promise<PromptResult>`
+
+When `options.queued` is `true`, the return value has shape `{ queued: true; taskId: string }`. Otherwise it has shape `{ queued: false; text: string; messages: AgentMessage[]; toolCalls: ToolCall[] }`. Use the `queued` discriminant before accessing `text` or `taskId`.
+
+```ts
+const result = await agent.prompt('Summarize this document', { queued: true });
+
+if (result.queued) {
+  // Stash result.taskId and poll later
+} else {
+  console.log(result.text);
+}
+```
+
+`agent.stream()` throws if called with `queued: true`.
+
+## AIClient.poll()
+
+Check the status of a queued async inference task via the Cloudflare REST API. Located in `@roost/cloudflare`.
+
+#### `async poll<T = string>(taskId: string, fetcher: typeof fetch, accountId: string): Promise<{ status: 'running' } | { status: 'done'; result: T }>`
+
+Polls `https://api.cloudflare.com/client/v4/accounts/{accountId}/ai/run/tasks/{taskId}`. The `fetcher` must carry an `Authorization: Bearer <CF_API_TOKEN>` header. Returns `{ status: 'running' }` while the task is in progress and `{ status: 'done'; result: T }` when complete.
+
+```ts
+
+const client = new AIClient(env.AI);
+const poll = await client.poll(taskId, fetch.bind(env), env.CF_ACCOUNT_ID);
+
+if (poll.status === 'done') {
+  console.log(poll.result);
+}
+```
+
+## RAG Pipeline
+
+Import from `@roost/ai/rag`.
+
+### Chunkers
+
+Abstract base class:
+
+```ts
+abstract class Chunker {
+  abstract chunk(document: Document): Chunk[];
+}
+```
+
+#### `TextChunker`
+
+Splits a document into fixed-size token windows with configurable overlap.
+
+```ts
+new TextChunker(options?: { chunkSize?: number; overlapPercent?: number })
+```
+
+| Option | Default | Description |
+|---|---|---|
+| `chunkSize` | `400` | Target token count per chunk (estimated as `chars / 4`). |
+| `overlapPercent` | `0.10` | Fraction of the previous chunk's words to repeat at the start of the next chunk. |
+
+#### `SemanticChunker`
+
+Splits on Markdown headings and double newlines first, merges segments below 10 % of `chunkSize`, then falls back to `TextChunker` for segments that still exceed `chunkSize`.
+
+```ts
+new SemanticChunker(options?: { chunkSize?: number; overlapPercent?: number })
+```
+
+Accepts the same options as `TextChunker`.
+
+### EmbeddingPipeline
+
+Wraps the `AIClient` to produce embedding vectors from text.
+
+#### `constructor(client: AIClient, model?: string)`
+
+Default model: `@cf/baai/bge-base-en-v1.5` (768 dimensions). The model must match the dimensionality of the Vectorize index.
+
+#### `async embed(texts: string[]): Promise<number[][]>`
+
+Returns one embedding vector per input string. Throws `EmbeddingError` if the binding returns no data or a mismatched count.
+
+### RAGPipeline
+
+Orchestrates chunking, embedding, and vector storage/retrieval.
+
+#### `constructor(store: VectorStore, embeddings: EmbeddingPipeline, chunker: Chunker, config?: RAGPipelineConfig)`
+
+#### `async ingest(documents: Document[]): Promise<{ inserted: number }>`
+
+Chunk all documents, embed each chunk, and insert the resulting vectors into the `VectorStore`. Returns the number of vectors inserted.
+
+#### `async query(text: string): Promise<QueryResult[]>`
+
+Embed the query text, search the vector store for the top-K nearest chunks, filter by `similarityThreshold`, and return results sorted by descending score.
+
+#### `static fake(responses?: QueryResult[][]): void`
+
+Enable fake mode. `query()` returns from the `responses` array in order.
+
+#### `static restore(): void`
+
+Disable fake mode.
+
+#### `static assertIngested(predicate?: (docs: Document[]) => boolean): void`
+
+Assert that `ingest()` was called at least once. Provide a predicate to assert on the specific documents passed.
+
+#### `static assertQueried(predicate?: (text: string) => boolean): void`
+
+Assert that `query()` was called at least once. Provide a predicate to match against the query text.
+
+### RAG Types
+
+```ts
+interface Document {
+  id: string;
+  text: string;
+  metadata?: Record<string, unknown>;
+}
+
+interface Chunk {
+  id: string;           // `${document.id}:${chunkIndex}`
+  documentId: string;
+  text: string;
+  tokenCount: number;
+  metadata?: Record<string, unknown>;
+}
+
+interface ChunkVector {
+  chunk: Chunk;
+  embedding: number[];
+}
+
+interface QueryResult {
+  chunk: Chunk;
+  score: number;
+}
+
+interface RAGPipelineConfig {
+  /** Default: 400 */
+  chunkSize?: number;
+  /** Default: 0.10 */
+  overlapPercent?: number;
+  /** Default: '@cf/baai/bge-base-en-v1.5' */
+  embeddingModel?: string;
+  /** Default: 5 */
+  topK?: number;
+  /** Default: 0.75 */
+  similarityThreshold?: number;
+  /** Vectorize namespace for multi-tenancy */
+  namespace?: string;
+}
+
+class EmbeddingError extends Error {}
 ```
 
 
@@ -6286,6 +9342,140 @@ interface PaginationResult<T> {
 }
 ```
 
+## Tenant Scoping
+
+### Model.tenantColumn
+
+```ts
+static tenantColumn: string | null = null;
+```
+
+Set `tenantColumn` to the column name that stores the tenant identifier (e.g. `'org_id'`). When set and a `TenantContext` is active, all queries — `find`, `findOrFail`, `all`, `create`, `save`, `delete`, and every `QueryBuilder` chain — automatically include `WHERE {tenantColumn} = {orgId}` using the current context value. The tenant condition is always prepended before any caller-supplied `where` clauses.
+
+On `create()`, the tenant column value from the context overwrites any caller-supplied value for that column, ensuring rows can never be created outside the active tenant.
+
+```ts title="src/models/Post.ts"
+
+export class Post extends Model {
+  static tableName = 'posts';
+  static tenantColumn = 'org_id';
+}
+```
+
+### Model.withoutTenantScope()
+
+#### `static async withoutTenantScope<T>(fn: () => Promise<T>): Promise<T>`
+
+Execute `fn` with the tenant scope bypassed for this model class. The context is restored after `fn` resolves or rejects. Use for administrative queries that must cross tenant boundaries.
+
+```ts
+const allPosts = await Post.withoutTenantScope(() => Post.all());
+```
+
+## TenantContext
+
+Request-scoped object that holds the active tenant identity. Injected into all model classes by `OrmServiceProvider` at boot. Resolve from the DI container when you need to read or set the tenant outside a model query.
+
+#### `set(data: TenantContextData): void`
+
+Set the active tenant. Called by `TenantScopeMiddleware` after resolving the org.
+
+#### `get(): TenantContextData | null`
+
+Return the current tenant data, or `null` if not set.
+
+#### `isBypassed(): boolean`
+
+Return `true` if `withoutTenantScope()` is currently active.
+
+#### `bypass(): void`
+
+Disable tenant filtering. Called internally by `withoutTenantScope()`.
+
+#### `restore(): void`
+
+Re-enable tenant filtering. Called internally by `withoutTenantScope()`.
+
+```ts
+interface TenantContextData {
+  orgId: string;
+  orgSlug: string;
+}
+```
+
+## TenantDatabaseResolver
+
+Resolves a per-tenant D1 binding by mapping an org slug to a binding name using a configurable pattern.
+
+#### `constructor(pattern: string, resolveBinding: (name: string) => D1Database | null)`
+
+| Parameter | Description |
+|---|---|
+| `pattern` | Binding name template. Default: `'DB_TENANT_{SLUG}'`. `{SLUG}` is replaced with the uppercased, hyphen-to-underscore org slug. |
+| `resolveBinding` | Function that returns the D1Database for a given binding name, or `null` if not found. |
+
+#### `resolve(slug: string): D1Database | null`
+
+Converts `slug` to a binding name using `pattern` and calls `resolveBinding`. Returns `null` if no matching binding exists.
+
+**Example:** slug `acme-corp` with pattern `DB_TENANT_{SLUG}` resolves to binding name `DB_TENANT_ACME_CORP`.
+
+## D1SessionHandle
+
+Wraps a D1Database binding to enforce read-your-writes consistency using the D1 Sessions API.
+
+#### `constructor(db: D1Database)`
+
+#### `sessionAwareRaw(): D1Database`
+
+Returns a session-aware D1Database handle. If `markWritten()` has been called, the returned handle calls `db.withSession(token)` to route reads to a replica that has seen the most recent write. Falls back to the plain binding if `withSession()` is unavailable (e.g. local dev / Miniflare).
+
+#### `markWritten(token?: string): void`
+
+Record that a write has occurred. Pass a session token string to use a specific session; omit to use the unconditional first-session sentinel. Call this immediately after any `INSERT`, `UPDATE`, or `DELETE` that must be visible to subsequent reads in the same request.
+
+## TenantScopeMiddleware
+
+Sets the active `TenantContext` from the incoming request using an `OrgResolvable` and an org lookup function. Place this middleware before any route handler that queries tenant-scoped models.
+
+#### `constructor(resolver: OrgResolvable, orgLookup: (slug: string) => Promise<{ id: string } | null>, ctx: TenantContext)`
+
+| Parameter | Description |
+|---|---|
+| `resolver` | Any object implementing `resolve(request: Request): { slug: string } \| null`. `OrgResolver` from `@roost/auth` satisfies this interface. |
+| `orgLookup` | Async function that returns `{ id: string }` for a known slug, or `null` if the org does not exist. |
+| `ctx` | The `TenantContext` instance to populate. Resolve from the DI container. |
+
+#### `async handle(request: Request, next: () => Promise<Response>): Promise<Response>`
+
+Resolves the org slug from the request, looks up the org ID, and calls `ctx.set({ orgId, orgSlug })` before calling `next()`. Throws `TenantNotResolvedError` if the slug is found but the org lookup returns `null`.
+
+```ts
+interface OrgResolvable {
+  resolve(request: Request): { slug: string } | null;
+}
+```
+
+## OrmServiceProvider — Tenant Strategy Config
+
+`OrmServiceProvider` reads the following config keys during `boot()`:
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `database.tenantStrategy` | `'row' \| 'database'` | `'row'` | `'row'` uses `tenantColumn` filtering on a shared DB. `'database'` resolves a per-tenant D1 binding via `TenantDatabaseResolver`. |
+| `database.useSession` | `boolean` | `false` | Wrap the D1 binding in `D1SessionHandle` for read-your-writes consistency. |
+| `database.d1Binding` | `string` | `'DB'` | The shared D1 binding name. |
+| `database.tenantBindingPattern` | `string` | `'DB_TENANT_{SLUG}'` | Binding name pattern for `'database'` strategy. |
+
+```ts title="config/database.ts"
+export default {
+  tenantStrategy: 'row',      // or 'database' for DB-per-tenant
+  useSession: true,           // enable read-your-writes
+  d1Binding: 'DB',
+  tenantBindingPattern: 'DB_TENANT_{SLUG}',
+};
+```
+
 ## Errors
 
 #### `OrmNotBootedError`
@@ -6644,6 +9834,102 @@ Create an `McpRequest` from a plain arguments object. Used internally by
 `McpServer` when routing tool calls and prompt invocations. Import directly
 when testing tools or prompts in isolation without a full server.
 
+## AiSearchResource
+
+`AiSearchResource` is a pre-built `McpResource` that wraps a Cloudflare AI Search binding, exposing semantic search over an indexed corpus to any MCP client.
+
+Because `AiSearchResource` requires constructor arguments (the AI Search binding and an instance name), it cannot be used directly in the zero-argument `Array<new () => McpResource>` pattern. Two registration patterns are supported.
+
+### Pattern 1 — Subclass per instance (recommended)
+
+```ts title="src/mcp/resources/MyAiSearch.ts"
+
+export class MyAiSearch extends AiSearchResource {
+  constructor() {
+    super(env.AI_SEARCH, 'my-docs');
+  }
+}
+```
+
+Register the subclass on an `McpServer` as normal:
+
+```ts
+class AppServer extends McpServer {
+  resources = [MyAiSearch];
+}
+```
+
+### Pattern 2 — Ad-hoc instance
+
+Construct `AiSearchResource` directly and pass it to `McpServer.readResource()` without registering it on the server.
+
+### Constructor
+
+```ts
+constructor(
+  binding: { run(request: Record<string, unknown>): Promise<Record<string, unknown>> },
+  instanceName: string,
+)
+```
+
+| Parameter | Description |
+|---|---|
+| `binding` | The Cloudflare AI Search binding (e.g. `env.AI_SEARCH`). |
+| `instanceName` | A unique name for this search instance. Used as the URI host: `aisearch://{instanceName}`. |
+
+### Methods
+
+#### `uri(): string`
+
+Returns `aisearch://{instanceName}`.
+
+#### `mimeType(): string`
+
+Returns `'application/json'`.
+
+#### `description(): string`
+
+Returns a string describing the instance name and accepted query shape.
+
+#### `shouldRegister(): boolean`
+
+Returns `true`.
+
+#### `async handle(request: McpRequest): Promise<McpResponse>`
+
+Accepts `query` (required string), `metadataFilters` (optional `Record<string, string>`), and `pathFilters` (optional `string[]`). Returns `McpResponse.structured(...)` with the search result, or `McpResponse.error(...)` if `query` is empty or the binding throws.
+
+### Request parameters
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `query` | `string` | Yes | The search query text. |
+| `metadataFilters` | `Record<string, string>` | No | Key/value metadata filters passed to the AI Search binding. |
+| `pathFilters` | `string[]` | No | URL path prefixes to restrict search scope. |
+
+### Response shape
+
+When the AI Search binding returns an `answer` field:
+
+```ts
+interface AiSearchResult {
+  answer: string;
+  sources: Array<{
+    url: string;
+    title?: string;
+    excerpt?: string;
+  }>;
+}
+```
+
+Otherwise the raw binding response is returned as structured content.
+
+## McpResponse.structured
+
+#### `static structured(content: Record<string, unknown>): McpResponse`
+
+Create a structured JSON content response. Used by `AiSearchResource` and any resource or tool that needs to return machine-readable JSON rather than plain text.
+
 ## Types
 
 ```ts
@@ -6925,12 +10211,306 @@ adds a new task type. The pass-through design stays current without changes, and
 `AIClient.run()`. The cloudflare package stays thin; the AI package adds
 structure.
 
+## Binding Auto-Detection
+
+`CloudflareServiceProvider` iterates over every key in the Worker `env` object and
+attempts to identify the binding type by duck-typing — checking for the presence of
+specific methods. This means you do not need to declare which bindings exist in your
+Roost config; the provider discovers them at boot time and wraps each one in the
+appropriate typed client.
+
+The detection order matters because some binding shapes overlap. R2 buckets have all the
+methods that KV namespaces have plus `head`, so R2 is checked before KV. Durable Object
+namespaces have a `get` method, so they are distinguished from KV by also checking for
+`idFromName`. Dispatch namespaces have `get` but not `fetch` on the namespace itself,
+so they are checked before the catch-all `Fetcher` guard. The comments in `provider.ts`
+document the reasoning for each guard's position in the chain.
+
+The practical consequence is that renaming a binding in `wrangler.jsonc` automatically
+renames it in the container — no Roost config change needed. The wrapper is registered
+under the binding's key, which is whatever SCREAMING_SNAKE_CASE name Cloudflare assigns.
+
+## Worker-to-Worker Service Architecture
+
+Cloudflare service bindings let one Worker call another over an internal network without
+going through the public internet. The callee Worker runs in the same Cloudflare data
+center as the caller, so latency is negligible. The `ServiceClient` wrapper provides
+HTTP convenience methods (`get`, `post`, `put`, `patch`, `delete`) that handle
+JSON serialization and the internal URL scheme (`http://service{path}`).
+
+The `call()` method layers a lightweight RPC convention on top: it POST to
+`/rpc/{method}` with `{ args }` as the body and returns the parsed JSON response. This
+is useful when the remote Worker is designed as an internal service rather than a
+user-facing API. Whether to use the HTTP methods or `call()` is a choice about how the
+called Worker is designed — there is no framework-level enforcement.
+
+## Multi-Tenant Compute with Workers for Platforms
+
+Workers for Platforms is Cloudflare's model for running tenant-owned code at scale. A
+platform operator deploys a dispatch namespace; tenants upload their own Worker scripts
+into that namespace; the operator's Worker dispatches inbound requests to the appropriate
+tenant script by name.
+
+`DispatchNamespaceClient.dispatchClient()` returns a `ServiceClient` for a named script,
+which means all the same HTTP and RPC patterns apply to tenant scripts as to first-party
+service bindings. The `trust` option controls whether the dispatched script receives the
+raw request headers or a sanitized version — use `'trusted'` only for scripts you own.
+
+## Edge HTML Transformation
+
+`HTMLRewriter` is a Cloudflare-specific streaming HTML parser. It processes the response
+body as a byte stream and applies registered element handlers without buffering the full
+document. This is important for large pages: transformation latency is proportional to
+handler complexity, not document size.
+
+`HtmlTransformer` wraps `HTMLRewriter` with a chainable interface. Each method
+(`injectScript`, `setMetaTag`, `replaceElement`, `removeElement`, `abTest`) registers
+one or more element handlers. Calling `transform()` passes the accumulated rewriter over
+the response stream.
+
+The A/B test support is a deliberate design choice: the assignment function runs inside
+the element handler, which executes during streaming. The `request` object must be
+threaded into the handler state before streaming begins — that is why `transform()`
+accepts the request as a second argument rather than reading it from a closure at
+construction time.
+
+## Rate Limiting at the Edge
+
+Rate limiting in a distributed system is a coordination problem: each Worker isolate is
+independent, so a per-isolate counter would be meaningless. Roost provides two backends
+that solve this with different consistency trade-offs.
+
+`KVRateLimiter` uses a fixed-window counter stored in KV. KV is eventually consistent —
+reads may not immediately reflect the latest write. Under heavy concurrent traffic from
+the same key, multiple isolates may read the same count and all increment it, allowing
+brief bursts above the limit. For most applications this is acceptable; the over-run is
+bounded to the replication lag of the KV write.
+
+`DORateLimiter` routes each check to a named Durable Object instance. Durable Objects
+serialize requests to a single instance, so the counter is always accurate. The trade-off
+is latency: every rate limit check requires a round-trip to the DO, which may be in a
+different data center if the request originates far from the DO's home location.
+
+`RateLimiterFake` exists for the same reason as `FakeLogger`: rate limiters are a
+side-effecting external dependency. Tests that use `fakeRateLimiter()` get deterministic
+behavior without any KV or DO infrastructure. The fake integrates at the point where
+`KVRateLimiter` and `DORateLimiter` check for an active fake, so no test-specific code
+path is needed in the middleware itself.
+
+## Content-Addressed Caching with VersionedKVStore
+
+KV's consistency model — eventual consistency with no atomic compare-and-swap — makes
+cache invalidation tricky. The conventional approach (write a new value under the same
+key and delete the old one) has a race window: a reader between the write and the delete
+may get the old value or a null. `VersionedKVStore` sidesteps this by separating content
+storage from pointer storage.
+
+Content is written under a SHA-256 hash of its serialized form: the same content always
+produces the same key, and the key is immutable once written. A separate pointer key
+holds the current hash. Readers follow the pointer; writers update the pointer atomically
+after writing the content. A reader that follows a stale pointer still gets valid data —
+it just gets the previous version rather than the latest.
+
+The content TTL controls how long orphaned content entries survive after the pointer
+moves away. Setting it too low means a pointer update and the subsequent read could
+race with content expiry on the old value. The default of 24 hours is conservative for
+data that changes at most once per day.
+
 ## Further Reading
 
 - [Edge Computing — bindings, the Workers runtime, and what they mean for design](/docs/concepts/edge-computing.md)
 - [@roost/ai concepts — how the agent abstraction uses AIClient](/docs/concepts/ai.md)
 - [@roost/cloudflare reference — all binding wrapper APIs](/docs/packages/cloudflare.md)
 - [Cloudflare Workers AI Documentation](https://developers.cloudflare.com/workers-ai/)
+
+
+---
+
+# @roost/events
+
+> The observer pattern in Roost, how in-process event dispatching differs from message queues, listener vs subscriber design, and the ShouldQueue escape hatch.
+
+## The Observer Pattern in Workers
+
+`@roost/events` implements the observer pattern: an event is dispatched, and
+any number of listeners react to it. This separates the code that produces a
+domain action (user registered, order placed) from the code that responds to it
+(send email, update analytics, provision trial subscription).
+
+Without events, the handler that creates a user record knows about email sending,
+analytics, and provisioning. With events, it only knows about user creation. The
+listeners — which may live in different modules — subscribe to the event and
+handle their own concerns. Adding a new side effect does not require modifying
+the original handler.
+
+## In-Process vs Message Queue
+
+`EventDispatcher.dispatch()` calls listeners synchronously within the same Worker
+invocation. All listeners for a given event execute in parallel via `Promise.all`
+before `dispatch()` resolves. This is straightforward but means listener failures
+propagate back to the dispatch caller, and listener execution time adds to the
+request's total response time.
+
+For listeners that are slow or whose success is not required for the response,
+implement `ShouldQueue`. The dispatcher checks for this marker and dispatches
+the listener as a `Job` via `@roost/queue` instead of calling `handle()` inline.
+The job runs asynchronously in a separate Worker invocation, and the original
+request completes immediately.
+
+Choose in-process listeners for fast, critical side effects that the caller needs
+to know about. Choose `ShouldQueue` listeners for slow, non-critical work like
+sending emails, generating reports, or updating external systems.
+
+## Broadcast Interop
+
+Events that implement the `BroadcastableEvent` interface from `@roost/broadcast`
+are automatically forwarded to `BroadcastManager` after dispatching to listeners.
+This means a single `UserRegistered.dispatch(event)` call can simultaneously
+notify in-process listeners and push an update to connected WebSocket clients —
+no extra code needed at the dispatch site.
+
+The interop is opt-in and lazy: the dispatcher attempts to import
+`@roost/broadcast` at dispatch time. If the package is not installed or
+`BroadcastManager` is not initialized, the dispatch succeeds and a warning is
+logged. This prevents a hard dependency between the two packages.
+
+## Listener vs Subscriber
+
+`Listener` and `Subscriber` both receive events; they are registered differently
+and serve different organizational purposes.
+
+A `Listener` class handles exactly one event type. Use listeners when the
+handler has a single, focused responsibility: `SendWelcomeEmailListener` handles
+`UserRegistered` and nothing else.
+
+A `Subscriber` class groups handlers for multiple events in one class. Use
+subscribers when the handlers share domain context: a `NotificationSubscriber`
+that reacts to `UserRegistered`, `OrderPlaced`, and `PasswordReset` can share
+notification service logic without injecting it into three separate listener classes.
+
+Both are registered in `EventServiceProvider`. Internally, the service provider
+wraps subscriber methods in adapter objects that satisfy the `ListenerClass`
+interface, so the dispatcher treats them identically.
+
+## Testing Model
+
+`Event.fake()` uses a `WeakMap` to store fake state per event class rather than
+a global. This means multiple event classes can be faked independently in the
+same test without interfering with each other. Calling `UserRegistered.fake()`
+does not affect `OrderPlaced`, and vice versa.
+
+`assertDispatched()` accepts an optional predicate to make assertions about
+specific dispatch arguments:
+
+```ts
+UserRegistered.assertDispatched((event) => event.email === 'alice@example.com');
+```
+
+This is more precise than just asserting the event was dispatched — it verifies
+the event was dispatched with the right data. For tests that need to verify no
+side effects happened, `assertNotDispatched()` reads clearly at the test assertion
+level.
+
+## Further Reading
+
+- [@roost/events reference — Event, EventDispatcher, Listener, Subscriber API](/docs/reference/events.md)
+- [@roost/broadcast concepts — How broadcast and events connect](/docs/concepts/broadcast.md)
+- [@roost/queue concepts — When to use ShouldQueue](/docs/concepts/queue.md)
+
+
+---
+
+# @roost/feature-flags
+
+> Why feature flags belong in KV, the per-request caching model, the Pennant-style API design, and when to use flags vs config vs environment variables.
+
+## Why Cloudflare KV for Feature Flags
+
+Feature flags need to be fast to read, easy to update without a deployment, and
+globally consistent within acceptable latency bounds. Cloudflare KV satisfies all
+three constraints for Workers applications.
+
+KV is a globally distributed key-value store. Reads are served from edge caches
+with single-digit millisecond latency. Updates propagate to all edge locations
+within ~60 seconds. For feature flags, eventual consistency is a reasonable
+trade-off: a user might see the old value for one request after a flag is
+changed, but that is acceptable for most flag scenarios.
+
+The alternative — storing flags in a Durable Object or D1 database — provides
+stronger consistency but adds latency to every flag check. KV's write-rarely,
+read-frequently pattern is a natural fit for feature flag data.
+
+## The Per-Request Cache
+
+Even with KV's edge caching, calling `FeatureFlag.isEnabled()` for the same
+flag multiple times in one request is wasteful. `FeatureFlagMiddleware` solves
+this with a per-request in-memory cache.
+
+At the start of each request, the middleware prefetches all configured flags in
+parallel and attaches the results to the request object under a unique symbol.
+Any call to `isEnabled(flag, request)` or `getValue(flag, request)` that passes
+the request reads from this cache without another KV round-trip.
+
+The cache is scoped to the request lifetime. There is no shared cache between
+requests, so there are no cross-request invalidation concerns. The trade-off is
+that the prefetch list must be known at middleware registration time — flags
+accessed outside the prefetch list will still hit KV.
+
+## Pennant-Style API
+
+`FeatureFlag`'s static API is inspired by Laravel Pennant. Pennant popularized
+the approach of treating feature flags as first-class language constructs rather
+than string lookups in a third-party SDK. The `isEnabled()` / `getValue()` /
+`set()` interface is intentionally minimal: there is one place to check a flag,
+one place to write it, and one place to configure the store.
+
+The static API means there is no flag client instance to thread through the
+application. Any file that imports `FeatureFlag` can check a flag. This is a
+deliberate trade-off: it reduces boilerplate at the cost of making the flag store
+a global. The test helpers (`fake()`, `restore()`, `assertChecked()`) address
+the testing concern that globals usually introduce.
+
+## Flags vs Config vs Environment Variables
+
+Three mechanisms are commonly used for runtime behavior switching. Choosing the
+right one depends on who needs to change the value and how often.
+
+**Environment variables** are set at deploy time in `wrangler.jsonc` or the
+Cloudflare dashboard. They are the right choice for values that change rarely
+and require a deployment to update: API keys, external service URLs, resource
+limits that are part of the infrastructure definition.
+
+**App config** (`app.config.get(...)`) is a layer over environment variables
+with structured defaults. Use it for values that vary between environments
+(development, staging, production) but are set at deploy time.
+
+**Feature flags** are for values that need to change without a deployment: A/B
+tests, gradual rollouts, kill switches, beta feature gates. The key distinction
+is that feature flag values are changed at runtime by operators, not developers.
+A developer deploys the flag check; an operator flips the flag.
+
+Do not reach for feature flags for values that will never change after initial
+setup. The additional KV read is unnecessary overhead for static configuration.
+
+## Truthy Evaluation Rules
+
+`FeatureFlag.isEnabled()` converts any `FlagValue` to a boolean using
+intentionally simple rules:
+
+- `true` → truthy
+- `false` → falsy
+- `"true"` → truthy; any other string → falsy
+- positive number → truthy; `0` or negative → falsy
+- `null` / missing flag → falsy
+
+This means `isEnabled()` is safe to call even if a flag has not been set yet
+— it returns `false` rather than throwing, making flag check-in before initial
+configuration safe.
+
+## Further Reading
+
+- [@roost/feature-flags reference — FeatureFlag, middleware, and provider API](/docs/reference/feature-flags.md)
+- [Cloudflare KV Documentation](https://developers.cloudflare.com/kv/)
 
 
 ---
@@ -7349,11 +10929,306 @@ can be passed as constructor functions, and the pipeline resolves them from the 
 container. This means middleware can have injected dependencies like any other service —
 the pipeline instantiates them from the container rather than requiring manual construction.
 
+## Structured Logging and Request Tracing
+
+Cloudflare Workers emit logs to a runtime-managed stream. There is no file system, no
+process-level logger, and no log aggregator available at the language level. The only
+output mechanism is `console.log`, which Workers forwards to the Cloudflare dashboard
+and any configured log drain. Roost's `Logger` class leans into this: it serializes
+every entry as a single-line JSON object and writes it with `console.log`.
+
+Structured JSON logging matters because Workers often run thousands of requests
+concurrently. Plain text messages are impossible to correlate across requests. By
+embedding a `requestId` in every log entry, an operator can filter a log drain by
+`requestId` and see the complete trace for a single request — across middleware,
+handlers, and any background work — without any additional instrumentation.
+
+`RequestIdMiddleware` is the source of truth for the request ID. It reads `cf-ray`
+from the incoming request headers when present (Cloudflare sets this on every request
+that passes through the edge network) or generates a UUID for direct-to-Worker traffic.
+The middleware binds a pre-configured `Logger` into the request-scoped container so
+that every downstream component resolves the same logger with the same `requestId`,
+without any manual threading of context.
+
+The `FakeLogger` exists because `console.log` is a side effect. Tests that assert on
+logging must replace the logger with something that captures output rather than emitting
+it. `Logger.fake()` returns a `FakeLogger` with the same interface as `Logger` but
+stores entries in `entries` for inspection. `assertLogged` and `assertNotLogged` provide
+concise assertion methods that produce readable failure messages.
+
+## The Request Lifecycle
+
+A request to a Roost application passes through four stages:
+
+1. **Scope creation.** `Application.handle()` calls `container.scoped()` to create a
+   child container for this request. The scoped container inherits all application-level
+   singletons but maintains its own bindings for request-specific data.
+
+2. **Middleware pipeline.** The scoped container is attached to the request object.
+   Each middleware in registration order receives the request, optionally modifies it or
+   the container, then calls `next` to continue. Middleware can short-circuit by returning
+   a response without calling `next`.
+
+3. **Dispatch.** After all middleware, the dispatcher receives the final request and
+   returns a response. This is where routing and handler logic lives.
+
+4. **Background work.** Promises registered with `app.defer()` run after the response
+   is returned to the client, inside the Worker's `waitUntil()` budget. The runtime
+   keeps the isolate alive until all deferred promises settle.
+
+`defer()` decouples latency-sensitive work from fire-and-forget side effects. Writing
+analytics, sending audit events, or warming a downstream cache are all candidates for
+`defer()`. The client receives its response immediately; the background work completes
+asynchronously without adding to response time.
+
+## Webhook Security
+
+Webhooks are unauthenticated HTTP callbacks by default. Any party that knows your
+endpoint URL can POST to it. Signature verification is the standard mitigation: the
+provider signs each payload with a shared secret, and the receiver verifies the signature
+before processing the event.
+
+Roost's `verifyWebhook` handles the cryptographic details — HMAC-SHA256, HMAC-SHA512,
+and Ed25519 — and also validates the timestamp when the provider includes one. Timestamp
+validation prevents replay attacks: a captured webhook payload cannot be replayed after
+the tolerance window (default 300 seconds) has elapsed.
+
+The `WebhookPresets` map provider-specific header names and payload formats onto the
+generic `WebhookVerifyOptions` interface. Stripe embeds the timestamp inside the
+signature header itself; GitHub uses a simple `sha256=` prefix; Svix uses separate
+headers and Ed25519. The presets encapsulate this variation so application code stays
+uniform across providers.
+
+`WebhookMiddleware` wraps `verifyWebhook` as a `Middleware`-compatible class. It catches
+`WebhookVerificationError` and returns a `401` response with a JSON error body, so
+routes that use it do not need to handle verification failures explicitly.
+
 ## Further Reading
 
 - [Service Container — the DI model in depth](/docs/concepts/service-container.md)
 - [Application Architecture — how core fits into the full request lifecycle](/docs/concepts/architecture.md)
 - [@roost/core reference — Application, Container, Pipeline API](/docs/packages/core.md)
+
+
+---
+
+# @roost/broadcast
+
+> How Durable Objects power per-channel WebSocket state, the three channel types and their authorization model, and how broadcast integrates with the events system.
+
+## Durable Objects as WebSocket Hubs
+
+WebSocket connections require persistent state: a list of connected sockets to
+deliver messages to. Cloudflare Workers are stateless by nature — each invocation
+is independent, and there is no shared memory between them. Durable Objects solve
+this. A single Durable Object instance can hold many WebSocket connections in
+memory and route messages across all of them.
+
+`ChannelDO` is that Durable Object. Each channel name maps to a distinct DO
+instance — `new Channel('announcements')` and `new PrivateChannel('users.123')`
+route to different DO instances with independent connection lists. A broadcast to
+`users.123` only sends to the sockets connected to that channel's DO, not to
+every WebSocket in the system.
+
+The Durable Object's `acceptWebSocket(server)` API persists connections across
+Hibernation. When no messages are flowing, the DO can be evicted from memory;
+when a new broadcast arrives, Cloudflare rehydrates the DO and delivers the
+message to all stored sockets. This hibernation model keeps idle channels cheap.
+
+## Channel Types and Authorization
+
+The three channel classes — `Channel`, `PrivateChannel`, and `PresenceChannel` —
+are semantic tags. They do not have different connection logic in isolation; their
+meaning comes from how `ChannelDO` handles them during the WebSocket upgrade.
+
+**Public channels** (`Channel`) allow any client to connect and receive messages.
+Use them for global announcements, public feeds, or any data that does not require
+authentication.
+
+**Private channels** (`PrivateChannel`) require a valid bearer token in the
+`Authorization` header of the upgrade request. The `ChannelDO.authorize()` method
+validates the token. The default implementation accepts any non-empty bearer — 
+production applications must override this with real JWT or session validation.
+
+**Presence channels** (`PresenceChannel`) extend private channel behavior with
+membership tracking. When a user connects, `ChannelDO` broadcasts a `presence:join`
+event to all existing connections. When a user disconnects, it broadcasts
+`presence:leave`. The user ID is extracted from the upgrade request via
+`ChannelDO.extractUserId()` and stored with the WebSocket's tag for the lifetime
+of the connection.
+
+## Server-Side Broadcasting vs Client-Side Pushing
+
+Broadcast in Roost flows from server to client. Application code calls
+`BroadcastManager.broadcast(event)`, which sends an HTTP POST to the target
+channel's Durable Object. The DO receives this request and sends the message
+to all connected WebSocket clients. The flow is:
+
+```
+Application code
+  → BroadcastManager.broadcast()
+  → HTTP POST to ChannelDO /broadcast endpoint
+  → ChannelDO pushes to all connected WebSocket sockets
+  → Browser clients receive the message
+```
+
+The client-side `createBroadcastClient` goes the other direction: it opens a
+WebSocket to a channel DO URL and receives messages. It does not push messages
+to the server except via `whisper()`, which enables client-to-client messaging
+routed through the DO.
+
+## Events and Broadcast Integration
+
+`EventDispatcher` in `@roost/events` checks whether a dispatched event implements
+`BroadcastableEvent`. If it does, and if `@roost/broadcast` is installed, the
+dispatcher forwards the event to `BroadcastManager` after notifying in-process
+listeners. This means a single `dispatch()` call can:
+
+1. Notify all registered `Listener` classes synchronously
+2. Dispatch `ShouldQueue` listeners as background jobs
+3. Push a WebSocket message to connected clients
+
+None of these responsibilities know about the others. The event class declares
+`broadcastOn()` and `broadcastWith()` independently of which listeners are
+registered, and listeners are registered independently of whether the event
+is broadcastable.
+
+## Client Reconnection
+
+The `createBroadcastClient` helper reconnects automatically on disconnect using
+exponential backoff between `initialDelay` (default 1 second) and `maxDelay`
+(default 30 seconds). The URL factory pattern supports refreshing auth tokens
+on reconnect:
+
+```ts
+createBroadcastClient(() => `/ws/channel/${channelName}?token=${getToken()}`);
+```
+
+Passing a function rather than a string means the token is fetched fresh on
+every connection attempt. This handles token expiry between disconnection and
+reconnection without additional logic in the caller.
+
+## Whisper
+
+Whisper is a peer-to-peer messaging mechanism within a channel. A client calls
+`client.whisper(channel, event, data)`, which sends a message to the DO. The DO
+broadcasts that message to all other connected clients but not back to the sender.
+This is useful for collaborative features — typing indicators, cursor positions,
+transient state that does not need to round-trip through the server.
+
+## Further Reading
+
+- [@roost/broadcast reference — Channel, ChannelDO, BroadcastManager, and client API](/docs/reference/broadcast.md)
+- [@roost/events concepts — How events and broadcast connect](/docs/concepts/events.md)
+- [Cloudflare Durable Objects Documentation](https://developers.cloudflare.com/durable-objects/)
+- [WebSocket Hibernation API](https://developers.cloudflare.com/durable-objects/api/websockets/)
+
+
+---
+
+# @roost/workflow
+
+> How Cloudflare Workflows differ from queues, the durable execution model, saga patterns with Compensable, and when to use workflows vs jobs.
+
+## How Cloudflare Workflows Work
+
+Cloudflare Workflows is a durable execution engine built on the Workers platform.
+A workflow is a long-running process that survives server restarts, network failures,
+and Cloudflare infrastructure events. Unlike a queue job — which runs once and
+retries on failure — a workflow checkpoints its progress. If a workflow is
+interrupted mid-way through, Cloudflare replays `run()` from the beginning but
+skips every completed `step.do()` call, replaying cached results instead of
+re-executing side effects.
+
+The checkpoint model has a concrete implication: code inside `run()` but outside
+a `step.do()` block can run multiple times. Deterministic computation is fine;
+side effects like sending an email or charging a card must live inside `step.do()`.
+
+## Workflows vs Queue Jobs
+
+Queue jobs and workflows are both tools for deferred, durable work, but they
+solve different problems.
+
+A queue job is a single-step unit of work: receive a payload, execute, succeed
+or retry. It is the right choice for a task that completes in one shot — sending
+an email, resizing an image, updating a record. The entire payload is available
+upfront, and the only durable state is "dispatched" or "complete."
+
+A workflow is a multi-step process where each step produces side effects and the
+overall process may span minutes, hours, or days. Provisioning a new tenant —
+create a database, seed defaults, configure roles, send a welcome email — is a
+workflow. Each step is independently durable, and a failure in step 3 does not
+undo steps 1 and 2. The workflow waits for Cloudflare to reschedule it rather
+than starting over.
+
+Choose a queue job when the work fits in a single `handle()` call. Choose a
+workflow when the work has distinct phases, when any phase might take a long
+time, or when you need `step.sleep()` to delay execution by minutes or hours
+between steps.
+
+## The Saga Pattern and Compensable
+
+Durable execution solves infrastructure failures — an interrupted network call,
+a Worker timeout. It does not automatically undo completed steps when a later
+step fails for a business logic reason.
+
+The saga pattern addresses this. In a saga, each step that produces a side effect
+registers a compensation: an undo function to call if the overall operation fails.
+If step 3 fails, the saga runs compensations for steps 2 and 1 in reverse order,
+restoring the system to a consistent state.
+
+`Compensable` is Roost's saga helper. Wrap the workflow body in a try/catch,
+register compensations after each step, and call `saga.compensate()` in the
+catch block:
+
+```ts
+const saga = new Compensable();
+try {
+  await step.do('create-record', async () => {
+    await createRecord(id);
+    saga.register(async () => deleteRecord(id));
+  });
+  // ...more steps...
+} catch (err) {
+  await saga.compensate();
+  throw err;
+}
+```
+
+Compensations are best-effort: if one throws, the error is swallowed and the
+remaining compensations still run. Design compensations to be idempotent so
+they can be called safely even if the original operation partially succeeded.
+
+## Durable Execution and the Re-run Model
+
+Understanding the replay model prevents bugs. When Cloudflare resumes a
+workflow after an interruption, it calls `run()` again from the start.
+`step.do('label', fn)` does not re-execute `fn` if a checkpoint with that
+label already exists — Cloudflare returns the cached result. Every `step.do()`
+must use a stable, unique label string. If you rename a label after a workflow
+instance has started, the step will re-execute because the old checkpoint does
+not match the new label.
+
+Code outside `step.do()` is replayed on every resume. Conditional logic,
+variable declarations, and calculations are fine. Network calls, database writes,
+and any operation with an observable side effect must be wrapped in `step.do()`.
+
+## Testing Model
+
+`Workflow.fake()` and `Workflow.assertCreated()` follow the same fake-and-assert
+pattern used throughout Roost. Faking a workflow intercepts `WorkflowClient.create()`
+calls so tests do not need a live Cloudflare account. The fake records the creation
+params and id for inspection.
+
+Because the `WorkflowServiceProvider` checks `Workflow._getFake()` at resolve
+time, fake mode is transparent to application code — the code that calls
+`client.create()` does not need to know it is talking to a fake.
+
+## Further Reading
+
+- [@roost/workflow reference — Workflow, WorkflowClient, Compensable API](/docs/reference/workflow.md)
+- [@roost/queue concepts — When to use queue jobs vs workflows](/docs/concepts/queue.md)
+- [Cloudflare Workflows Documentation](https://developers.cloudflare.com/workflows/)
 
 
 ---
@@ -7428,6 +11303,50 @@ capability can override with `@cf/meta/llama-3.1-70b-instruct` via the
 `@Model` decorator. The default is the smallest model that is generally
 useful, not the largest model that might be impressive — smaller models fail faster
 and cost less, which is the right default before profiling.
+
+## AI Gateway: Routing, Caching, and Fallback
+
+The direct Workers AI binding (`env.AI`) is the lowest-latency path to inference: the call resolves inside Cloudflare's network without an additional HTTP hop. `GatewayAIProvider` introduces a deliberate tradeoff — roughly 10 ms of added latency in exchange for three capabilities the binding alone cannot provide.
+
+**Observability.** Every request through AI Gateway is logged in the Cloudflare dashboard with latency, model, token counts, and error codes. The binding produces no such logs.
+
+**Request caching.** AI Gateway can cache identical requests at the edge. For applications that send the same prompt repeatedly — search autocomplete, FAQ bots, cached summaries — this eliminates inference cost entirely for cache hits.
+
+**Fallback.** If the gateway is unreachable or returns an error, `GatewayAIProvider` calls the direct `CloudflareAIProvider` automatically. The application never sees the failure.
+
+The decision between the two providers is operational, not architectural. Start with the direct binding during development and switch to the gateway in production when you need logs and caching.
+
+## Session Affinity and Prefix Caching
+
+Transformer models benefit from KV caching: when the beginning of a prompt matches a previously computed sequence, the attention values for those tokens can be reused rather than recomputed. Cloudflare AI Gateway exposes this through session affinity.
+
+When `GatewayAIProvider` detects that a request carries conversation history (more than one non-system message), it adds `x-session-affinity: true` to the outbound request. This header signals to the gateway to route the request to the same backend replica that handled the previous turn, maximising the probability of a cache hit on the shared system-prompt and conversation prefix.
+
+The savings scale with the ratio of cached tokens to new tokens. A conversation with a long system prompt and many previous turns gets substantial cache hits; a single-turn request with no history gets none. The header adds no latency when the cache is cold — it is purely additive.
+
+## RAG Architecture
+
+Retrieval-Augmented Generation (RAG) addresses a fundamental constraint of language models: their knowledge is frozen at training time and limited to what fits in the context window.
+
+A RAG pipeline has two phases:
+
+**Ingestion.** Source documents are split into chunks, each chunk is embedded into a vector, and the vectors are stored in a vector database (Vectorize). This happens offline or as documents are added to the system.
+
+**Retrieval.** At query time, the user's question is embedded using the same model. The vector database returns the chunks whose embeddings are closest to the question embedding. Those chunks are inserted into the model's context window as retrieved evidence, and the model generates an answer grounded in that evidence.
+
+`RAGPipeline` implements both phases. `ingest()` handles the write path; `query()` handles the read path. The pipeline does not include prompt construction — inserting retrieved chunks into the agent's instructions or prompt is the application's responsibility, which keeps the pipeline composable.
+
+## Chunking Strategies
+
+How a document is divided into chunks has a larger impact on retrieval quality than the choice of embedding model.
+
+**Token size.** A chunk must be small enough to fit useful context in the vector's metadata (Vectorize stores metadata alongside vectors) but large enough that the embedding captures meaningful semantic content. The default chunk size of 400 estimated tokens is a reasonable starting point for most prose. Code and structured data may require smaller chunks.
+
+**Overlap.** `TextChunker` repeats a fraction of the previous chunk's words at the start of the next chunk (10 % by default). This ensures that sentences and ideas that straddle a chunk boundary are represented in at least one chunk, rather than being split across two chunks that each lack the full context.
+
+**Semantic boundaries.** `TextChunker` is purely mechanical — it splits on word count regardless of content structure. `SemanticChunker` first splits on Markdown headings and paragraph breaks, then applies `TextChunker` only to segments that still exceed the size limit. For documents with clear heading structure (documentation, articles, reports), `SemanticChunker` produces more coherent chunks because each chunk corresponds to a complete section rather than an arbitrary word window.
+
+Choose `TextChunker` for unstructured prose, dense text, or content without heading structure. Choose `SemanticChunker` for Markdown documentation, articles, and any content where headings delineate distinct topics.
 
 ## Further Reading
 
@@ -7561,6 +11480,34 @@ and Roost enforces this. This is not the universal practice — some migration t
 away from down migrations, arguing they are rarely used and often wrong. Roost takes the opposite
 position: down migrations are documentation of the schema delta, and having them in place reduces
 the cost of a bad deployment significantly.
+
+## Multi-Tenant Data Isolation
+
+Multi-tenancy means one application instance serves multiple independent organizations, with each organization's data kept strictly separate. There are two common strategies, and Roost supports both.
+
+**Row-level isolation** stores all tenants in a single database. Every tenant-owned table has an `org_id` column, and every query includes `WHERE org_id = ?`. This is operationally simple — one database, one schema, one set of migrations — and works well until either data volume or compliance requirements demand stronger separation.
+
+**Database-per-tenant** gives each organization its own D1 database. The application resolves which binding to use at request time based on the active org. This provides complete data isolation at the infrastructure level: a bug that leaks data between rows in one database cannot affect a different tenant's database. The tradeoff is operational overhead — each tenant requires a separate D1 database, and schema migrations must be applied to every tenant database independently.
+
+Roost's `OrmServiceProvider` supports both strategies via the `database.tenantStrategy` config key. Most applications start with row-level isolation and migrate to database-per-tenant only when required by compliance or scale.
+
+## Global Scopes Pattern
+
+The automatic `tenantColumn` filtering in Roost's ORM is an instance of the Global Scopes pattern. A global scope is a query constraint that is transparently applied to every query on a model class, without the caller needing to specify it.
+
+Laravel's Eloquent has had global scopes since version 5. Roost implements the same idea with a simpler mechanism: rather than a general-purpose scope registry, `TenantContext` is the single global scope, and it is applied if and only if `tenantColumn` is set on the model. This is a deliberate constraint — it covers the overwhelmingly common case (tenant isolation) without building a general-purpose scope API that would add complexity for rarely-needed use cases.
+
+The `withoutTenantScope()` escape hatch is the explicit acknowledgement that global scopes occasionally need to be bypassed. Making the bypass explicit — rather than allowing callers to simply omit the column — means the intent is visible in the code and auditable. A grep for `withoutTenantScope` in a codebase shows every place where cross-tenant data access is intentional.
+
+## D1 Consistency and the Sessions API
+
+D1 is a distributed SQLite database. Cloudflare replicates writes across multiple read replicas for availability and low-latency reads. The consequence is eventual consistency: a write committed on the primary may not be immediately visible on a replica that handles the next read, particularly if that read is served from a different edge location.
+
+For most read operations this is acceptable. For operations where a user writes data and immediately reads it back — creating a post and then redirecting to it, submitting a form and displaying the result — inconsistency produces confusing behaviour: the user sees a stale state that does not reflect their most recent action.
+
+The D1 Sessions API addresses this with session tokens. After a write, the client receives a session token representing the point in the write log that the write was applied. Subsequent reads that carry this token are routed to a replica that has caught up to at least that point, guaranteeing the write is visible.
+
+`D1SessionHandle` wraps this API. `markWritten()` records that a write has occurred. `sessionAwareRaw()` returns a D1 handle that carries the session token on subsequent reads. The ORM uses this transparently when `database.useSession` is enabled — callers only need to call `markWritten()` after writes that require immediate read-your-writes consistency.
 
 ## Further Reading
 

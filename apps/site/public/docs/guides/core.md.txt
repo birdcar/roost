@@ -145,3 +145,143 @@ const pipeline = new Pipeline()
   .withContainer(container)
   .use(AuthMiddlewareClass);
 ```
+
+## How to add structured logging with request tracing
+
+Add `RequestIdMiddleware` as the first global middleware. It generates a trace ID from
+the `cf-ray` header (or `crypto.randomUUID()`) and binds a `Logger` into the
+request-scoped container so every handler can resolve it.
+
+```ts title="src/app.ts"
+
+const app = Application.create(env);
+app.useMiddleware(RequestIdMiddleware);
+```
+
+Resolve the logger inside a handler or downstream middleware:
+
+```ts title="src/handlers/users.ts"
+
+export async function getUser(request: Request): Promise<Response> {
+  const container = (request as any).__roostContainer;
+  const logger = container.resolve(Logger);
+
+  logger.info('user.fetch', { userId: request.params?.id });
+
+  const user = await User.find(request.params.id);
+  if (!user) {
+    logger.warn('user.not_found', { userId: request.params?.id });
+    return new Response('Not Found', { status: 404 });
+  }
+
+  return Response.json(user);
+}
+```
+
+Every log line is emitted as a single-line JSON object including `requestId`, `method`,
+`path`, `level`, `message`, and `timestamp`. The `requestId` is also set on the response
+as `X-Request-Id`.
+
+## How to test logging
+
+Use `Logger.fake()` to get a `FakeLogger` that captures entries in memory instead of
+writing to `console.log`.
+
+```ts title="src/handlers/users.test.ts"
+
+test('logs a warning when user is not found', async () => {
+  const logger = Logger.fake();
+
+  await getUser(fakeRequest({ params: { id: 'missing' } }), logger);
+
+  logger.assertLogged('warn', 'user.not_found');
+  logger.assertNotLogged('error');
+  logger.restore();
+});
+```
+
+`Logger.fake()` accepts an optional `Partial<LogContext>` to override default values
+(`requestId: 'fake-request-id'`, `method: 'GET'`, `path: '/'`).
+
+## How to run background work after a response
+
+Use `app.defer()` to register a promise that should complete after the response is sent.
+The Worker runtime will not terminate the isolate until all deferred promises settle.
+
+```ts title="src/app.ts"
+
+const app = Application.create(env);
+
+app.onDispatch(async (request) => {
+  const result = await handleRequest(request);
+
+  // This write completes after the response is returned to the client
+  app.defer(analytics.track({ event: 'request.completed', path: new URL(request.url).pathname }));
+
+  return Response.json(result);
+});
+```
+
+Pass the Cloudflare `ExecutionContext` to `app.handle()` so `defer()` has a context to
+call `waitUntil()` on:
+
+```ts title="src/index.ts"
+export default {
+  fetch(request: Request, env: Env, ctx: ExecutionContext) {
+    return app.handle(request, ctx);
+  },
+};
+```
+
+`defer()` silently does nothing when no context is available, so tests that call
+`app.handle(request)` without a second argument work without modification.
+
+## How to verify webhook signatures
+
+### Using a preset
+
+Most providers are covered by `WebhookPresets`. Override the `secret` field with your
+signing key and pass the options to `WebhookMiddleware`.
+
+```ts title="src/routes/webhooks/stripe.ts"
+
+const middleware = new WebhookMiddleware({
+  ...WebhookPresets.stripe(),
+  secret: env.STRIPE_WEBHOOK_SECRET,
+});
+
+// Wire into a route-level pipeline or app.useMiddleware() for a prefix group
+```
+
+Available presets: `WebhookPresets.stripe()`, `WebhookPresets.github()`,
+`WebhookPresets.svix()`.
+
+### Calling verifyWebhook directly
+
+For providers not covered by a preset, call `verifyWebhook` directly and supply custom
+parsing logic.
+
+```ts title="src/routes/webhooks/custom.ts"
+
+export async function handleCustomWebhook(request: Request): Promise<Response> {
+  let body: string;
+  try {
+    body = await verifyWebhook(request, {
+      secret: env.CUSTOM_WEBHOOK_SECRET,
+      headerName: 'x-custom-signature',
+      algorithm: 'hmac-sha256',
+      buildSignedPayload: (_ts, b) => b,
+      tolerance: 0,
+    });
+  } catch (err) {
+    if (err instanceof WebhookVerificationError) {
+      return new Response('Unauthorized', { status: 401 });
+    }
+    throw err;
+  }
+
+  const payload = JSON.parse(body);
+  // ...
+  return new Response(null, { status: 204 });
+}
+```

@@ -1,0 +1,202 @@
+## Installation
+
+```bash title="terminal"
+bun add @roost/workflow
+```
+
+## Configuration
+
+Declare a Cloudflare Workflow binding in `wrangler.jsonc`:
+
+```jsonc title="wrangler.jsonc"
+{
+  "workflows": [
+    {
+      "name": "my-workflow",
+      "binding": "MY_WORKFLOW",
+      "class_name": "MyWorkflow"
+    }
+  ]
+}
+```
+
+## Workflow API
+
+`Workflow<Env, TParams>` is an abstract base class that extends Cloudflare's
+`WorkflowEntrypoint`. Implement `run()` and register the class with
+`WorkflowServiceProvider`.
+
+### Instance Methods
+
+#### `abstract async run(event: WorkflowEvent<TParams>, step: WorkflowStep): Promise<unknown>`
+
+The workflow's main logic. `event.payload` contains the typed params passed at
+creation. Use `step.do()` for durable operations and `step.sleep()` for delays.
+Cloudflare Workflows re-runs `run()` from the start on retry; each `step.do()`
+call is replayed from the checkpoint cache rather than re-executed.
+
+### Static Methods
+
+#### `static fake(): void`
+
+Enable fake mode. `WorkflowClient.create()` calls are recorded but not sent to
+Cloudflare.
+
+#### `static restore(): void`
+
+Disable fake mode and remove the stored fake.
+
+#### `static assertCreated(id?: string): void`
+
+Assert that the workflow was created (in fake mode). Pass an `id` to assert a
+specific instance was created.
+
+#### `static assertNotCreated(): void`
+
+Assert that no workflow instance was created.
+
+#### `static _getFake(): WorkflowFake | undefined`
+
+Internal. Returns the active fake for this class, if any.
+
+## WorkflowClient API
+
+`WorkflowClient<TParams>` wraps a Cloudflare Workflow binding and returns
+typed `WorkflowInstanceHandle` objects.
+
+#### `constructor(binding: Workflow<TParams>)`
+
+Construct with the raw Cloudflare Workflow binding from the env.
+
+#### `async create(params: WorkflowCreateParams<TParams>): Promise<WorkflowInstanceHandle>`
+
+Create a new workflow instance. If `params.id` is omitted, Cloudflare generates one.
+
+#### `async get(id: string): Promise<WorkflowInstanceHandle>`
+
+Retrieve an existing workflow instance by ID.
+
+#### `async terminate(id: string): Promise<void>`
+
+Terminate a running workflow instance.
+
+## WorkflowInstanceHandle API
+
+Returned by `WorkflowClient.create()` and `WorkflowClient.get()`.
+
+#### `id: string`
+
+The unique identifier of the workflow instance.
+
+#### `async pause(): Promise<void>`
+
+Pause execution of the workflow instance.
+
+#### `async resume(): Promise<void>`
+
+Resume a paused workflow instance.
+
+#### `async abort(reason?: string): Promise<void>`
+
+Terminate the workflow instance with an optional reason string.
+
+#### `async status(): Promise<WorkflowInstanceStatus>`
+
+Fetch the current status of the instance.
+
+## Compensable API
+
+`Compensable` is a helper for saga-style rollback. Register compensation
+functions during workflow execution; if a step fails, call `compensate()` to
+undo previous operations in reverse order.
+
+#### `register(compensation: CompensationFn): void`
+
+Register a compensation function. Compensations are called last-registered-first
+on rollback.
+
+#### `async compensate(): Promise<void>`
+
+Execute all registered compensations in reverse order. Each compensation is
+called with best-effort: if one throws, the error is swallowed and execution
+continues to the next. The compensation list is cleared after running.
+
+## WorkflowServiceProvider API
+
+Registers workflow classes with the service container so they can be resolved
+by their binding name.
+
+#### `withWorkflows(workflows: Array<{ workflowClass: typeof Workflow; binding: string }>): this`
+
+Chain one or more workflow registrations. Each entry maps a `Workflow` subclass
+to its Cloudflare binding name.
+
+#### `register(): void`
+
+Called by the service container bootstrap. Resolves bindings from the env and
+registers `WorkflowClient` instances (or fakes) under the key
+`workflow:{ClassName}`.
+
+## Types
+
+```ts
+interface WorkflowCreateParams<TParams = unknown> {
+  id?: string;
+  params: TParams;
+}
+
+interface WorkflowInstanceHandle {
+  id: string;
+  pause(): Promise<void>;
+  resume(): Promise<void>;
+  abort(reason?: string): Promise<void>;
+  status(): Promise<WorkflowInstanceStatus>;
+}
+
+type WorkflowInstanceStatus = {
+  status: 'queued' | 'running' | 'paused' | 'complete' | 'errored' | 'terminated';
+  output?: unknown;
+  error?: string;
+};
+```
+
+## Errors
+
+#### `WorkflowError`
+
+Base error class for workflow-related failures. Accepts an optional `workflowId`
+property for correlation.
+
+```ts
+class WorkflowError extends Error {
+  constructor(message: string, workflowId?: string);
+  readonly workflowId?: string;
+}
+```
+
+#### `NonRetryableError`
+
+Re-exported from `cloudflare:workflows`. Throw inside `run()` to signal a
+permanent failure that should not be retried.
+
+## Testing
+
+#### `WorkflowFake`
+
+Internal fake state object managed by `Workflow.fake()`. Accessible via
+`Workflow._getFake()` for advanced assertions.
+
+```ts
+interface FakeWorkflowRecord {
+  id: string;
+  params: unknown;
+  createdAt: Date;
+}
+
+class WorkflowFake {
+  created: FakeWorkflowRecord[];
+  recordCreate(id: string, params: unknown): void;
+  assertCreated(id?: string): void;
+  assertNotCreated(): void;
+}
+```

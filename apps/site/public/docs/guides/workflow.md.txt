@@ -1,0 +1,201 @@
+## How to define a workflow
+
+Extend `Workflow<Env, TParams>` with a typed params interface and implement `run()`.
+
+```ts title="src/workflows/ProvisionTenant.ts"
+
+interface ProvisionTenantParams {
+  organizationId: string;
+  plan: 'starter' | 'pro' | 'enterprise';
+}
+
+export class ProvisionTenant extends Workflow<Env, ProvisionTenantParams> {
+  async run(
+    event: WorkflowEvent<ProvisionTenantParams>,
+    step: WorkflowStep
+  ): Promise<void> {
+    const { organizationId, plan } = event.payload;
+
+    await step.do('create-database', async () => {
+      await createTenantDatabase(organizationId);
+    });
+
+    await step.do('seed-defaults', async () => {
+      await seedDefaultData(organizationId, plan);
+    });
+
+    await step.do('send-welcome-email', async () => {
+      await sendWelcomeEmail(organizationId);
+    });
+  }
+}
+```
+
+Each `step.do()` call is a durable checkpoint. If the workflow is interrupted
+between steps, Cloudflare replays from the last completed checkpoint rather
+than re-running from the beginning.
+
+## How to register and dispatch a workflow
+
+Register the workflow class in `WorkflowServiceProvider.withWorkflows()`, then
+resolve the `WorkflowClient` from the container and call `create()`.
+
+```ts title="src/providers/AppServiceProvider.ts"
+
+export const workflowProvider = new WorkflowServiceProvider()
+  .withWorkflows([
+    { workflowClass: ProvisionTenant, binding: 'PROVISION_TENANT_WORKFLOW' },
+  ]);
+```
+
+```ts title="src/handlers/organizations.ts"
+
+export async function handleCreateOrganization(
+  container: AppContainer,
+  body: { organizationId: string; plan: 'starter' | 'pro' | 'enterprise' }
+) {
+  const client = container.resolve<WorkflowClient>(
+    'workflow:ProvisionTenant'
+  );
+
+  const handle = await client.create({
+    params: { organizationId: body.organizationId, plan: body.plan },
+  });
+
+  return { workflowId: handle.id };
+}
+```
+
+## How to implement a saga with Compensable
+
+Use `Compensable` to register rollback operations as you go. If a step fails,
+call `compensate()` to undo completed work in reverse order.
+
+```ts title="src/workflows/OnboardUser.ts"
+
+interface OnboardUserParams {
+  userId: string;
+  email: string;
+}
+
+export class OnboardUser extends Workflow<Env, OnboardUserParams> {
+  async run(
+    event: WorkflowEvent<OnboardUserParams>,
+    step: WorkflowStep
+  ): Promise<void> {
+    const { userId, email } = event.payload;
+    const saga = new Compensable();
+
+    try {
+      await step.do('create-profile', async () => {
+        await createUserProfile(userId);
+        saga.register(async () => deleteUserProfile(userId));
+      });
+
+      await step.do('provision-storage', async () => {
+        await provisionUserStorage(userId);
+        saga.register(async () => deprovisionUserStorage(userId));
+      });
+
+      await step.do('send-activation-email', async () => {
+        await sendActivationEmail(email);
+      });
+    } catch (err) {
+      await saga.compensate();
+      throw err;
+    }
+  }
+}
+```
+
+Compensations run in reverse registration order. Errors in individual
+compensations are swallowed so the remaining compensations still execute.
+
+## How to pause, resume, and check workflow status
+
+Retrieve an existing instance handle and call the control methods.
+
+```ts
+const client = container.resolve<WorkflowClient>('workflow:ProvisionTenant');
+
+// Check status
+const handle = await client.get(workflowId);
+const status = await handle.status();
+// { status: 'running' | 'paused' | 'complete' | 'errored' | 'terminated', ... }
+
+// Pause and resume
+await handle.pause();
+await handle.resume();
+
+// Terminate
+await client.terminate(workflowId);
+```
+
+## How to test workflows without Cloudflare
+
+Call `MyWorkflow.fake()` before the code that would create a workflow instance.
+The `WorkflowServiceProvider` detects the fake and substitutes a
+`FakeWorkflowClient` that records creation calls without contacting Cloudflare.
+
+```ts title="tests/workflows/ProvisionTenant.test.ts"
+
+describe('ProvisionTenant', () => {
+  afterEach(() => ProvisionTenant.restore());
+
+  it('is created when an organization is provisioned', async () => {
+    ProvisionTenant.fake();
+
+    await handleCreateOrganization(container, {
+      organizationId: 'org-123',
+      plan: 'pro',
+    });
+
+    ProvisionTenant.assertCreated();
+  });
+
+  it('is created with the correct organization ID', async () => {
+    ProvisionTenant.fake();
+
+    await handleCreateOrganization(container, {
+      organizationId: 'org-456',
+      plan: 'starter',
+    });
+
+    ProvisionTenant.assertCreated('org-456');
+  });
+
+  it('is not created when the request is invalid', async () => {
+    ProvisionTenant.fake();
+
+    await handleCreateOrganization(container, {
+      organizationId: '',
+      plan: 'starter',
+    }).catch(() => {});
+
+    ProvisionTenant.assertNotCreated();
+  });
+});
+```
+
+## How to signal a permanent (non-retryable) failure
+
+Throw `NonRetryableError` inside `run()` or a `step.do()` callback to tell
+Cloudflare not to retry the workflow.
+
+```ts
+
+export class ImportData extends Workflow<Env, { fileKey: string }> {
+  async run(event: WorkflowEvent<{ fileKey: string }>, step: WorkflowStep) {
+    await step.do('parse-file', async () => {
+      const file = await fetchFile(event.payload.fileKey);
+      if (!file) {
+        throw new NonRetryableError(`File ${event.payload.fileKey} not found`);
+      }
+      await processFile(file);
+    });
+  }
+}
+```
+
+Use `NonRetryableError` for business-logic failures where retrying would never
+succeed: missing resources, invalid input, or permission denials.

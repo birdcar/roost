@@ -1,0 +1,203 @@
+## How to set up broadcasting
+
+**1. Add the Durable Object binding in `wrangler.jsonc`:**
+
+```jsonc title="wrangler.jsonc"
+{
+  "durable_objects": {
+    "bindings": [
+      { "name": "BROADCAST_DO", "class_name": "ChannelDO" }
+    ]
+  },
+  "migrations": [
+    { "tag": "v1", "new_classes": ["ChannelDO"] }
+  ]
+}
+```
+
+**2. Export `ChannelDO` from your Worker entry point:**
+
+```ts title="src/index.ts"
+export { ChannelDO } from '@roost/broadcast';
+export { app } from './app';
+```
+
+**3. Register `BroadcastServiceProvider` in your app:**
+
+```ts title="src/app.ts"
+
+export const app = createApp({
+  providers: [new BroadcastServiceProvider()],
+});
+```
+
+## How to create a broadcastable event
+
+Implement `BroadcastableEvent` on any event class. If you are also using
+`@roost/events`, extend `Event` as well to get in-process listener support
+alongside broadcasting.
+
+```ts title="src/events/OrderShipped.ts"
+
+export class OrderShipped extends Event implements BroadcastableEvent {
+  constructor(
+    public readonly orderId: string,
+    public readonly userId: string,
+    public readonly trackingNumber: string
+  ) {
+    super();
+  }
+
+  broadcastOn() {
+    return [new PrivateChannel(`users.${this.userId}`)];
+  }
+
+  broadcastWith() {
+    return {
+      orderId: this.orderId,
+      trackingNumber: this.trackingNumber,
+    };
+  }
+
+  broadcastAs() {
+    return 'order.shipped';
+  }
+}
+```
+
+Dispatch the event normally. If `@roost/events`' `EventDispatcher` is
+configured, it forwards broadcastable events to `BroadcastManager` automatically.
+
+```ts
+await OrderShipped.dispatch(
+  new OrderShipped(order.id, order.userId, order.trackingNumber)
+);
+```
+
+## How to broadcast directly without an event class
+
+Use `BroadcastManager.broadcast()` when you want to push a message without
+defining an event class.
+
+```ts
+
+const manager = BroadcastManager.get();
+
+await manager.broadcast({
+  broadcastOn: () => [new Channel('announcements')],
+  broadcastWith: () => ({ message: 'Server maintenance in 5 minutes' }),
+});
+```
+
+## How to connect a WebSocket client
+
+Use `createBroadcastClient` from `@roost/broadcast/client` in browser or client-side code.
+
+```ts title="src/client/notifications.ts"
+
+const client = createBroadcastClient(
+  () => `/ws/channel/users.${currentUserId}?token=${getAuthToken()}`,
+  {
+    onConnect: () => console.log('Connected'),
+    onDisconnect: (code, reason) => console.log('Disconnected', code, reason),
+  }
+);
+
+const unsubscribe = client.subscribe('users.*', (event, data) => {
+  if (event === 'order.shipped') {
+    showToast(`Your order shipped! Tracking: ${(data as { trackingNumber: string }).trackingNumber}`);
+  }
+});
+
+// Later, clean up
+unsubscribe();
+client.close();
+```
+
+The client reconnects automatically with exponential backoff when the connection
+drops. Pass a factory function as the URL to generate a fresh token on each reconnect.
+
+## How to authorize private and presence channels
+
+Override `authorize()` in a subclass of `ChannelDO` to validate tokens against
+your authentication system.
+
+<Callout type="warning">
+  The default `authorize()` implementation accepts any non-empty bearer token.
+  Always override this in production.
+</Callout>
+
+```ts title="src/durable-objects/AppChannelDO.ts"
+
+const workos = new WorkOS(process.env.WORKOS_API_KEY!);
+
+export class AppChannelDO extends ChannelDO {
+  protected async authorize(request: Request): Promise<{ ok: boolean }> {
+    const token = request.headers.get('Authorization')?.replace('Bearer ', '');
+    if (!token) return { ok: false };
+
+    try {
+      await workos.userManagement.authenticateWithSessionCookie({ sessionData: token });
+      return { ok: true };
+    } catch {
+      return { ok: false };
+    }
+  }
+
+  protected extractUserId(request: Request): string | undefined {
+    const url = new URL(request.url);
+    return url.searchParams.get('userId') ?? undefined;
+  }
+}
+```
+
+Export `AppChannelDO` from your Worker entry point and update `wrangler.jsonc` to
+use `class_name: "AppChannelDO"`.
+
+## How to use presence channels
+
+Presence channels emit `presence:join` and `presence:leave` events when users
+connect and disconnect. Subscribe to these on the client.
+
+```ts
+const client = createBroadcastClient(
+  `/ws/channel/room.${roomId}?type=presence&userId=${currentUserId}&token=${token}`
+);
+
+client.subscribe('room.*', (event, data) => {
+  if (event === 'presence:join') {
+    addMemberToList((data as { member: { id: string } }).member);
+  }
+  if (event === 'presence:leave') {
+    removeMemberFromList((data as { member: { id: string } }).member);
+  }
+});
+```
+
+## How to test broadcasting
+
+Call `BroadcastManager.fake()` before the code that would broadcast. Use
+`assertBroadcast()` and `assertBroadcastOn()` for assertions.
+
+```ts title="tests/events/OrderShipped.test.ts"
+
+describe('OrderShipped', () => {
+  afterEach(() => BroadcastManager.restore());
+
+  it('broadcasts when an order is shipped', async () => {
+    BroadcastManager.fake();
+
+    await shipOrder({ orderId: 'ord-1', userId: 'user-1', trackingNumber: 'TRK123' });
+
+    BroadcastManager.assertBroadcast(OrderShipped);
+  });
+
+  it('broadcasts on the user private channel', async () => {
+    BroadcastManager.fake();
+
+    await shipOrder({ orderId: 'ord-1', userId: 'user-1', trackingNumber: 'TRK123' });
+
+    BroadcastManager.assertBroadcastOn('users.user-1');
+  });
+});
+```

@@ -65,6 +65,50 @@ capability can override with `@cf/meta/llama-3.1-70b-instruct` via the
 useful, not the largest model that might be impressive — smaller models fail faster
 and cost less, which is the right default before profiling.
 
+## AI Gateway: Routing, Caching, and Fallback
+
+The direct Workers AI binding (`env.AI`) is the lowest-latency path to inference: the call resolves inside Cloudflare's network without an additional HTTP hop. `GatewayAIProvider` introduces a deliberate tradeoff — roughly 10 ms of added latency in exchange for three capabilities the binding alone cannot provide.
+
+**Observability.** Every request through AI Gateway is logged in the Cloudflare dashboard with latency, model, token counts, and error codes. The binding produces no such logs.
+
+**Request caching.** AI Gateway can cache identical requests at the edge. For applications that send the same prompt repeatedly — search autocomplete, FAQ bots, cached summaries — this eliminates inference cost entirely for cache hits.
+
+**Fallback.** If the gateway is unreachable or returns an error, `GatewayAIProvider` calls the direct `CloudflareAIProvider` automatically. The application never sees the failure.
+
+The decision between the two providers is operational, not architectural. Start with the direct binding during development and switch to the gateway in production when you need logs and caching.
+
+## Session Affinity and Prefix Caching
+
+Transformer models benefit from KV caching: when the beginning of a prompt matches a previously computed sequence, the attention values for those tokens can be reused rather than recomputed. Cloudflare AI Gateway exposes this through session affinity.
+
+When `GatewayAIProvider` detects that a request carries conversation history (more than one non-system message), it adds `x-session-affinity: true` to the outbound request. This header signals to the gateway to route the request to the same backend replica that handled the previous turn, maximising the probability of a cache hit on the shared system-prompt and conversation prefix.
+
+The savings scale with the ratio of cached tokens to new tokens. A conversation with a long system prompt and many previous turns gets substantial cache hits; a single-turn request with no history gets none. The header adds no latency when the cache is cold — it is purely additive.
+
+## RAG Architecture
+
+Retrieval-Augmented Generation (RAG) addresses a fundamental constraint of language models: their knowledge is frozen at training time and limited to what fits in the context window.
+
+A RAG pipeline has two phases:
+
+**Ingestion.** Source documents are split into chunks, each chunk is embedded into a vector, and the vectors are stored in a vector database (Vectorize). This happens offline or as documents are added to the system.
+
+**Retrieval.** At query time, the user's question is embedded using the same model. The vector database returns the chunks whose embeddings are closest to the question embedding. Those chunks are inserted into the model's context window as retrieved evidence, and the model generates an answer grounded in that evidence.
+
+`RAGPipeline` implements both phases. `ingest()` handles the write path; `query()` handles the read path. The pipeline does not include prompt construction — inserting retrieved chunks into the agent's instructions or prompt is the application's responsibility, which keeps the pipeline composable.
+
+## Chunking Strategies
+
+How a document is divided into chunks has a larger impact on retrieval quality than the choice of embedding model.
+
+**Token size.** A chunk must be small enough to fit useful context in the vector's metadata (Vectorize stores metadata alongside vectors) but large enough that the embedding captures meaningful semantic content. The default chunk size of 400 estimated tokens is a reasonable starting point for most prose. Code and structured data may require smaller chunks.
+
+**Overlap.** `TextChunker` repeats a fraction of the previous chunk's words at the start of the next chunk (10 % by default). This ensures that sentences and ideas that straddle a chunk boundary are represented in at least one chunk, rather than being split across two chunks that each lack the full context.
+
+**Semantic boundaries.** `TextChunker` is purely mechanical — it splits on word count regardless of content structure. `SemanticChunker` first splits on Markdown headings and paragraph breaks, then applies `TextChunker` only to segments that still exceed the size limit. For documents with clear heading structure (documentation, articles, reports), `SemanticChunker` produces more coherent chunks because each chunk corresponds to a complete section rather than an arbitrary word window.
+
+Choose `TextChunker` for unstructured prose, dense text, or content without heading structure. Choose `SemanticChunker` for Markdown documentation, articles, and any content where headings delineate distinct topics.
+
 ## Further Reading
 
 - [@roost/cloudflare concepts — AIClient and the Workers AI binding](/docs/concepts/cloudflare.md)

@@ -267,6 +267,140 @@ interface PaginationResult<T> {
 }
 ```
 
+## Tenant Scoping
+
+### Model.tenantColumn
+
+```ts
+static tenantColumn: string | null = null;
+```
+
+Set `tenantColumn` to the column name that stores the tenant identifier (e.g. `'org_id'`). When set and a `TenantContext` is active, all queries — `find`, `findOrFail`, `all`, `create`, `save`, `delete`, and every `QueryBuilder` chain — automatically include `WHERE {tenantColumn} = {orgId}` using the current context value. The tenant condition is always prepended before any caller-supplied `where` clauses.
+
+On `create()`, the tenant column value from the context overwrites any caller-supplied value for that column, ensuring rows can never be created outside the active tenant.
+
+```ts title="src/models/Post.ts"
+
+export class Post extends Model {
+  static tableName = 'posts';
+  static tenantColumn = 'org_id';
+}
+```
+
+### Model.withoutTenantScope()
+
+#### `static async withoutTenantScope<T>(fn: () => Promise<T>): Promise<T>`
+
+Execute `fn` with the tenant scope bypassed for this model class. The context is restored after `fn` resolves or rejects. Use for administrative queries that must cross tenant boundaries.
+
+```ts
+const allPosts = await Post.withoutTenantScope(() => Post.all());
+```
+
+## TenantContext
+
+Request-scoped object that holds the active tenant identity. Injected into all model classes by `OrmServiceProvider` at boot. Resolve from the DI container when you need to read or set the tenant outside a model query.
+
+#### `set(data: TenantContextData): void`
+
+Set the active tenant. Called by `TenantScopeMiddleware` after resolving the org.
+
+#### `get(): TenantContextData | null`
+
+Return the current tenant data, or `null` if not set.
+
+#### `isBypassed(): boolean`
+
+Return `true` if `withoutTenantScope()` is currently active.
+
+#### `bypass(): void`
+
+Disable tenant filtering. Called internally by `withoutTenantScope()`.
+
+#### `restore(): void`
+
+Re-enable tenant filtering. Called internally by `withoutTenantScope()`.
+
+```ts
+interface TenantContextData {
+  orgId: string;
+  orgSlug: string;
+}
+```
+
+## TenantDatabaseResolver
+
+Resolves a per-tenant D1 binding by mapping an org slug to a binding name using a configurable pattern.
+
+#### `constructor(pattern: string, resolveBinding: (name: string) => D1Database | null)`
+
+| Parameter | Description |
+|---|---|
+| `pattern` | Binding name template. Default: `'DB_TENANT_{SLUG}'`. `{SLUG}` is replaced with the uppercased, hyphen-to-underscore org slug. |
+| `resolveBinding` | Function that returns the D1Database for a given binding name, or `null` if not found. |
+
+#### `resolve(slug: string): D1Database | null`
+
+Converts `slug` to a binding name using `pattern` and calls `resolveBinding`. Returns `null` if no matching binding exists.
+
+**Example:** slug `acme-corp` with pattern `DB_TENANT_{SLUG}` resolves to binding name `DB_TENANT_ACME_CORP`.
+
+## D1SessionHandle
+
+Wraps a D1Database binding to enforce read-your-writes consistency using the D1 Sessions API.
+
+#### `constructor(db: D1Database)`
+
+#### `sessionAwareRaw(): D1Database`
+
+Returns a session-aware D1Database handle. If `markWritten()` has been called, the returned handle calls `db.withSession(token)` to route reads to a replica that has seen the most recent write. Falls back to the plain binding if `withSession()` is unavailable (e.g. local dev / Miniflare).
+
+#### `markWritten(token?: string): void`
+
+Record that a write has occurred. Pass a session token string to use a specific session; omit to use the unconditional first-session sentinel. Call this immediately after any `INSERT`, `UPDATE`, or `DELETE` that must be visible to subsequent reads in the same request.
+
+## TenantScopeMiddleware
+
+Sets the active `TenantContext` from the incoming request using an `OrgResolvable` and an org lookup function. Place this middleware before any route handler that queries tenant-scoped models.
+
+#### `constructor(resolver: OrgResolvable, orgLookup: (slug: string) => Promise<{ id: string } | null>, ctx: TenantContext)`
+
+| Parameter | Description |
+|---|---|
+| `resolver` | Any object implementing `resolve(request: Request): { slug: string } \| null`. `OrgResolver` from `@roost/auth` satisfies this interface. |
+| `orgLookup` | Async function that returns `{ id: string }` for a known slug, or `null` if the org does not exist. |
+| `ctx` | The `TenantContext` instance to populate. Resolve from the DI container. |
+
+#### `async handle(request: Request, next: () => Promise<Response>): Promise<Response>`
+
+Resolves the org slug from the request, looks up the org ID, and calls `ctx.set({ orgId, orgSlug })` before calling `next()`. Throws `TenantNotResolvedError` if the slug is found but the org lookup returns `null`.
+
+```ts
+interface OrgResolvable {
+  resolve(request: Request): { slug: string } | null;
+}
+```
+
+## OrmServiceProvider — Tenant Strategy Config
+
+`OrmServiceProvider` reads the following config keys during `boot()`:
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `database.tenantStrategy` | `'row' \| 'database'` | `'row'` | `'row'` uses `tenantColumn` filtering on a shared DB. `'database'` resolves a per-tenant D1 binding via `TenantDatabaseResolver`. |
+| `database.useSession` | `boolean` | `false` | Wrap the D1 binding in `D1SessionHandle` for read-your-writes consistency. |
+| `database.d1Binding` | `string` | `'DB'` | The shared D1 binding name. |
+| `database.tenantBindingPattern` | `string` | `'DB_TENANT_{SLUG}'` | Binding name pattern for `'database'` strategy. |
+
+```ts title="config/database.ts"
+export default {
+  tenantStrategy: 'row',      // or 'database' for DB-per-tenant
+  useSession: true,           // enable read-your-writes
+  d1Binding: 'DB',
+  tenantBindingPattern: 'DB_TENANT_{SLUG}',
+};
+```
+
 ## Errors
 
 #### `OrmNotBootedError`
