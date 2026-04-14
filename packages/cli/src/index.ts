@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 
 import { newProject } from './commands/new.js';
-import { makeModel, makeAgent, makeTool, makeJob, makeMiddleware, makeMcpServer, makeController } from './commands/make.js';
+import { makeModel, makeAgent, makeTool, makeJob, makeMiddleware, makeMcpServer, makeController, makeRateLimiter, makeWorkflow } from './commands/make.js';
 import { run } from './process.js';
 
 const args = process.argv.slice(2);
@@ -72,6 +72,16 @@ async function main() {
       await makeController(positional[0]);
       break;
 
+    case 'make:rate-limiter':
+      if (!positional[0]) { console.error('Usage: roost make:rate-limiter <Name> [--do]'); process.exit(1); }
+      await makeRateLimiter(positional[0], flags['do'] ? 'do' : 'kv');
+      break;
+
+    case 'make:workflow':
+      if (!positional[0]) { console.error('Usage: roost make:workflow <Name>'); process.exit(1); }
+      await makeWorkflow(positional[0]);
+      break;
+
     case 'dev':
       await run('npx', ['vite', 'dev']);
       break;
@@ -124,6 +134,8 @@ function printHelp() {
     make:mcp-server <Name> Generate an MCP server
     make:job <Name>       Generate a queue job class
     make:middleware <Name> Generate a middleware class
+    make:rate-limiter <Name>  Generate a rate limiter middleware (--do for exact DO variant)
+    make:workflow <Name>  Generate a durable workflow class
 
     dev                   Start the dev server
     build                 Build for production

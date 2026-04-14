@@ -5,6 +5,8 @@ export { Pipeline } from './middleware.js';
 export { Application } from './application.js';
 export { Logger, FakeLogger } from './logger.js';
 export { RequestIdMiddleware } from './middleware/request-id.js';
+export { verifyWebhook, WebhookPresets, WebhookVerificationError } from './webhooks/verify.js';
+export { WebhookMiddleware } from './webhooks/middleware.js';
 
 export type {
   Container,
@@ -18,3 +20,4 @@ export type {
   LogContext,
   LogEntry,
 } from './types.js';
+export type { WebhookVerifyOptions, WebhookAlgorithm } from './webhooks/verify.js';

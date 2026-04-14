@@ -155,6 +155,78 @@ export class ${pascal}Server extends McpServer {
   await writeIfNotExists(join('src', 'mcp', `${kebab}.ts`), content);
 }
 
+export async function makeRateLimiter(name: string, variant: 'kv' | 'do'): Promise<void> {
+  const pascal = toPascalCase(name);
+  const kebab = toKebabCase(name);
+
+  const content = variant === 'kv'
+    ? `import { KVRateLimiter } from '@roost/cloudflare';
+import type { KVStore } from '@roost/cloudflare';
+
+// Injected via container — bind KVStore instance for your rate limit namespace
+export const ${pascal}RateLimiter = (kv: KVStore) =>
+  new KVRateLimiter(kv, {
+    limit: 100,
+    window: 60, // seconds
+    keyExtractor: (request) => request.headers.get('CF-Connecting-IP') ?? 'unknown',
+  });
+`
+    : `import { DORateLimiter } from '@roost/cloudflare';
+import type { DurableObjectClient } from '@roost/cloudflare';
+
+// Injected via container — bind DurableObjectClient for your rate limit DO
+export const ${pascal}RateLimiter = (doClient: DurableObjectClient) =>
+  new DORateLimiter(doClient, {
+    limit: 100,
+    window: 60, // seconds
+    keyExtractor: (request) => request.headers.get('CF-Connecting-IP') ?? 'unknown',
+  });
+`;
+
+  await writeIfNotExists(join('src', 'middleware', `${kebab}-rate-limiter.ts`), content);
+}
+
+export async function makeWorkflow(name: string): Promise<void> {
+  const pascal = toPascalCase(name);
+  const kebab = toKebabCase(name);
+
+  const content = `import { Workflow, Compensable, NonRetryableError } from '@roost/workflow';
+import type { WorkflowEvent, WorkflowStep } from 'cloudflare:workers';
+
+interface ${pascal}Params {
+  // Define workflow input parameters
+}
+
+export class ${pascal}Workflow extends Workflow<Env, ${pascal}Params> {
+  private compensable = new Compensable();
+
+  async run(event: WorkflowEvent<${pascal}Params>, step: WorkflowStep) {
+    try {
+      const result = await step.do('step-one', async () => {
+        // Implement step logic here.
+        // Register a compensation if this step has side effects:
+        // this.compensable.register(() => undoStepOne(result));
+        return { done: true };
+      });
+
+      await step.sleep('wait-before-step-two', '1 minute');
+
+      await step.do('step-two', async () => {
+        // Steps may retry up to 5 times with exponential backoff.
+        // Throw NonRetryableError for permanent failures:
+        // throw new NonRetryableError('Unrecoverable condition');
+      });
+    } catch (err) {
+      await this.compensable.compensate();
+      throw err;
+    }
+  }
+}
+`;
+
+  await writeIfNotExists(join('src', 'workflows', `${kebab}.ts`), content);
+}
+
 export async function makeController(name: string): Promise<void> {
   const pascal = toPascalCase(name);
   const kebab = toKebabCase(name);
