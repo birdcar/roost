@@ -197,6 +197,28 @@ Example: `/org/acme/dashboard` → `acme`.
 
 Reads the `X-Org-Slug` request header.
 
+## TenantScopeMiddleware
+
+`TenantScopeMiddleware` is exported from `@roost/orm`, not `@roost/auth`, but it is designed to be wired together with `OrgResolver` from `@roost/auth`. See the full API reference in the [@roost/orm reference — TenantScopeMiddleware](/docs/reference/orm#tenantscopemiddleware).
+
+`OrgResolver` satisfies the `OrgResolvable` interface required by `TenantScopeMiddleware`:
+
+```ts
+// OrgResolver.resolve() returns { slug: string } | null
+// TenantScopeMiddleware expects OrgResolvable: { resolve(request: Request): { slug: string } | null }
+// These are structurally compatible — no adapter needed.
+
+import { OrgResolver } from '@roost/auth';
+import { TenantScopeMiddleware, TenantContext } from '@roost/orm';
+
+const resolver = new OrgResolver(['subdomain']);
+const middleware = new TenantScopeMiddleware(
+  resolver,
+  async (slug) => db.findOrgBySlug(slug),
+  ctx,
+);
+```
+
 ## Types
 
 ```ts

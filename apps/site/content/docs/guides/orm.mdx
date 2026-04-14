@@ -199,6 +199,138 @@ return Response.json({
 });
 ```
 
+## How to enable row-level tenant isolation
+
+Row-level isolation keeps all tenants in a single database and filters every query by a `tenantColumn`. This is the default strategy and requires the least infrastructure.
+
+### 1. Add `org_id` to your tables
+
+```sql title="database/migrations/add_org_id_to_posts.sql"
+ALTER TABLE posts ADD COLUMN org_id TEXT NOT NULL DEFAULT '';
+CREATE INDEX idx_posts_org_id ON posts (org_id);
+```
+
+### 2. Set `tenantColumn` on the model
+
+```ts title="src/models/Post.ts"
+import { Model } from '@roost/orm';
+
+export class Post extends Model {
+  static tableName = 'posts';
+  static tenantColumn = 'org_id';
+}
+```
+
+### 3. Register TenantScopeMiddleware
+
+`TenantScopeMiddleware` reads the org from the request, looks up its ID, and sets it on the shared `TenantContext`. All subsequent model queries in the same request are automatically scoped to that org.
+
+```ts title="src/middleware/TenantMiddleware.ts"
+import { TenantScopeMiddleware } from '@roost/orm';
+import { OrgResolver } from '@roost/auth';
+import { TenantContext } from '@roost/orm';
+import { Organization } from '../models/Organization';
+
+const resolver = new OrgResolver(['subdomain']);
+
+export function makeTenantMiddleware(ctx: TenantContext) {
+  return new TenantScopeMiddleware(
+    resolver,
+    async (slug) => Organization.withoutTenantScope(() =>
+      Organization.where('slug', slug).first(),
+    ),
+    ctx,
+  );
+}
+```
+
+```ts title="src/app.ts"
+import { OrmServiceProvider } from '@roost/orm';
+
+app.register(
+  new OrmServiceProvider()
+    .withModels([Post, Organization])
+);
+
+// Apply middleware before route handlers
+app.useMiddleware(makeTenantMiddleware(app.container.resolve(TenantContext)));
+```
+
+### 4. Use the escape hatch for cross-tenant queries
+
+Administrative routes that must see all tenants use `withoutTenantScope`:
+
+```ts
+const allPosts = await Post.withoutTenantScope(() => Post.all());
+```
+
+## How to set up DB-per-tenant routing
+
+DB-per-tenant gives each organization its own D1 database binding, with no data co-mingling at the row level.
+
+### 1. Add per-tenant D1 bindings to wrangler.jsonc
+
+```jsonc title="wrangler.jsonc"
+{
+  "d1_databases": [
+    { "binding": "DB", "database_name": "shared", "database_id": "..." },
+    { "binding": "DB_TENANT_ACME", "database_name": "tenant-acme", "database_id": "..." },
+    { "binding": "DB_TENANT_GLOBEX", "database_name": "tenant-globex", "database_id": "..." }
+  ]
+}
+```
+
+### 2. Configure the database strategy
+
+```ts title="config/database.ts"
+export default {
+  tenantStrategy: 'database',
+  tenantBindingPattern: 'DB_TENANT_{SLUG}',
+  d1Binding: 'DB', // fallback for unauthenticated or admin requests
+};
+```
+
+`OrmServiceProvider` reads `tenantStrategy` at boot. When set to `'database'`, it resolves the active org slug from `TenantContext` and uses `TenantDatabaseResolver` to pick the right D1 binding. If no per-tenant binding is found, it falls back to the shared `DB`.
+
+### 3. Register providers in the correct order
+
+`TenantScopeMiddleware` must run before `OrmServiceProvider.boot()` so the context is populated before the resolver runs. Ensure `AuthServiceProvider` (which populates the session) boots before `OrmServiceProvider`.
+
+```ts title="src/app.ts"
+app.register(AuthServiceProvider);
+app.register(
+  new OrmServiceProvider().withModels([Post])
+);
+```
+
+## How to use D1 Sessions for read-your-writes consistency
+
+D1 replicates across Cloudflare's network. A write committed on one replica may not be immediately visible on a different replica that serves the next read. Enable `useSession` to enforce that reads in the same request always see the most recent write.
+
+```ts title="config/database.ts"
+export default {
+  tenantStrategy: 'row',
+  useSession: true,
+};
+```
+
+With `useSession: true`, `OrmServiceProvider` wraps the D1 binding in a `D1SessionHandle`. The handle calls `db.withSession()` automatically once `markWritten()` has been called.
+
+Call `markWritten()` after any write that must be visible to subsequent reads in the same request lifecycle:
+
+```ts title="src/controllers/PostsController.ts"
+import { D1SessionHandle } from '@roost/orm';
+
+const sessionHandle = app.container.resolve(D1SessionHandle);
+
+const post = await Post.create({ title, body, org_id: orgId });
+sessionHandle.markWritten(); // subsequent reads will see this post
+
+const updated = await Post.find(post.attributes.id); // guaranteed to see the new row
+```
+
+If `withSession()` is unavailable (e.g. local dev with Miniflare), the handle falls back to the plain binding and logs a warning.
+
 ## How to write and run migrations
 
 Create a migration file in `database/migrations/` using `roost make:migration`, then run it with `roost migrate`.

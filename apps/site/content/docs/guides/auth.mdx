@@ -137,6 +137,67 @@ app.register(AuthServiceProvider);
 
 After the callback, the user is redirected to the URL in `return_to`, or to `/dashboard` if absent. To customize the post-login destination, set `auth.defaultRedirect` in your config.
 
+## How to connect OrgResolver to tenant-scoped ORM
+
+`OrgResolver` detects which organization a request belongs to. `TenantScopeMiddleware` takes that result, looks up the org's database ID, and sets it on `TenantContext` so every model query in the request is automatically scoped. Wire them together once at application startup.
+
+### 1. Register both service providers
+
+```ts title="src/app.ts"
+import { AuthServiceProvider } from '@roost/auth';
+import { OrmServiceProvider } from '@roost/orm';
+import { Post, Organization } from './models';
+
+app.register(AuthServiceProvider);
+app.register(
+  new OrmServiceProvider().withModels([Post, Organization])
+);
+```
+
+### 2. Add tenant-scoped middleware
+
+```ts title="src/app.ts"
+import { OrgResolver } from '@roost/auth';
+import { TenantScopeMiddleware, TenantContext } from '@roost/orm';
+import { Organization } from './models/Organization';
+
+const resolver = new OrgResolver(['subdomain']); // or 'path-prefix', 'header'
+const ctx = app.container.resolve(TenantContext);
+
+app.useMiddleware(
+  new TenantScopeMiddleware(
+    resolver,
+    async (slug) =>
+      Organization.withoutTenantScope(() =>
+        Organization.where('slug', slug).first(),
+      ),
+    ctx,
+  ),
+);
+```
+
+The org lookup uses `withoutTenantScope` because `Organization` itself is a tenant-scoped model — looking up by slug must bypass the scope to find the org record before the context is populated.
+
+### 3. Models are now automatically scoped
+
+Any model with `tenantColumn` set will filter by the resolved org on every query, with no changes to controller or route code:
+
+```ts title="src/controllers/PostsController.ts"
+// org_id is injected automatically — no need to pass it
+const posts = await Post.where('status', 'published').all();
+const post = await Post.create({ title, body });
+```
+
+### Choosing a resolution strategy
+
+| Strategy | URL pattern | When to use |
+|---|---|---|
+| `'subdomain'` | `acme.myapp.com` | SaaS with per-org subdomains |
+| `'path-prefix'` | `/org/acme/dashboard` | Shared domain with org prefix |
+| `'header'` | `X-Org-Slug: acme` | API clients, internal services |
+
+Strategies can be combined: `new OrgResolver(['subdomain', 'header'])` tries subdomain first, then falls back to the header.
+
 ## How to add CSRF protection
 
 Add `CsrfMiddleware` globally. All POST/PUT/PATCH/DELETE requests must include the `_csrf` token.

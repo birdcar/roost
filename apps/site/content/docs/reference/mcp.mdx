@@ -150,6 +150,103 @@ Create an `McpRequest` from a plain arguments object. Used internally by
 `McpServer` when routing tool calls and prompt invocations. Import directly
 when testing tools or prompts in isolation without a full server.
 
+## AiSearchResource
+
+`AiSearchResource` is a pre-built `McpResource` that wraps a Cloudflare AI Search binding, exposing semantic search over an indexed corpus to any MCP client.
+
+Because `AiSearchResource` requires constructor arguments (the AI Search binding and an instance name), it cannot be used directly in the zero-argument `Array<new () => McpResource>` pattern. Two registration patterns are supported.
+
+### Pattern 1 — Subclass per instance (recommended)
+
+```ts title="src/mcp/resources/MyAiSearch.ts"
+import { AiSearchResource } from '@roost/mcp';
+
+export class MyAiSearch extends AiSearchResource {
+  constructor() {
+    super(env.AI_SEARCH, 'my-docs');
+  }
+}
+```
+
+Register the subclass on an `McpServer` as normal:
+
+```ts
+class AppServer extends McpServer {
+  resources = [MyAiSearch];
+}
+```
+
+### Pattern 2 — Ad-hoc instance
+
+Construct `AiSearchResource` directly and pass it to `McpServer.readResource()` without registering it on the server.
+
+### Constructor
+
+```ts
+constructor(
+  binding: { run(request: Record<string, unknown>): Promise<Record<string, unknown>> },
+  instanceName: string,
+)
+```
+
+| Parameter | Description |
+|---|---|
+| `binding` | The Cloudflare AI Search binding (e.g. `env.AI_SEARCH`). |
+| `instanceName` | A unique name for this search instance. Used as the URI host: `aisearch://{instanceName}`. |
+
+### Methods
+
+#### `uri(): string`
+
+Returns `aisearch://{instanceName}`.
+
+#### `mimeType(): string`
+
+Returns `'application/json'`.
+
+#### `description(): string`
+
+Returns a string describing the instance name and accepted query shape.
+
+#### `shouldRegister(): boolean`
+
+Returns `true`.
+
+#### `async handle(request: McpRequest): Promise<McpResponse>`
+
+Accepts `query` (required string), `metadataFilters` (optional `Record<string, string>`), and `pathFilters` (optional `string[]`). Returns `McpResponse.structured(...)` with the search result, or `McpResponse.error(...)` if `query` is empty or the binding throws.
+
+### Request parameters
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `query` | `string` | Yes | The search query text. |
+| `metadataFilters` | `Record<string, string>` | No | Key/value metadata filters passed to the AI Search binding. |
+| `pathFilters` | `string[]` | No | URL path prefixes to restrict search scope. |
+
+### Response shape
+
+When the AI Search binding returns an `answer` field:
+
+```ts
+interface AiSearchResult {
+  answer: string;
+  sources: Array<{
+    url: string;
+    title?: string;
+    excerpt?: string;
+  }>;
+}
+```
+
+Otherwise the raw binding response is returned as structured content.
+
+## McpResponse.structured
+
+#### `static structured(content: Record<string, unknown>): McpResponse`
+
+Create a structured JSON content response. Used by `AiSearchResource` and any resource or tool that needs to return machine-readable JSON rather than plain text.
+
 ## Types
 
 ```ts

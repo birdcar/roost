@@ -157,3 +157,61 @@ Provide specific, actionable feedback.`;
 ```
 
 Prompts can return a single `McpResponse` or an array of them. Arrays are useful for multi-turn prompt scaffolding.
+
+## How to expose AI Search via MCP
+
+Use `AiSearchResource` to make a Cloudflare AI Search index available as an MCP resource. MCP clients can then query it by URI.
+
+### 1. Add the AI Search binding to wrangler.jsonc
+
+```jsonc title="wrangler.jsonc"
+{
+  "ai_search": [
+    { "binding": "AI_SEARCH", "index_name": "my-docs" }
+  ]
+}
+```
+
+### 2. Create a subclass to capture the binding
+
+`AiSearchResource` requires constructor arguments, so wrap it in a subclass that reads from `env`:
+
+```ts title="src/mcp/resources/DocsSearch.ts"
+import { AiSearchResource } from '@roost/mcp';
+
+export class DocsSearch extends AiSearchResource {
+  constructor() {
+    // env must be accessible here — inject via closure or module-level reference
+    super(env.AI_SEARCH, 'docs');
+  }
+}
+```
+
+### 3. Register on your MCP server
+
+```ts title="src/mcp/AppServer.ts"
+import { McpServer } from '@roost/mcp';
+import { DocsSearch } from './resources/DocsSearch';
+
+export class AppServer extends McpServer {
+  resources = [DocsSearch];
+
+  serverName() { return 'My App'; }
+  serverVersion() { return '1.0.0'; }
+}
+```
+
+### 4. Query the resource from an MCP client
+
+The resource URI is `aisearch://docs`. Clients pass `query`, and optionally `metadataFilters` and `pathFilters`:
+
+```json
+{
+  "uri": "aisearch://docs",
+  "query": "how do I reset my password",
+  "metadataFilters": { "section": "support" },
+  "pathFilters": ["/help/"]
+}
+```
+
+The response contains an `answer` string and a `sources` array with `url`, `title`, and `excerpt` for each matched document.

@@ -160,6 +160,171 @@ export class SupportAgent extends Agent {
 }
 ```
 
+## How to route inference through AI Gateway
+
+Use `GatewayAIProvider` when you want Cloudflare AI Gateway observability, request caching, or per-request fallback behaviour. The gateway provider wraps a direct `CloudflareAIProvider` and calls it automatically if the gateway is unavailable.
+
+1. Create an AI Gateway in the Cloudflare dashboard and note the **account ID** and **gateway ID**.
+2. Add both as secrets or config values:
+
+```sh title=".dev.vars"
+CF_ACCOUNT_ID=abc123
+AI_GATEWAY_ID=my-gateway
+```
+
+3. Wire up the provider at application startup:
+
+```ts title="src/app.ts"
+import { GatewayAIProvider } from '@roost/ai';
+import { CloudflareAIProvider, AIClient } from '@roost/cloudflare';
+
+const direct = new CloudflareAIProvider(new AIClient(env.AI));
+const gateway = new GatewayAIProvider(
+  { accountId: env.CF_ACCOUNT_ID, gatewayId: env.AI_GATEWAY_ID },
+  direct,
+);
+
+// Apply to a specific agent class
+MyAgent.setProvider(gateway);
+```
+
+Session affinity is applied automatically — once a conversation has more than one turn, subsequent requests carry `x-session-affinity: true` so the gateway routes them to the same cached context.
+
+## How to run async inference
+
+Use `queued: true` to enqueue a long-running inference request and return a task ID immediately. Poll for the result separately.
+
+```ts title="src/functions/summarize.ts"
+import { SummarizeAgent } from '../agents/SummarizeAgent';
+
+export async function startSummary(text: string): Promise<string> {
+  const agent = new SummarizeAgent();
+  const result = await agent.prompt(text, { queued: true });
+
+  if (!result.queued) throw new Error('Expected queued result');
+  return result.taskId; // Store this in KV or return to the client
+}
+```
+
+Poll with `AIClient.poll()` from a separate endpoint or Durable Object alarm:
+
+```ts title="src/functions/checkSummary.ts"
+import { AIClient } from '@roost/cloudflare';
+
+export async function checkSummary(taskId: string, env: Env) {
+  const client = new AIClient(env.AI);
+
+  // fetch must carry a CF API token for the REST API
+  const authenticatedFetch = (url: string) =>
+    fetch(url, { headers: { Authorization: `Bearer ${env.CF_API_TOKEN}` } });
+
+  const result = await client.poll(taskId, authenticatedFetch, env.CF_ACCOUNT_ID);
+
+  if (result.status === 'done') {
+    return result.result; // The model output
+  }
+
+  return null; // Still running
+}
+```
+
+## How to build a RAG pipeline
+
+A RAG pipeline chunks documents, embeds the chunks, stores them in Vectorize, then retrieves the most relevant chunks for a query.
+
+### 1. Configure the Vectorize index and AI binding
+
+```jsonc title="wrangler.jsonc"
+{
+  "ai": { "binding": "AI" },
+  "vectorize": [
+    { "binding": "VECTORIZE", "index_name": "my-docs-index" }
+  ]
+}
+```
+
+The index must match the embedding model's dimensionality. `@cf/baai/bge-base-en-v1.5` (the default) produces 768-dimensional vectors. Create the index with:
+
+```sh title="terminal"
+npx wrangler vectorize create my-docs-index --dimensions=768 --metric=cosine
+```
+
+### 2. Ingest documents
+
+```ts title="src/scripts/ingest.ts"
+import { RAGPipeline, SemanticChunker, EmbeddingPipeline } from '@roost/ai/rag';
+import { AIClient, VectorStore } from '@roost/cloudflare';
+import type { Document } from '@roost/ai/rag';
+
+const client = new AIClient(env.AI);
+const store = new VectorStore(env.VECTORIZE);
+const chunker = new SemanticChunker({ chunkSize: 400 });
+const embeddings = new EmbeddingPipeline(client);
+
+const pipeline = new RAGPipeline(store, embeddings, chunker);
+
+const docs: Document[] = [
+  { id: 'doc-1', text: '...', metadata: { source: 'handbook' } },
+  { id: 'doc-2', text: '...', metadata: { source: 'handbook' } },
+];
+
+const { inserted } = await pipeline.ingest(docs);
+console.log(`Inserted ${inserted} vectors`);
+```
+
+### 3. Query and inject context into an agent
+
+```ts title="src/agents/DocsAgent.ts"
+import { Agent } from '@roost/ai';
+import { RAGPipeline, SemanticChunker, EmbeddingPipeline } from '@roost/ai/rag';
+import { AIClient, VectorStore } from '@roost/cloudflare';
+
+export class DocsAgent extends Agent {
+  private rag: RAGPipeline;
+
+  constructor(env: Env) {
+    super();
+    const client = new AIClient(env.AI);
+    const store = new VectorStore(env.VECTORIZE);
+    this.rag = new RAGPipeline(store, new EmbeddingPipeline(client), new SemanticChunker());
+  }
+
+  instructions(): string {
+    return 'You are a helpful assistant. Answer questions using the context provided.';
+  }
+
+  async answerWithContext(question: string): Promise<string> {
+    const results = await this.rag.query(question);
+    const context = results.map((r) => r.chunk.text).join('\n\n');
+
+    const result = await this.prompt(
+      `Context:\n${context}\n\nQuestion: ${question}`,
+    );
+
+    if (result.queued) throw new Error('unexpected queued result');
+    return result.text;
+  }
+}
+```
+
+### 4. Test the RAG pipeline without a real index
+
+```ts title="tests/DocsAgent.test.ts"
+import { RAGPipeline } from '@roost/ai/rag';
+import type { QueryResult } from '@roost/ai/rag';
+
+const fakeResults: QueryResult[] = [
+  { chunk: { id: 'doc-1:0', documentId: 'doc-1', text: 'Roost uses D1.', tokenCount: 5 }, score: 0.92 },
+];
+
+RAGPipeline.fake([fakeResults]);
+
+// ... run your agent test ...
+
+RAGPipeline.assertQueried((text) => text.includes('database'));
+RAGPipeline.restore();
+```
+
 ## How to test agents without calling the AI provider
 
 Use `Agent.fake()` to inject predetermined responses. Always call `Agent.restore()` after each test.
