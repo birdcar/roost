@@ -9,18 +9,18 @@
 
 The `@roostjs/skills` npm package (at `packages/roost-skills/`) is built as CLI binaries with a custom `skills.json` manifest — a format that no skill discovery tool actually consumes. The intended distribution channel, `npx skills` (Vercel Labs skills CLI v1.5.0), uses the Agent Skills spec (`SKILL.md` files discoverable via GitHub repo cloning), not npm packages or custom JSON manifests.
 
-The result is that Roost's AI coding skills are not installable via the standard ecosystem tooling. Users cannot run `npx skills birdcar/roost` because no `SKILL.md` files exist in the repo. The existing npm package also has a broken `files` field (missing `dist/`), so even the CLI binary path doesn't work when installed from the registry.
+The result is that Roost's AI coding skills are not installable via the standard ecosystem tooling. Users cannot run `npx skills add birdcar/roost` because no `SKILL.md` files exist in the repo. The existing npm package also has a broken `files` field (missing `dist/`), so even the CLI binary path doesn't work when installed from the registry.
 
 ## Goals
 
-1. `npx skills birdcar/roost` discovers and installs all Roost skills into `.claude/skills/`
+1. `npx skills add birdcar/roost` discovers and installs all Roost skills into `.claude/skills/`
 2. Each skill follows the Agent Skills spec (agentskills.io) with valid SKILL.md frontmatter
 3. The old CLI binary package (`@roostjs/skills`) is removed from the monorepo — no dual maintenance
 4. Skills reference the correct docs domain (`roost.birdcar.dev`)
 
 ## Success Criteria
 
-- [ ] Running `npx skills birdcar/roost` presents a picker listing all Roost skills
+- [ ] Running `npx skills add birdcar/roost` presents a picker listing all Roost skills
 - [ ] Each installed skill has a valid `SKILL.md` with `name` and `description` frontmatter
 - [ ] `roost-new` skill instructs Claude to scaffold projects via `roost new <name>` CLI
 - [ ] `roost-make` skill instructs Claude to generate artifacts via `roost make:<type> <Name>` CLI

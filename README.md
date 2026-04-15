@@ -230,7 +230,7 @@ Typed wrappers for all eight Cloudflare bindings: D1, KV, R2, Queues, Durable Ob
 
 ## Packages
 
-Roost is a Bun monorepo with 12 packages, all published under `@roostjs/*`:
+Roost is a Bun monorepo with 16 packages, all published under `@roostjs/*`:
 
 | Package | What it does |
 |---------|-------------|
@@ -244,6 +244,10 @@ Roost is a Bun monorepo with 12 packages, all published under `@roostjs/*`:
 | `@roostjs/schema` | Fluent JSON Schema builder |
 | `@roostjs/billing` | Abstract billing interface with Stripe REST adapter and webhook handling |
 | `@roostjs/queue` | Job classes with dispatch, retry, chain, batch on Cloudflare Queues |
+| `@roostjs/events` | In-process event dispatching with listeners, subscribers, and optional queue deferral |
+| `@roostjs/feature-flags` | Feature flag evaluation via WorkOS with KV edge caching, Pennant-style API |
+| `@roostjs/broadcast` | Real-time WebSocket broadcasting via Durable Objects with channel authorization |
+| `@roostjs/workflow` | Durable multi-step workflows on Cloudflare Workflows with saga/compensate support |
 | `@roostjs/cli` | Project scaffolding (`roost new`) and code generators (`roost make:model`, `roost make:agent`) |
 | `@roostjs/testing` | HTTP test client, unified fakes for agents, jobs, and billing |
 
@@ -285,6 +289,23 @@ roost make:agent Assistant # generate an agent class
 ```
 
 Generated code follows the project's conventions and lands in the right directories.
+
+## AI coding skills
+
+Roost ships [Agent Skills](https://agentskills.io) for AI coding assistants like Claude Code, Cursor, and others. Install them with:
+
+```bash
+npx skills add birdcar/roost
+```
+
+Available skills:
+
+| Skill | What it does |
+|-------|-------------|
+| `roost-new` | Scaffold a new Roost project via `roost new` |
+| `roost-make` | Generate models, agents, jobs, middleware, tools, controllers, MCP servers |
+| `roost-docs` | Fetch Roost documentation from the docs site |
+| `roost-conventions` | File structure, naming conventions, and import patterns |
 
 ## Requirements
 
