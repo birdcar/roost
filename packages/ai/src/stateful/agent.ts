@@ -24,6 +24,9 @@ import {
 } from './schedule.js';
 import { NoProviderRegisteredError } from '../agent.js';
 import { runInAgentContext } from './context.js';
+import { StreamableAgentResponse } from '../streaming/streamable-response.js';
+import { buildAgentStream, StreamingUnsupportedError } from '../streaming/agent-stream.js';
+import { AgentStreamed } from '../events.js';
 
 /**
  * Minimal subset of `DurableObjectState` used by `StatefulAgent`. Real CF
@@ -162,6 +165,31 @@ export abstract class StatefulAgent<Env = unknown> {
       });
       await dispatchEvent(AgentPrompted, new AgentPrompted(agentName, prompt, response));
       return response;
+    });
+  }
+
+  /* ------------------------------- Streaming ------------------------------- */
+
+  stream(input: string, options: AgentPromptOptions = {}): StreamableAgentResponse {
+    const ctor = this.constructor as typeof StatefulAgent & { name: string };
+    const agentName = ctor.name;
+    const provider = resolveProviderForClass(ctor);
+    if (!provider) throw new NoProviderRegisteredError(agentName);
+    if (typeof provider.stream !== 'function') throw new StreamingUnsupportedError(provider.name);
+
+    const prompt = new AgentPrompt(input, options, agentName);
+    const config: AgentConfig = { ...options };
+
+    const source = buildAgentStream({
+      agent: this,
+      agentName,
+      prompt,
+      config,
+      provider,
+    });
+
+    return new StreamableAgentResponse(source, agentName, []).then(async (collected) => {
+      await dispatchEvent(AgentStreamed, new AgentStreamed(agentName, prompt, collected));
     });
   }
 

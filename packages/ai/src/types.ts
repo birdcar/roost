@@ -76,15 +76,17 @@ export type PromptResult =
   | { queued: false; text: string; messages: AgentMessage[]; toolCalls: ToolCall[]; usage?: Usage; conversationId?: string }
   | { queued: true; taskId: string };
 
-export interface StreamEvent {
-  type: 'text-delta' | 'tool-call' | 'tool-result' | 'usage' | 'error' | 'done';
-  text?: string;
-  toolCall?: ToolCall;
-  toolResult?: ToolResult;
-  usage?: Usage;
-  message?: string;
-  code?: string;
-}
+/**
+ * Streaming protocol events emitted by `Agent.stream()` and `provider.stream()`.
+ * Discriminated union — narrow on `type` to access payload fields.
+ */
+export type StreamEvent =
+  | { type: 'text-delta'; text: string }
+  | { type: 'tool-call'; id: string; name: string; arguments: Record<string, unknown> }
+  | { type: 'tool-result'; toolCallId: string; content: string }
+  | { type: 'usage'; promptTokens: number; completionTokens: number }
+  | { type: 'error'; message: string; code?: string }
+  | { type: 'done' };
 
 export interface ProviderRequest {
   model: string;

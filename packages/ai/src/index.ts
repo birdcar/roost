@@ -37,10 +37,18 @@ export {
   StructuredOutputValidationError,
 } from './responses/agent-response.js';
 export type { AgentResponse } from './responses/agent-response.js';
-export type {
-  StreamedAgentResponse,
-  StreamableAgentResponsePlaceholder,
-} from './responses/streamed-response.js';
+export type { StreamedAgentResponse } from './responses/streamed-response.js';
+
+// Streaming (Phase 3).
+export {
+  StreamableAgentResponse,
+  StreamAlreadyConsumedError,
+  StreamNotAwaitableError,
+} from './streaming/streamable-response.js';
+export type { StreamProtocol } from './streaming/streamable-response.js';
+export { StreamingUnsupportedError } from './streaming/agent-stream.js';
+export { encodeSSE, decodeSSE, toSSEStream } from './streaming/sse.js';
+export { toVercelProtocol, toVercelStream } from './streaming/vercel.js';
 
 // Decorators.
 export {
@@ -100,6 +108,8 @@ export {
   ConversationContinued,
   ConversationCompacted,
   ScheduledMethodMissing,
+  StreamingAgent,
+  AgentStreamed,
   dispatchEvent,
 } from './events.js';
 

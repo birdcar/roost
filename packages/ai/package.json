@@ -46,7 +46,8 @@
   "peerDependencies": {
     "@roostjs/broadcast": "workspace:*",
     "@roostjs/queue": "workspace:*",
-    "@roostjs/workflow": "workspace:*"
+    "@roostjs/workflow": "workspace:*",
+    "react": "catalog:"
   },
   "peerDependenciesMeta": {
     "@roostjs/broadcast": {
@@ -57,12 +58,20 @@
     },
     "@roostjs/workflow": {
       "optional": true
+    },
+    "react": {
+      "optional": true
     }
   },
   "devDependencies": {
     "@cloudflare/workers-types": "catalog:",
+    "@roostjs/broadcast": "workspace:*",
+    "@roostjs/queue": "workspace:*",
+    "@types/react": "catalog:",
     "bun-types": "catalog:",
     "miniflare": "4.20260415.0",
+    "react": "catalog:",
+    "react-dom": "catalog:",
     "typescript": "catalog:"
   },
   "license": "MIT",

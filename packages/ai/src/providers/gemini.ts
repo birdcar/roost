@@ -1,6 +1,7 @@
 import type { AIProvider, ProviderCapabilities } from './interface.js';
-import type { ProviderRequest, ProviderResponse, AgentMessage, ToolCall } from '../types.js';
+import type { ProviderRequest, ProviderResponse, AgentMessage, ToolCall, StreamEvent } from '../types.js';
 import { Lab } from '../enums.js';
+import { iterateSSELines } from '../streaming/sse-lines.js';
 
 const CAPS: ProviderCapabilities = {
   name: Lab.Gemini,
@@ -94,6 +95,75 @@ export class GeminiProvider implements AIProvider {
           }
         : undefined,
     };
+  }
+
+  async *stream(request: ProviderRequest): AsyncIterable<StreamEvent> {
+    const base = this.config.baseUrl ?? 'https://generativelanguage.googleapis.com';
+    const url = `${base}/v1beta/models/${request.model}:streamGenerateContent?alt=sse&key=${this.config.apiKey}`;
+    const system = request.messages.find((m) => m.role === 'system')?.content;
+    const body: Record<string, unknown> = {
+      contents: request.messages.filter((m) => m.role !== 'system').map(toGeminiContent),
+      ...(system ? { systemInstruction: { parts: [{ text: system }] } } : {}),
+      ...(request.tools && request.tools.length > 0
+        ? {
+            tools: [
+              {
+                functionDeclarations: request.tools.map((t) => ({
+                  name: t.name,
+                  description: t.description,
+                  parameters: t.parameters,
+                })),
+              },
+            ],
+          }
+        : {}),
+      generationConfig: {
+        ...(request.temperature !== undefined ? { temperature: request.temperature } : {}),
+        ...(request.maxTokens !== undefined ? { maxOutputTokens: request.maxTokens } : {}),
+      },
+      ...(request.providerOptions ?? {}),
+    };
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!response.ok || !response.body) {
+      const text = response.body ? await response.text() : '';
+      yield { type: 'error', message: `Gemini ${response.status}: ${text}` };
+      yield { type: 'done' };
+      return;
+    }
+
+    let toolIndex = 0;
+    let lastUsage: { promptTokens: number; completionTokens: number } | undefined;
+
+    for await (const payload of iterateSSELines(response.body)) {
+      let chunk: GeminiResponse;
+      try { chunk = JSON.parse(payload) as GeminiResponse; } catch { continue; }
+      const parts = chunk.candidates?.[0]?.content?.parts ?? [];
+      for (const part of parts) {
+        if ('text' in part && part.text) {
+          yield { type: 'text-delta', text: part.text };
+        } else if ('functionCall' in part) {
+          yield {
+            type: 'tool-call',
+            id: `call_${toolIndex++}_${part.functionCall.name}`,
+            name: part.functionCall.name,
+            arguments: part.functionCall.args,
+          };
+        }
+      }
+      if (chunk.usageMetadata) {
+        lastUsage = {
+          promptTokens: chunk.usageMetadata.promptTokenCount,
+          completionTokens: chunk.usageMetadata.candidatesTokenCount,
+        };
+      }
+    }
+    if (lastUsage) yield { type: 'usage', ...lastUsage };
+    yield { type: 'done' };
   }
 }
 

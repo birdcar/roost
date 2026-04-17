@@ -66,11 +66,11 @@ describe('Agent queued inference', () => {
     }
   });
 
-  it('stream() throws when called with queued: true option', async () => {
+  it('stream() throws when called with queued: true option', () => {
     TestAgent.setProvider(makeProvider());
     const a = new TestAgent();
 
-    await expect(a.stream('Hello', { queued: true })).rejects.toThrow(
+    expect(() => a.stream('Hello', { queued: true })).toThrow(
       'Cannot stream a queued request',
     );
   });

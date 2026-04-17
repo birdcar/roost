@@ -1,102 +1,92 @@
 # Context Map: roost-ai-redesign
 
-**Phase**: 2 (Stateful Agents on Durable Objects)
-**Scout Confidence**: 75/100
-**Verdict**: GO (with caveats — see Phase 2 risks)
+**Phase**: 3 (Streaming + Realtime + React Client)
+**Scout Confidence**: 62/100
+**Verdict**: HOLD → user opted to proceed with documented deviations
 
-## Dimensions
+## Dimensions (Phase 3)
 
 | Dimension | Score | Notes |
 |---|---|---|
-| Scope clarity | 15/20 | Spec enumerates 15 new files + 4 modified with purpose, but the wrapped CF SDK API surface differs from spec assumptions in three concrete ways (see Risks). Builder must reconcile before writing `Sessions`, `getCurrentAgent()`, and `schedule()` types. |
-| Pattern familiarity | 16/20 | In-repo DO conventions read: `packages/broadcast/src/channel-do.ts` (hibernation/`acceptWebSocket`+tags), `packages/cloudflare/src/rate-limiting/durable-object.ts` (constructor takes only `state`), `packages/broadcast/__tests__/channel-do.test.ts` (MockDOState pattern for unit tests). CF Agents SDK API confirmed via `/cloudflare/agents` Context7. **The spec's Sessions API is the Roost wrapper shape — actual SDK lives at `agents/experimental/memory/session` with a builder `Session.create(this).withContext(…).onCompaction(…).compactAfter(…)`** — wrapper must be authored, not "wrap CF SDK Sessions" 1:1 as spec suggests. |
-| Dependency awareness | 17/20 | P2 is net-additive: `stateful/*` is brand-new, no current consumers. Modified files: `agent.ts` (extract `executeCore` for sharing), `types.ts` (add `ConversationId`/`SessionNode`/`SessionBranch`), `provider.ts` (DO binding registration), `package.json` (add `agents` dep). Existing `AgentResponse.conversationId` field is already wired (`responses/agent-response.ts:12`) — Phase 1 reserved this. |
-| Edge case coverage | 13/20 | Gaps from SDK reality: (a) `Session` is set as `this.session = Session.create(this)…` field, not constructor-injected — mixin re-binding non-trivial; (b) `getCurrentAgent()` returns `{ agent, connection, request, email }` not the agent directly — spec's `als.run(agent, fn)` wrapper conflicts; (c) `schedule()` returns `{ id }` not a string per CF SDK; (d) `RemembersConversations` mixin's `super.prompt()` must avoid double-pumping messages because CF SDK `Agent` doesn't have `prompt()` — Roost adds it; (e) `tsconfig.base.json` uses `moduleResolution: "bundler"` so subpath exports are simpler than NodeNext (Phase 1 risk N/A here). |
-| Test strategy | 14/20 | Convention: `bun:test` + MockDOState pattern (`broadcast/__tests__/channel-do.test.ts:48-64`). **Miniflare 4 is in node_modules transitively (via wrangler 4.81.1, vite-plugin) but NOT a direct dep of any roost package** — adding to `packages/ai/devDependencies` is required for `integration/stateful-agent.miniflare.test.ts`. No `@cloudflare/vitest-pool-workers` in repo; spec mentions it speculatively. Harness pattern can mirror Phase 1's `testing/fakes.ts` keyed by constructor. |
+| Scope clarity | 13/20 | 21 new files + 8 modified enumerated, but spec's broadcast-bridge API, `AgentChannel` lifecycle hooks, and `StreamEvent` union all mismatch real monorepo types. Builder authors bridging wrappers. |
+| Pattern familiarity | 14/20 | In-repo patterns read; `@ai-sdk/react` protocol external knowledge. React-hook test infra absent; Bun + happy-dom chosen. |
+| Dependency awareness | 14/20 | `client/` subpath declared P1 but empty. React catalog entry `^19.0.0` exists. Modified files have near-zero current consumers. |
+| Edge case coverage | 11/20 | SSE UTF-8 boundaries, sequence numbering for reconnect, SSR hydration shape, Workers AI stream overload — gaps documented in Risks. |
+| Test strategy | 10/20 | `bun:test` + `happy-dom` chosen over Vitest. Miniflare 4 already devDep. BroadcastFake exists. |
 
 ## Key Patterns (Phase 1)
 
-- `packages/ai/src/providers/interface.ts` (lines 1-7) — minimal `AIProvider` with `name`, `chat`, optional `stream`. Builder extends to `capabilities()`, optional `embed/rerank/image/audio/transcribe`, `files`, `stores`. JSDoc-free, `type` imports.
-- `packages/ai/src/agent.ts` (lines 1-218) — current v0.2 Agent. WeakMap fake/provider pattern (lines 7-8), `getAgentConfig` merge (line 44), tool loop (lines 74-108), fake subclass (lines 168-199), anonymous `agent()` stub (lines 201-218). `HasTools`/`HasStructuredOutput` live here today (lines 14-20) — move to `contracts.ts`.
-- `packages/queue/src/decorators.ts` (lines 1-37) — canonical decorator pattern: `ensureConfig(target)` mutating `target._jobConfig`. AI uses separate `WeakMap<Function, AgentConfig>` (line 3) style — **match existing AI style for package consistency**.
+- `packages/ai/src/providers/interface.ts` (lines 1-7) — minimal `AIProvider` with `name`, `chat`, optional `stream`. Builder extends to `capabilities()`, optional `embed/rerank/image/audio/transcribe`, `files`, `stores`.
+- `packages/ai/src/agent.ts` (lines 1-218) — v0.2 Agent. WeakMap fake/provider pattern, tool loop, fake subclass, anonymous `agent()`.
+- `packages/queue/src/decorators.ts` (lines 1-37) — canonical decorator pattern: `ensureConfig(target)` mutating `target._jobConfig`.
 - `packages/broadcast/src/fake.ts` + `packages/events/src/fake.ts` — thin `recordDispatch(event)` + public array.
-- `packages/events/src/event.ts` (lines 1-58) — assertion pattern: static methods on abstract class, WeakMap<Function, EventFake>. `assertDispatched(callback?)` throws with dispatched-list message. Builder replicates for `Agent.assertPrompted/assertQueued/assertNotPrompted/assertNothingPrompted`.
-- `packages/events/src/dispatcher.ts` (lines 1-64) — singleton via `EventDispatcher.get/set()`. Peer-dep lazy-load of `@roostjs/queue` + `@roostjs/broadcast` — template for how new AI events dispatch without hard-coupling.
-- `packages/ai/src/providers/gateway.test.ts` (lines 1-132) — `spyOn(globalThis, 'fetch').mockResolvedValueOnce(...)` pattern. All new native-provider tests mirror this.
-- `packages/ai/__tests__/agent.test.ts` (lines 1-120) — `MockProvider` class + `TestAgent extends Agent`. Builder creates `agent.foundation.test.ts` **alongside**; existing file needs updating.
+- `packages/events/src/event.ts` (lines 1-58) — assertion pattern: static methods on abstract class, WeakMap<Function, EventFake>.
+- `packages/events/src/dispatcher.ts` (lines 1-64) — singleton via `EventDispatcher.get/set()`. Peer-dep lazy-load of `@roostjs/queue` + `@roostjs/broadcast`.
+- `packages/ai/src/providers/gateway.test.ts` (lines 1-132) — `spyOn(globalThis, 'fetch').mockResolvedValueOnce(...)` pattern.
+- `packages/ai/__tests__/agent.test.ts` (lines 1-120) — `MockProvider` + `TestAgent extends Agent` pattern.
 
 ## Key Patterns (Phase 2)
 
-- **CF Agents SDK Agent class** (`/cloudflare/agents` docs, `agents` npm pkg, **NOT YET INSTALLED**) — `class Foo extends Agent<Env>` with built-in `this.state`, `this.sql`, `this.schedule(when, methodName, payload)`, `this.cancelSchedule(id)`, `this.getSchedule(id)`, `this.getSchedules()`. Lifecycle hooks: `onRequest(req)`, `onConnect(connection)`, `onMessage(connection, message)`, `onClose`, `onError`. Ships `getCurrentAgent()` returning `{ agent, connection, request, email }` — **already implemented via AsyncLocalStorage by SDK**, no Roost-side ALS needed for the basic case.
-- **CF Sessions API** lives at `agents/experimental/memory/session` with builder shape `Session.create(this).withContext("name", { provider, maxTokens }).onCompaction(fn).compactAfter(tokens).withCachedPrompt()`. Methods on the resulting session: `appendMessage({id, role, parts})`, `getHistory()`, `tools()`, `freezeSystemPrompt()`, `compact()`. Compaction helpers: `createCompactFunction({summarize, protectHead, tailTokenBudget, minTailMessages})`, `truncateOlderMessages()`. **Multi-conversation**: `SessionManager.create(this)` with `manager.getSession(chatId)`. The spec's Roost-shaped `Sessions` class (with `create/append/branch/list/history/compact/search/delete`) is a Roost FAÇADE on top — not a 1:1 wrap.
-- **`packages/broadcast/src/channel-do.ts` (lines 1-157)** — Roost DO convention: constructor `(state: DurableObjectState, env: Record<string, unknown>)`, single `fetch(request)` entrypoint dispatching by URL/method, hibernation via `state.acceptWebSocket(server, [tags])` + `state.getWebSockets()` + `state.getTags(ws)`. `webSocketMessage`, `webSocketClose`, `webSocketError` lifecycle hooks for hibernated sockets. **Note**: this DO does NOT extend `DurableObject` — implements the interface directly. CF SDK `Agent` extends `DurableObject` so `StatefulAgent` will need `extends Agent<Env>` (CF) which transitively extends `DurableObject`.
-- **`packages/cloudflare/src/rate-limiting/durable-object.ts` (lines 1-61)** — even simpler DO: constructor takes only `state`, `fetch()` returns JSON via `Response.json(...)`. In-memory `windows` Map demonstrates state caching pattern; SDK `Agent` provides `this.sql` instead.
-- **`packages/broadcast/__tests__/channel-do.test.ts` (lines 1-247)** — canonical pattern for unit-testing DOs without miniflare: `MockDOState` class implementing `acceptWebSocket(ws, tags)`, `getWebSockets()`, `getTags(ws)`. `MockWebSocket` with `sentMessages`, `closedWith`, `serializeAttachment/deserializeAttachment`. `MockWebSocketPair` polyfilled in `beforeAll`/`afterAll`. **`TestStatefulAgentHarness` should follow this exact pattern** — extend with `MockStorage` for `state.storage.get/put/list/delete` and a `MockSqlStorage` for `this.sql\`...\`` template-tag calls.
-- **`packages/cloudflare/src/bindings/durable-objects.ts`** — `DurableObjectClient` wraps `DurableObjectNamespace` with `get(name|id)`, `idFromName/idFromString/newUniqueId`. P2's `AiServiceProvider` DO-binding wiring should reuse `DurableObjectClient` (already in `@roostjs/cloudflare`, already a dep of `@roostjs/ai`).
-- **`packages/queue/src/job.ts` (lines 49-82)** — `static fake()/restore()/assertDispatched()` pattern keyed via `WeakMap<Function, JobFake>` (line 5). `StatefulAgent.fake()` will not chain through to `Agent.fake()` cleanly because the WeakMap is per-class — need a shared fakes registry or override that consults both.
-- **`packages/ai/src/middleware.ts` (lines 48-60)** — `runPipeline(middleware, prompt, terminal)` is THE shared pipeline. `StatefulAgent.prompt()` uses it identically. `addThenHook` (lines 23-27) attaches via WeakMap on the response — preserved across DO boundary if response is reconstructed.
-- **`packages/ai/src/responses/agent-response.ts:12`** — `conversationId?: string` already on `AgentResponse` interface (Phase 1 reserved this for P2's `RemembersConversations`). No type change needed.
+- **CF Agents SDK `Agent<Env>`** (`agents` npm pkg): `this.state`, `this.sql`, `this.schedule(when, methodName, payload)`, `onConnect/onMessage/onClose/onError`. `getCurrentAgent()` returns `{agent, connection, request, email}`.
+- **CF Sessions API** at `agents/experimental/memory/session`: builder pattern `Session.create(this).withContext(...).onCompaction(fn)...`.
+- **`packages/broadcast/src/channel-do.ts` (1-157)** — implements `DurableObject` directly; constructor `(state, env)`; `fetch()` dispatches; hibernation via `state.acceptWebSocket(server, [tags])`, `getWebSockets()`, `getTags(ws)`; lifecycle hooks `webSocketMessage`, `webSocketClose`, `webSocketError`.
+- **`packages/broadcast/__tests__/channel-do.test.ts` (1-247)** — `MockDOState` + `MockWebSocket` + `MockWebSocketPair` polyfill pattern for unit testing DOs without miniflare.
+- **`packages/cloudflare/src/bindings/durable-objects.ts`** — `DurableObjectClient` wraps namespace with `get(name|id)`.
+- **`packages/queue/src/job.ts` (49-82)** — `static fake()/restore()/assertDispatched()` keyed via `WeakMap<Function, JobFake>`.
+- **`packages/ai/src/middleware.ts` (13-27, 48-60)** — `addThenHook` via WeakMap side-channel; `runPipeline` composes middleware right-to-left.
+- **`packages/ai/src/responses/agent-response.ts:12`** — `conversationId?: string` on `AgentResponse`.
 
-## Dependencies (Phase 1)
+## Key Patterns (Phase 3)
 
-- `packages/ai/src/agent.ts:22` (`Agent` class) — consumed by `packages/ai/src/provider.ts:5,36`, `examples/ai-chat/app/agents/chat-assistant.ts:1,37`, `packages/cli/src/commands/make.ts:41`, `packages/cli/__tests__/generators.test.ts:42`, existing AI tests, and 7 `.mdx` docs.
-- `packages/ai/src/providers/interface.ts:3` (`AIProvider`) — consumed by `providers/cloudflare.ts`, `providers/gateway.ts`, `provider.ts`, `agent.ts`, tests.
-- `packages/ai/src/providers/cloudflare.ts` (renames to `workers-ai.ts`) — consumed by `provider.ts:3,9,24`, `providers/gateway.ts:3,35`, `providers/gateway.test.ts:3,6`.
-- `packages/ai/src/index.ts` — external runtime consumers: `examples/ai-chat/app/agents/chat-assistant.ts` + `packages/cli/src/commands/make.ts`. Docs break silently.
-- `packages/ai/src/types.ts` — internal only. `PromptResult` discriminated union (line 38-40) must survive.
-- `packages/ai/src/rag/*` — **out of scope for P1** but current `index.ts:26-40` re-exports RAG from root. After rewrite, users must import from `@roostjs/ai/rag` subpath.
+- **`packages/ai/src/agent.ts:272-281`** — `stream()` is a stub that throws. Return type changes from `Promise<ReadableStream<Uint8Array>>` → `StreamableAgentResponse`. Zero live callers, safe breaking change.
+- **`packages/ai/src/responses/streamed-response.ts:1-24`** — P1 stub: `StreamedAgentResponse` (collected) + `StreamableAgentResponsePlaceholder` (type-only). P3 replaces placeholder with real class under `src/streaming/streamable-response.ts`.
+- **`packages/ai/src/providers/{anthropic,openai,gemini,workers-ai}.ts`** — all four declare `'stream'` in `CAPS.supported`; none implement `stream?()`. P3 fills in.
+- **`packages/ai/src/providers/interface.ts:49`** — `stream?(request): AsyncIterable<StreamEvent>` already declared optional. No interface change.
+- **`packages/ai/src/stateful/agent.ts:184-191`** — P2 stubs for `onConnect/onMessage` filled in P3.
+- **`packages/broadcast/src/manager.ts:52-86`** — `BroadcastManager.broadcast(event: BroadcastableEvent)` takes an event whose `broadcastOn()/broadcastWith()/broadcastAs()` determine channels + payload. Builder must wrap `StreamEvent` in a `StreamEventBroadcast implements BroadcastableEvent`.
+- **`packages/broadcast/src/channel-do.ts:96-128`** — hibernation hooks are `webSocketMessage(ws, message)`, `webSocketClose`, `webSocketError` with raw `WebSocket`. Spec's `onMessage(connection, message)` names don't match — use the real hooks.
+- **`packages/ai/src/middleware.ts:13-27`** — `addThenHook(response, hook)` uses a WeakMap to avoid making `AgentResponse` thenable. `StreamableAgentResponse.then(fn)` in spec is builder-style — acceptable because it returns `this`, not a `Promise`.
+- **`packages/queue/src/dispatcher.ts:10-26`** — `Dispatcher.dispatch(jobClass, payload)` requires a Job class. Spec's `broadcastOnQueue(q, c)` requires a Job subclass (`BroadcastStreamJob`) to be authored.
+- **`packages/ai/__tests__/integration/stateful-agent.miniflare.test.ts`** — template for P3's `streaming.miniflare.test.ts`.
+- **Monorepo catalog (`/package.json:10-13`)** — `react: ^19.0.0`, `react-dom: ^19.0.0`, `@types/react: ^19.0.0`. P3 adds via `catalog:` in `peerDependencies`.
+- **No Vitest/RTL/jsdom in repo** — P3 uses `bun:test` + `@happy-dom/global-registrator`.
 
-## Dependencies (Phase 2)
+## Dependencies (Phase 3)
 
-- **`packages/ai/src/agent.ts:120-215`** (`Agent.execute`) — to be partially extracted into a helper reusable by `StatefulAgent.executeCore()`. Signature today: `execute(prompt, config, provider) -> AgentResponse`. Migration plan: leave `Agent.execute` intact; add a free function `runAgentCore(opts: { ctor, instructions, messages, tools, config, provider, prompt })` in `agent-core.ts` (NEW); both classes call it.
-- **`packages/ai/src/agent.ts:91-118`** (`Agent.prompt`) — middleware, dispatchEvent, fake-fast-path lives here. `StatefulAgent.prompt()` must duplicate this scaffold (events + middleware + fake check) since super-call chain is broken (CF SDK `Agent` has no `prompt`).
-- **`packages/ai/src/contracts.ts:13-15`** (`Conversational`) — `RemembersConversations` mixin satisfies this; existing `Agent.execute` consults `isConversational(this)` (`agent.ts:197`) to decide whether to keep `_messages` rolling window. Mixin must NOT trigger that path or messages double-record.
-- **`packages/ai/src/responses/agent-response.ts:12`** — `conversationId?: string` already declared. `RemembersConversations.prompt()` writes to it; no type change needed.
-- **`packages/ai/package.json:35-50`** — adding `agents` SDK as `dependency` (not peer — it's the runtime). Adding `miniflare` as `devDependency` for the integration test. Adding `./stateful` subpath to `exports` (Phase 1 already established the pattern — lines 5-30).
-- **`packages/ai/src/provider.ts:20-31`** (`AiServiceProvider.register()`) — needs new step: walk decorator-registered `@Stateful({binding})` classes and validate `this.app.config.has('do.bindings.<binding>')`. Today `AiServiceProvider` only handles `Agent.setProvider()` chaining (lines 39-41). Pattern reference: `packages/cloudflare/src/provider.ts` for DO binding registration.
-- **`packages/cloudflare/src/bindings/durable-objects.ts`** (`DurableObjectClient`) — already a dep, already exported. Reuse for `AiServiceProvider`'s DO registration.
-- **`packages/testing/src/fakes.ts:1-11`** — `fakeAll()`/`restoreAll()` calls `Agent.fake()`. `StatefulAgent.fake()` must be reachable via the same harness convention; consider adding `StatefulAgent.fake?.()` here (peer-dep optional pattern, lines 2-3).
+- `packages/ai/src/agent.ts:272-281` — `stream()` stub, zero external callers. Safe signature change.
+- `packages/ai/src/stateful/agent.ts:184-191` — P2 stubs, zero callers. P3 fills.
+- `packages/ai/src/providers/workers-ai.ts:29` — `client.run<string>(...)` needs streaming variant.
+- `packages/ai/src/providers/{anthropic,openai,gemini}.ts:7` — add `async *stream()` methods.
+- `packages/ai/src/events.ts:27-95` — P3 adds `StreamingAgent`, `AgentStreamed` mirroring `PromptingAgent`/`AgentPrompted`.
+- `packages/ai/package.json` — add `react` + `@types/react` to `peerDependencies` (optional via meta). Pattern: `packages/auth/package.json:21-24`.
+- `packages/ai/src/index.ts:40-43` — replace `StreamableAgentResponsePlaceholder` re-export with real class.
+- `packages/broadcast/src/manager.ts:9` — `BroadcastManager.get()` throws if unregistered. Probe in `AiServiceProvider.boot()`.
+- `packages/queue/src/dispatcher.ts:99` — `Dispatcher.get()` same pattern.
+- `packages/broadcast/src/index.ts:1-8` — exports `ChannelDO`; doesn't export `Connection`/`WSMessage` (don't exist).
 
 ## Conventions
 
-- **Naming**: Classes `PascalCase`, files `kebab-case.ts`. Tests either co-located (`.test.ts`) or under `__tests__/` — spec uses `__tests__/` for foundation tests AND for stateful tests (`__tests__/stateful/*.test.ts`).
-- **Imports**: Relative with `.js` extension (NodeNext/ESM in source — though `tsconfig.base.json` uses `moduleResolution: "bundler"`). `import type { X }` for type-only. Barrel files OK in AI package (already has them at `src/index.ts` and per-subpath `index.ts`).
-- **Error handling**: Typed errors extending `Error`; `this.name = 'ClassName'`. Spec names: `NoProviderRegisteredError`, `AllProvidersFailedError`, `StructuredOutputValidationError`. P2 adds: `StorageQuotaExceededError`, `ConversationNotFoundError`, `ScheduledMethodMissing` (event, not error per spec).
-- **Types**: `interface` for shapes, `type` for unions. User rule prefers `unknown` over `any` — new guards use `unknown`. `mixin` returns `T extends new (...args: any[]) => StatefulAgent` is acceptable per spec (`any[]` constructor args is the standard mixin idiom).
-- **Testing**: `bun:test` (`describe`, `it`, `expect`). `spyOn(globalThis, 'fetch')` for HTTP. **DO unit tests**: MockDOState pattern from `packages/broadcast/__tests__/channel-do.test.ts`. **DO integration tests**: `miniflare` (must add as devDep). No external mocking lib.
-- **Decorators**: Function-returning-function; AI uses `WeakMap<Function, AgentConfig>` (`packages/ai/src/decorators.ts:4`). Keep this style for `@Stateful({binding})`. `@Scheduled(cron)` is a **method decorator** (different from class decorators) — register methods in a `WeakMap<Function, Map<string /*methodName*/, string /*cron*/>>` keyed by ctor.
-- **Fakes**: Static on class, `WeakMap<Function, Fake>` keyed by constructor; `static fake()` installs, `static restore()` removes.
-- **DO classes**: Either implement `DurableObject` interface directly (broadcast pattern) or extend `DurableObject` (rate-limiter pattern). For CF SDK integration, `StatefulAgent extends Agent<Env>` from `agents` package.
-- **CF SDK conventions** (Phase 2 new): wrangler `migrations[].new_sqlite_classes` array must include the agent class name; `new_sqlite_classes` (not `new_classes`) is required because SDK Agent uses SQLite-backed DO storage. `this.sql\`SELECT...\`` is the SDK's native query API, distinct from `this.state.storage.get/put`.
+- **Naming**: Classes `PascalCase`, files `kebab-case.ts`. Tests under `__tests__/{streaming,client,integration}/`.
+- **Imports**: Relative `.js` extension. `import type { X }` for type-only. Barrels OK.
+- **Error handling**: Typed errors extending `Error`; `this.name = 'ClassName'`. P3 adds: `OriginNotAllowedError`, `StreamingUnsupportedError`.
+- **Types**: `interface` for shapes, `type` for unions. Prefer `unknown` over `any`. **Migrate `StreamEvent` to true discriminated union in P3.**
+- **Testing**: `bun:test`; `spyOn(globalThis, 'fetch')` for HTTP. DO unit tests use MockDOState pattern. React hook tests use `@happy-dom/global-registrator` + `@testing-library/react`.
+- **Subpath React**: React imports confined to `src/client/**/*.tsx`. Server code never imports from `/client`.
+- **SSE wire format**: `data: {JSON}\n\n` per W3C EventSource spec.
 
-## Risks (Phase 1)
+## Risks (Phase 3)
 
-- **Subpath-exports unprecedented in monorepo**: No in-repo template. `packages/ai/tsconfig.json` may need updating for NodeNext resolution of new subpaths.
-- **CLI test tripwire**: `packages/cli/__tests__/generators.test.ts:42` asserts scaffold contains `"import { Agent } from '@roostjs/ai'"` literal. Rename-safe only if `Agent` export name preserved.
-- **Index.ts rewrite breaks docs**: 7 `.mdx` + `README.md` hard-code imports. Part of Phase 9 migration, so deferring is correct — but builder won't get a green-doc signal.
-- **Anonymous agent + decorators unreachable**: `agent()` creates inline class; decorators can't target it. Anonymous path must bypass decorator config entirely — route everything through options bag.
-- **WeakMap<Function, AgentFake> vs anonymous**: Each `agent()` call constructs new class → per-class fakes won't compose. For anonymous, install fake on instance.
-- **StreamableAgentResponse phase-split**: Listed in P1 New Files but impl in P3. Ship as type-only or abstract stub with TODO.
-- **Existing `agent.test.ts` / `agent.queued.test.ts`**: Both assume current `PromptResult` union shape. Builder must EITHER preserve union OR rewrite these two files. Not in New/Modified/Deleted — treat as Modified.
-- **Capability table staleness**: Spec flags manual curation. Ship seed table with pinned model IDs + test fixture.
-- **No coverage harness in repo**: Spec demands >95% but P1 doesn't add it. Defer to P9.
-- **No miniflare in P1**: Integration lands in P2. Resist DO mocking; pure unit + `spyOn(fetch)` only.
-
-## Risks (Phase 2)
-
-- **CF Agents SDK API mismatches with spec assumptions** (HIGH):
-  1. **`getCurrentAgent()` already exists in the SDK** and returns `{ agent, connection, request, email }`, not the agent directly. Spec's `packages/ai/src/stateful/context.ts` re-implementing AsyncLocalStorage is **redundant and wrong** — re-export the SDK's `getCurrentAgent` instead, optionally adding a Roost-typed wrapper. Builder must read `agents` SDK exports first and reconcile.
-  2. **`schedule()` returns `{id: string}` (an object)**, spec types it as `Promise<string>`. Match SDK shape OR explicitly transform — pick one and document.
-  3. **Sessions API in SDK** is a builder pattern (`Session.create(this).withContext().onCompaction().compactAfter()`) attached as a class field, with `appendMessage/getHistory/compact/tools/freezeSystemPrompt`. Spec's `Sessions` class with `create(opts)/branch/list/history/search/delete` is a different API surface. Builder must decide: (a) author Roost `Sessions` as a thin façade calling SDK Session methods (loses tree branching, FTS, list-by-user); or (b) author Roost `Sessions` as Roost-native using `state.storage` + `this.sql` directly per the DO Storage Layout in spec. Spec's Data Model section already implies (b) — confirm with spec author or default to (b).
-- **`agents` package not installed**. `bun.lock` has zero `agents@*` entries; `node_modules/agents` doesn't exist. Builder must `bun add agents` in `packages/ai` and verify version pin per spec. Sessions live at `agents/experimental/memory/session` — experimental subpath, may break across SDK versions; pin exactly.
-- **`miniflare` not a direct dep**. Available transitively (`miniflare@4.20260409.0`, `4.20260410.0` in `node_modules/.bun/`). Add `miniflare` to `packages/ai/devDependencies` and confirm version available in catalog or pin exact.
-- **Mixin + CF SDK Agent inheritance** (MEDIUM): `RemembersConversations<T extends new (...args: any[]) => StatefulAgent>(Base: T)` returns `class extends Base`. CF SDK `Agent<Env>` constructor is `constructor(state: DurableObjectState, env: Env)`. Mixin spreads `...args: any[]` so this works at runtime, but TypeScript inference of `this.session` (a class field, not a method) **will not flow into the mixin** without explicit return type annotation. Fix: have the SDK Agent declare `session` via interface merging OR declare a getter on `StatefulAgent` rather than a field.
-- **`super.prompt()` in mixin is undefined** (MEDIUM): CF SDK `Agent` has no `prompt()` method — `StatefulAgent.prompt()` is added by Roost. The mixin's `async prompt()` calling `super.prompt()` works only if `Base extends StatefulAgent` (which adds `prompt`). Type constraint `T extends new (...args: any[]) => StatefulAgent` enforces this correctly. Verify at typecheck.
-- **AsyncLocalStorage in Workers runtime** (LOW): Workers runtime supports `node:async_hooks` `AsyncLocalStorage` since 2023. The CF SDK already uses it for `getCurrentAgent()`. Roost should NOT install a second ALS — that creates two parallel context stores. Re-export SDK's directly.
-- **`@Stateful()` decorator metadata vs. wrangler config drift** (LOW): Decorator stores `{binding: 'NAME'}` at runtime; wrangler `*.jsonc` is build-time. Validation in `AiServiceProvider.boot()` (per spec) catches missing bindings. Builder needs to test both: binding present (pass) and binding missing (throws with named binding in message).
-- **`@Scheduled(cron)` registration timing** (LOW): Spec says "On DO `init`, register all `@Scheduled` methods." CF SDK doesn't expose an `init()` hook — closest is the constructor. Builder must register inside `StatefulAgent` constructor, walking `getOwnPropertyNames(Object.getPrototypeOf(this))` and consulting the `@Scheduled` WeakMap. Idempotency matters (DO can be reconstructed; don't double-schedule).
-- **Test harness scope creep** (MEDIUM): `TestStatefulAgentHarness` must mock `state` (with `storage`, `id`, `waitUntil`, `blockConcurrencyWhile`), `sql` (template-literal tag), `schedule`, `cancelSchedule`, `getSchedule`, `getSchedules`, AND a clock. That's the entire CF SDK Agent surface. Realistic scope: build incrementally — start with `state.storage` + `sql` + clock; add scheduling stubs only when `schedule.test.ts` needs them.
-- **Coverage tool still absent** (carries from P1): `>95%` mandated but no `bun test --coverage` configured. Defer to P9 OR adopt now (bun has built-in coverage via `--coverage` flag — could enable in package script).
-- **`packages/ai/src/agent.ts` extraction** (LOW): "Move shared logic (middleware, tools) into helpers reusable by `StatefulAgent`" — the natural seam is `executeCore(prompt, config, provider) -> AgentResponse` extracted as a free function in `src/agent-core.ts` (NEW, not in spec's New Files but implied). Builder should add it; minor scope creep.
-- **Two `agent.test.ts` files exist**: `packages/ai/src/agent.queued.test.ts` (in src) and `packages/ai/__tests__/agent.test.ts`. Phase 2's stateful tests under `__tests__/stateful/` follow the right convention; don't co-locate.
-- **`SessionBranch` type added to `types.ts` but spec never uses it elsewhere**: dead-code risk. Either ship with usage in `Sessions.branch()` return type or omit. Recommend ship + use.
+- **Broadcast bridge API mismatch** (HIGH): Spec pseudocode `BroadcastManager.get().broadcast(c, 'ai.stream', event)` doesn't match real signature. Author `StreamEventBroadcast` wrapper + `BroadcastStreamJob` class.
+- **`AgentChannel` uses non-existent types** (HIGH): Override real `webSocketMessage(ws, message)`, not spec's `onMessage(connection, message)`.
+- **AgentChannel vs StatefulAgent.onConnect role split** (HIGH): StatefulAgent's `onConnect/onMessage` handle 1:1 bidirectional prompting; AgentChannel is for 1:N broadcast fan-out. Do not conflate.
+- **StreamEvent shape divergence** (HIGH): Migrate P1 flat shape to discriminated union now (zero consumers).
+- **`.then()` thenable trap** (MEDIUM): Spec uses `.then(fn)` on StreamableAgentResponse — a builder-style method returning `this`. Consumers must NOT `await` the stream object (must `.toResponse()` or iterate). Document loudly.
+- **Workers AI streaming path** (MEDIUM): Separate code path in `workers-ai.ts` with `{stream: true}` + SSE parsing of `text/event-stream` frames.
+- **Anthropic SSE translation** (MEDIUM): Handle `message_start`, `content_block_start`, `content_block_delta` (text + input_json), `content_block_stop`, `message_delta`, `message_stop`. Tool-call args accumulate across deltas.
+- **React testing infra missing** (MEDIUM): Use `bun:test` + `@happy-dom/global-registrator` + `@testing-library/react`. Single runner.
+- **SSR snapshot shape** (MEDIUM): `useSyncExternalStore.getServerSnapshot` default `{status: 'idle'}`. Document TanStack Start loader-data flow as follow-up.
+- **No resume-from-seq** (MEDIUM): Defer replay-after-reconnect to P3.1; ship simple restart-stream policy.
+- **BroadcastManager not registered** (MEDIUM): `AiServiceProvider.boot()` probes + warns, doesn't throw.
+- **Bundle-size boundary enforcement** (LOW): Add a CI scan for `from 'react'` imports outside `src/client/`.
+- **FailoverProvider doesn't handle stream** (LOW): Follow-up.
+- **`types.ts` + `index.ts` are effectively Modified** — spec table omits them but they must be updated.

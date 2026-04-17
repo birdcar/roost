@@ -33,8 +33,12 @@ import {
   InvokingTool,
   ToolInvoked,
   MaxStepsExhausted,
+  StreamingAgent,
+  AgentStreamed,
   dispatchEvent,
 } from './events.js';
+import { StreamableAgentResponse } from './streaming/streamable-response.js';
+import { buildAgentStream, StreamingUnsupportedError } from './streaming/agent-stream.js';
 import {
   hasTools,
   hasStructuredOutput,
@@ -269,15 +273,33 @@ export abstract class Agent implements AgentInterface {
     }
   }
 
-  async stream(_input: string, options?: AgentPromptOptions): Promise<ReadableStream<Uint8Array>> {
-    if (options?.queued) {
-      throw new Error(
-        'Cannot stream a queued request — use `agent.prompt(input, { queued: true })` and poll for results, or call `.queue()` in v0.3+.',
-      );
+  stream(input: string, options: AgentPromptOptions = {}): StreamableAgentResponse {
+    if (options.queued) {
+      throw new Error('Cannot stream a queued request — use `agent.prompt(input, { queued: true })` instead.');
     }
-    throw new Error(
-      'Agent.stream() arrives in Phase 3 (Streaming). Call `.prompt()` for a synchronous response for now.',
-    );
+
+    const ctor = this.constructor as typeof Agent;
+    const agentName = ctor.name;
+    const provider = ctor.resolveProvider();
+    if (!provider) throw new NoProviderRegisteredError(agentName);
+    if (typeof provider.stream !== 'function') {
+      throw new StreamingUnsupportedError(provider.name);
+    }
+
+    const prompt = new AgentPrompt(input, options, agentName);
+    const config: AgentConfig = { ...getAgentConfig(ctor), ...options };
+
+    const source = buildAgentStream({
+      agent: this,
+      agentName,
+      prompt,
+      config,
+      provider,
+    });
+
+    return new StreamableAgentResponse(source, agentName, []).then(async (collected) => {
+      await dispatchEvent(AgentStreamed, new AgentStreamed(agentName, prompt, collected));
+    });
   }
 
   /* ----------------------------- Testing API ----------------------------- */

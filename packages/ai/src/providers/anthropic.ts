@@ -1,6 +1,7 @@
 import type { AIProvider, ProviderCapabilities } from './interface.js';
-import type { ProviderRequest, ProviderResponse, AgentMessage, ToolCall } from '../types.js';
+import type { ProviderRequest, ProviderResponse, AgentMessage, ToolCall, StreamEvent } from '../types.js';
 import { Lab } from '../enums.js';
+import { iterateSSELines } from '../streaming/sse-lines.js';
 
 const CAPS: ProviderCapabilities = {
   name: Lab.Anthropic,
@@ -97,6 +98,108 @@ export class AnthropicProvider implements AIProvider {
         : undefined,
     };
   }
+
+  async *stream(request: ProviderRequest): AsyncIterable<StreamEvent> {
+    const url = `${this.config.baseUrl ?? 'https://api.anthropic.com'}/v1/messages`;
+    const system = request.messages.find((m) => m.role === 'system')?.content;
+    const body: Record<string, unknown> = {
+      model: request.model,
+      max_tokens: request.maxTokens ?? 4096,
+      stream: true,
+      messages: request.messages.filter((m) => m.role !== 'system').map(toAnthropicMessage),
+      ...(system ? { system } : {}),
+      ...(request.temperature !== undefined ? { temperature: request.temperature } : {}),
+      ...(request.tools && request.tools.length > 0
+        ? {
+            tools: request.tools.map((t) => ({
+              name: t.name,
+              description: t.description,
+              input_schema: t.parameters,
+            })),
+          }
+        : {}),
+      ...(request.providerOptions ?? {}),
+    };
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': this.config.apiKey,
+        'anthropic-version': this.config.apiVersion ?? '2023-06-01',
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok || !response.body) {
+      const text = response.body ? await response.text() : '';
+      yield { type: 'error', message: `Anthropic ${response.status}: ${text}` };
+      yield { type: 'done' };
+      return;
+    }
+
+    // Block-indexed accumulation of `input_json_delta` tool-call arguments.
+    const toolBlocks = new Map<number, { id: string; name: string; json: string }>();
+    let inputTokens: number | undefined;
+    let outputTokens: number | undefined;
+
+    for await (const line of iterateSSELines(response.body)) {
+      let event: AnthropicStreamEvent;
+      try { event = JSON.parse(line) as AnthropicStreamEvent; } catch { continue; }
+
+      switch (event.type) {
+        case 'message_start':
+          if (event.message?.usage) inputTokens = event.message.usage.input_tokens;
+          break;
+        case 'content_block_start':
+          if (event.content_block?.type === 'tool_use' && event.index !== undefined) {
+            toolBlocks.set(event.index, { id: event.content_block.id, name: event.content_block.name, json: '' });
+          }
+          break;
+        case 'content_block_delta': {
+          const delta = event.delta;
+          if (!delta) break;
+          if (delta.type === 'text_delta' && delta.text) {
+            yield { type: 'text-delta', text: delta.text };
+          } else if (delta.type === 'input_json_delta' && event.index !== undefined) {
+            const block = toolBlocks.get(event.index);
+            if (block && delta.partial_json) block.json += delta.partial_json;
+          }
+          break;
+        }
+        case 'content_block_stop':
+          if (event.index !== undefined && toolBlocks.has(event.index)) {
+            const block = toolBlocks.get(event.index)!;
+            let args: Record<string, unknown> = {};
+            try { args = block.json ? (JSON.parse(block.json) as Record<string, unknown>) : {}; } catch { /* drop malformed */ }
+            yield { type: 'tool-call', id: block.id, name: block.name, arguments: args };
+            toolBlocks.delete(event.index);
+          }
+          break;
+        case 'message_delta':
+          if (event.usage?.output_tokens !== undefined) outputTokens = event.usage.output_tokens;
+          break;
+        case 'message_stop':
+          if (inputTokens !== undefined || outputTokens !== undefined) {
+            yield { type: 'usage', promptTokens: inputTokens ?? 0, completionTokens: outputTokens ?? 0 };
+          }
+          yield { type: 'done' };
+          return;
+        default:
+          break;
+      }
+    }
+    yield { type: 'done' };
+  }
+}
+
+interface AnthropicStreamEvent {
+  type: string;
+  index?: number;
+  message?: { usage?: { input_tokens: number } };
+  content_block?: { type: string; id: string; name: string };
+  delta?: { type: string; text?: string; partial_json?: string };
+  usage?: { output_tokens?: number };
 }
 
 function toAnthropicMessage(m: AgentMessage): Record<string, unknown> {

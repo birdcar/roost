@@ -128,19 +128,26 @@
       },
       "devDependencies": {
         "@cloudflare/workers-types": "catalog:",
+        "@roostjs/broadcast": "workspace:*",
+        "@roostjs/queue": "workspace:*",
+        "@types/react": "catalog:",
         "bun-types": "catalog:",
         "miniflare": "4.20260415.0",
+        "react": "catalog:",
+        "react-dom": "catalog:",
         "typescript": "catalog:",
       },
       "peerDependencies": {
         "@roostjs/broadcast": "workspace:*",
         "@roostjs/queue": "workspace:*",
         "@roostjs/workflow": "workspace:*",
+        "react": "catalog:",
       },
       "optionalPeers": [
         "@roostjs/broadcast",
         "@roostjs/queue",
         "@roostjs/workflow",
+        "react",
       ],
     },
     "packages/auth": {

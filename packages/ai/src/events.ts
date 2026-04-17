@@ -93,6 +93,29 @@ export class MaxStepsExhausted extends Event {
   }
 }
 
+/* ---------------------------- Phase 3: Streaming events --------------------------- */
+
+/** Dispatched immediately before `Agent.stream()` begins producing events. */
+export class StreamingAgent extends Event {
+  constructor(
+    public readonly agentName: string,
+    public readonly prompt: AgentPrompt,
+  ) {
+    super();
+  }
+}
+
+/** Dispatched after a stream closes and the `.then()` hooks have received the collected response. */
+export class AgentStreamed extends Event {
+  constructor(
+    public readonly agentName: string,
+    public readonly prompt: AgentPrompt,
+    public readonly response: import('./responses/streamed-response.js').StreamedAgentResponse,
+  ) {
+    super();
+  }
+}
+
 /* ---------------------------- Phase 2: Stateful events ---------------------------- */
 
 /** Dispatched when `RemembersConversations` creates a new conversation for a user. */
