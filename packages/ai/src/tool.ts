@@ -6,6 +6,11 @@ export interface ToolRequest {
 }
 
 export interface Tool {
+  /**
+   * Optional name override. When omitted, the tool's class name is used
+   * (Laravel-style default). Provider requests use this as the function name.
+   */
+  name?(): string;
   description(): string;
   schema(s: typeof schemaBuilder): Record<string, SchemaBuilder>;
   handle(request: ToolRequest): Promise<string> | string;
@@ -32,7 +37,7 @@ export function toolToProviderTool(tool: Tool): { name: string; description: str
   }
 
   return {
-    name: tool.constructor.name,
+    name: resolveToolName(tool),
     description: tool.description(),
     parameters: {
       type: 'object',
@@ -40,4 +45,8 @@ export function toolToProviderTool(tool: Tool): { name: string; description: str
       required,
     },
   };
+}
+
+export function resolveToolName(tool: Tool): string {
+  return tool.name?.() ?? (tool.constructor as { name: string }).name;
 }

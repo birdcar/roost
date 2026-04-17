@@ -118,10 +118,11 @@
     },
     "packages/ai": {
       "name": "@roostjs/ai",
-      "version": "0.2.0",
+      "version": "0.3.0-alpha.1",
       "dependencies": {
         "@roostjs/cloudflare": "workspace:*",
         "@roostjs/core": "workspace:*",
+        "@roostjs/events": "workspace:*",
         "@roostjs/schema": "workspace:*",
       },
       "devDependencies": {
@@ -129,6 +130,16 @@
         "bun-types": "catalog:",
         "typescript": "catalog:",
       },
+      "peerDependencies": {
+        "@roostjs/broadcast": "workspace:*",
+        "@roostjs/queue": "workspace:*",
+        "@roostjs/workflow": "workspace:*",
+      },
+      "optionalPeers": [
+        "@roostjs/broadcast",
+        "@roostjs/queue",
+        "@roostjs/workflow",
+      ],
     },
     "packages/auth": {
       "name": "@roostjs/auth",

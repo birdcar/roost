@@ -12,6 +12,7 @@ class TestAgent extends Agent {
 function makeProvider(overrides?: Partial<AIProvider>): AIProvider {
   return {
     name: 'test',
+    capabilities: () => ({ name: 'test', supported: new Set(['chat']) }),
     chat: async (_req: ProviderRequest): Promise<ProviderResponse> => ({
       text: 'response text',
       toolCalls: [],
@@ -23,6 +24,7 @@ function makeProvider(overrides?: Partial<AIProvider>): AIProvider {
 function makeQueuedProvider(): AIProvider {
   return {
     name: 'test-queued',
+    capabilities: () => ({ name: 'test-queued', supported: new Set(['chat']) }),
     chat: async (_req: ProviderRequest): Promise<ProviderResponse> => ({
       text: '',
       toolCalls: [],

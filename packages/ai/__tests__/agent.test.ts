@@ -1,6 +1,6 @@
 import { describe, test, expect, beforeEach } from 'bun:test';
 import { Agent } from '../src/agent';
-import type { AIProvider } from '../src/providers/interface';
+import type { AIProvider, ProviderCapabilities } from '../src/providers/interface';
 import type { ProviderRequest, ProviderResponse } from '../src/types';
 
 class MockProvider implements AIProvider {
@@ -10,6 +10,10 @@ class MockProvider implements AIProvider {
 
   constructor(response = 'Mock response') {
     this.response = response;
+  }
+
+  capabilities(): ProviderCapabilities {
+    return { name: 'mock', supported: new Set(['chat']) };
   }
 
   async chat(request: ProviderRequest): Promise<ProviderResponse> {
@@ -94,7 +98,7 @@ describe('Agent.fake()', () => {
     const agent = new TestAgent();
     await agent.prompt('Tell me about TypeScript');
 
-    TestAgent.assertPrompted((p) => p.includes('TypeScript'));
+    TestAgent.assertPrompted((p) => p.contains('TypeScript'));
   });
 
   test('assertNeverPrompted passes when not prompted', () => {

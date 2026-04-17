@@ -1,39 +1,116 @@
-export { Agent, agent } from './agent.js';
-export type { AgentInterface, HasTools, HasStructuredOutput } from './agent.js';
+/**
+ * @roostjs/ai public API surface.
+ *
+ * RAG primitives have moved to the `@roostjs/ai/rag` subpath.
+ * Media (Image/Audio/Transcription) — `@roostjs/ai/media`.
+ * MCP client/server — `@roostjs/ai/mcp`.
+ * Testing helpers — `@roostjs/ai/testing`.
+ * React client hooks — `@roostjs/ai/client`.
+ */
 
-export { Provider, Model, MaxSteps, MaxTokens, Temperature, Timeout, getAgentConfig } from './decorators.js';
+// Agents — class + anonymous factory + contract interfaces.
+export { Agent, agent, NoProviderRegisteredError } from './agent.js';
+export type { AgentInterface } from './agent.js';
+export type {
+  Conversational,
+  HasTools,
+  HasStructuredOutput,
+  HasMiddleware,
+  HasProviderOptions,
+} from './contracts.js';
+export {
+  isConversational,
+  hasTools,
+  hasStructuredOutput,
+  hasMiddleware,
+  hasProviderOptions,
+} from './contracts.js';
 
+// Prompt + middleware pipeline.
+export { AgentPrompt } from './prompt.js';
+export { runPipeline, addThenHook } from './middleware.js';
+export type { AgentMiddleware, NextFn } from './middleware.js';
+
+// Responses.
+export {
+  StructuredAgentResponse,
+  StructuredOutputValidationError,
+} from './responses/agent-response.js';
+export type { AgentResponse } from './responses/agent-response.js';
+export type {
+  StreamedAgentResponse,
+  StreamableAgentResponsePlaceholder,
+} from './responses/streamed-response.js';
+
+// Decorators.
+export {
+  Provider,
+  Model,
+  MaxSteps,
+  MaxTokens,
+  Temperature,
+  Timeout,
+  UseCheapestModel,
+  UseSmartestModel,
+  getAgentConfig,
+} from './decorators.js';
+
+// Tools.
 export type { Tool, ToolRequest } from './tool.js';
-export { createToolRequest } from './tool.js';
+export { createToolRequest, toolToProviderTool } from './tool.js';
 
-export { CloudflareAIProvider } from './providers/cloudflare.js';
+// Providers.
+export { WorkersAIProvider, CloudflareAIProvider } from './providers/workers-ai.js';
 export { GatewayAIProvider } from './providers/gateway.js';
-export type { AIProvider } from './providers/interface.js';
+export { AnthropicProvider } from './providers/anthropic.js';
+export { OpenAIProvider } from './providers/openai.js';
+export { GeminiProvider } from './providers/gemini.js';
+export { FailoverProvider, AllProvidersFailedError } from './providers/failover.js';
+export { ProviderRegistry } from './providers/registry.js';
+export type {
+  AIProvider,
+  ProviderCapabilities,
+  ProviderCapability,
+  EmbedRequest,
+  EmbedResponse,
+} from './providers/interface.js';
 
+// Enums + capability resolution.
+export { Lab, isLab } from './enums.js';
+export {
+  resolveModel,
+  getCapabilityTable,
+} from './capability-table.js';
+export type { ModelHints, ModelResolver, ModelResolverStrategy } from './capability-table.js';
+
+// Events (so consumers can register listeners or fake them in tests).
+export {
+  PromptingAgent,
+  AgentPrompted,
+  InvokingTool,
+  ToolInvoked,
+  ProviderFailoverTriggered,
+  AllProvidersFailed,
+  MaxStepsExhausted,
+  dispatchEvent,
+} from './events.js';
+
+// Service provider wiring.
 export { AiServiceProvider } from './provider.js';
 
+// Types re-exported at root for convenience (large surfaces live in their subpaths).
 export type {
   AgentConfig,
   AgentMessage,
-  AgentResponse,
+  AgentPromptOptions,
   PromptResult,
+  ProviderOptions,
+  ProviderRequest,
+  ProviderResponse,
+  ProviderTool,
+  StorableFileLike,
+  StreamEvent,
   ToolCall,
   ToolResult,
-  StreamEvent,
+  Usage,
 } from './types.js';
-
-export {
-  Chunker,
-  TextChunker,
-  SemanticChunker,
-  EmbeddingPipeline,
-  RAGPipeline,
-  EmbeddingError,
-} from './rag/index.js';
-export type {
-  Document,
-  Chunk,
-  ChunkVector,
-  QueryResult,
-  RAGPipelineConfig,
-} from './rag/index.js';

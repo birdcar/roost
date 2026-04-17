@@ -1,13 +1,14 @@
 import { describe, it, expect, beforeEach, afterEach, spyOn } from 'bun:test';
 import { GatewayAIProvider } from './gateway.js';
-import { CloudflareAIProvider } from './cloudflare.js';
+import { WorkersAIProvider } from './workers-ai.js';
 import type { ProviderRequest } from '../types.js';
 
-function makeFallback(): CloudflareAIProvider {
+function makeFallback(): WorkersAIProvider {
   return {
-    name: 'cloudflare-ai',
+    name: 'workers-ai',
+    capabilities: () => ({ name: 'workers-ai', supported: new Set(['chat']) }),
     chat: async () => ({ text: 'fallback response', toolCalls: [] }),
-  } as unknown as CloudflareAIProvider;
+  } as unknown as WorkersAIProvider;
 }
 
 function makeRequest(overrides?: Partial<ProviderRequest>): ProviderRequest {
@@ -33,7 +34,7 @@ describe('GatewayAIProvider', () => {
 
   it('has correct name', () => {
     const provider = new GatewayAIProvider(config, makeFallback());
-    expect(provider.name).toBe('cloudflare-ai-gateway');
+    expect(provider.name).toBe('gateway');
   });
 
   it('sends request to correct gateway URL', async () => {

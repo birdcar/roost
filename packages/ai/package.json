@@ -1,11 +1,31 @@
 {
   "name": "@roostjs/ai",
-  "version": "0.2.0",
+  "version": "0.3.0-alpha.1",
   "type": "module",
   "exports": {
     ".": {
       "types": "./src/index.ts",
       "import": "./src/index.ts"
+    },
+    "./rag": {
+      "types": "./src/rag/index.ts",
+      "import": "./src/rag/index.ts"
+    },
+    "./media": {
+      "types": "./src/media/index.ts",
+      "import": "./src/media/index.ts"
+    },
+    "./mcp": {
+      "types": "./src/mcp/index.ts",
+      "import": "./src/mcp/index.ts"
+    },
+    "./testing": {
+      "types": "./src/testing/index.ts",
+      "import": "./src/testing/index.ts"
+    },
+    "./client": {
+      "types": "./src/client/index.ts",
+      "import": "./src/client/index.ts"
     }
   },
   "scripts": {
@@ -15,7 +35,18 @@
   "dependencies": {
     "@roostjs/core": "workspace:*",
     "@roostjs/cloudflare": "workspace:*",
-    "@roostjs/schema": "workspace:*"
+    "@roostjs/schema": "workspace:*",
+    "@roostjs/events": "workspace:*"
+  },
+  "peerDependencies": {
+    "@roostjs/broadcast": "workspace:*",
+    "@roostjs/queue": "workspace:*",
+    "@roostjs/workflow": "workspace:*"
+  },
+  "peerDependenciesMeta": {
+    "@roostjs/broadcast": { "optional": true },
+    "@roostjs/queue": { "optional": true },
+    "@roostjs/workflow": { "optional": true }
   },
   "devDependencies": {
     "@cloudflare/workers-types": "catalog:",

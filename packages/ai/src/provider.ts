@@ -1,38 +1,91 @@
 import { ServiceProvider } from '@roostjs/core';
 import { AIClient } from '@roostjs/cloudflare';
-import { CloudflareAIProvider } from './providers/cloudflare.js';
+import type { AIProvider } from './providers/interface.js';
+import { WorkersAIProvider } from './providers/workers-ai.js';
 import { GatewayAIProvider } from './providers/gateway.js';
+import { AnthropicProvider } from './providers/anthropic.js';
+import { OpenAIProvider } from './providers/openai.js';
+import { GeminiProvider } from './providers/gemini.js';
+import { FailoverProvider } from './providers/failover.js';
+import { ProviderRegistry } from './providers/registry.js';
 import { Agent } from './agent.js';
+import { Lab } from './enums.js';
 
+/**
+ * Registers every provider backend and wires the default failover chain
+ * onto the base `Agent` class. Consumers override by calling
+ * `SomeAgent.setProvider(provider)` or by providing an explicit
+ * `@Provider([Lab.X, Lab.Y])` decorator on their agent class.
+ */
 export class AiServiceProvider extends ServiceProvider {
   register(): void {
-    this.app.container.singleton(CloudflareAIProvider, (c) => {
+    this.app.container.singleton(ProviderRegistry, () => new ProviderRegistry());
+
+    this.app.container.singleton(WorkersAIProvider, (c) => {
       const aiBindingName = this.app.config.get('ai.binding', 'AI');
       const client = c.resolve<AIClient>(aiBindingName);
-      return new CloudflareAIProvider(client);
+      return new WorkersAIProvider(client);
     });
   }
 
   boot(): void {
-    const gatewayAccountId = this.app.config.has('ai.gateway.accountId')
-      ? this.app.config.get<string>('ai.gateway.accountId')
-      : null;
-    const gatewayGatewayId = this.app.config.has('ai.gateway.gatewayId')
-      ? this.app.config.get<string>('ai.gateway.gatewayId')
-      : null;
+    const registry = this.app.container.resolve(ProviderRegistry) as ProviderRegistry;
+    const workersAi = this.app.container.resolve(WorkersAIProvider) as WorkersAIProvider;
+    registry.register(Lab.WorkersAI, workersAi);
 
-    const directProvider = this.app.container.resolve(CloudflareAIProvider);
+    this.bootGateway(registry, workersAi);
+    this.bootNativeProviders(registry);
 
-    if (gatewayAccountId && !gatewayGatewayId) {
-      console.warn('[AiServiceProvider] ai.gateway.accountId is set but ai.gateway.gatewayId is missing — using direct provider');
-    } else if (!gatewayAccountId && gatewayGatewayId) {
-      console.warn('[AiServiceProvider] ai.gateway.gatewayId is set but ai.gateway.accountId is missing — using direct provider');
+    const chain = this.resolveDefaultChain(registry);
+    Agent.setProvider(chain);
+  }
+
+  private bootGateway(registry: ProviderRegistry, fallback: WorkersAIProvider): void {
+    const accountId = this.configOrNull<string>('ai.gateway.accountId');
+    const gatewayId = this.configOrNull<string>('ai.gateway.gatewayId');
+    if (accountId && gatewayId) {
+      registry.register(
+        Lab.Gateway,
+        new GatewayAIProvider({ accountId, gatewayId }, fallback),
+      );
+    } else if (accountId || gatewayId) {
+      console.warn(
+        '[AiServiceProvider] Both ai.gateway.accountId and ai.gateway.gatewayId are required — using direct Workers AI',
+      );
+    }
+  }
+
+  private bootNativeProviders(registry: ProviderRegistry): void {
+    const anthropicKey = this.configOrNull<string>('ai.providers.anthropic.apiKey');
+    if (anthropicKey) registry.register(Lab.Anthropic, new AnthropicProvider({ apiKey: anthropicKey }));
+
+    const openaiKey = this.configOrNull<string>('ai.providers.openai.apiKey');
+    if (openaiKey) {
+      registry.register(
+        Lab.OpenAI,
+        new OpenAIProvider({
+          apiKey: openaiKey,
+          organization: this.configOrNull<string>('ai.providers.openai.organization') ?? undefined,
+        }),
+      );
     }
 
-    const provider = gatewayAccountId && gatewayGatewayId
-      ? new GatewayAIProvider({ accountId: gatewayAccountId, gatewayId: gatewayGatewayId }, directProvider)
-      : directProvider;
+    const geminiKey = this.configOrNull<string>('ai.providers.gemini.apiKey');
+    if (geminiKey) registry.register(Lab.Gemini, new GeminiProvider({ apiKey: geminiKey }));
+  }
 
-    Agent.setProvider(provider);
+  private resolveDefaultChain(registry: ProviderRegistry): AIProvider {
+    const configured = this.configOrNull<Lab | string | Array<Lab | string>>('ai.default');
+    if (configured) return registry.resolveFailover(configured);
+    if (registry.has(Lab.Gateway)) {
+      const gateway = registry.resolve(Lab.Gateway);
+      const direct = registry.resolve(Lab.WorkersAI);
+      return new FailoverProvider([gateway, direct]);
+    }
+    return registry.resolve(Lab.WorkersAI);
+  }
+
+  private configOrNull<T>(key: string): T | null {
+    return this.app.config.has(key) ? this.app.config.get<T>(key) : null;
   }
 }
