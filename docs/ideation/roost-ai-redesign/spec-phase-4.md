@@ -4,6 +4,15 @@
 **Depends on**: Phase 1 (Foundation)
 **Estimated Effort**: M
 
+## Learnings from prior phases
+
+Applied before writing code:
+
+1. **Queue dispatch signature** — `@roostjs/queue`'s `Dispatcher.dispatch(jobClass, payload)` requires a `Job` subclass, NOT a queue-name string. `Job.handle()` is an instance method with `no arguments`; the payload is accessed via `this.payload`. Pattern established by P3's `BroadcastStreamJob`; `PromptAgentJob` below follows the same shape.
+2. **Peer + devDep shadow** — `@roostjs/queue` is an optional peer dep for consumers, but MUST also be declared in `packages/ai/devDependencies` so typecheck resolves the import at build time. (P3 learned this for `@roostjs/broadcast` and `@roostjs/queue`.) Update `packages/ai/package.json` accordingly.
+3. **Anonymous-agent decorator gap** — `@Queue` / `@MaxRetries` / `@Backoff` can only target class-based agents. Anonymous `agent({...})` must accept queue config via options bag, bypassing the decorator path (same rule the foundation rewrite applied for `@Provider` / `@Model`).
+4. **Existing `StreamEvent` + `BroadcastableEvent` wrappers** — P3 already ships `StreamEventBroadcast` + `BroadcastStreamJob` in `packages/ai/src/streaming/`. If P4's queue bridge needs to stream-to-queue (e.g., `agent.queue(input).broadcastOn(channel)`), reuse the `BroadcastStreamJob` pattern rather than re-inventing.
+
 ## Technical Approach
 
 Phase 4 rounds out the tool ecosystem: the generic `Tool` interface gains a canonical name resolver, ships three provider tools (`WebSearch`, `WebFetch`, `FileSearch`) that map to CF / provider-native implementations, and ships the `Attachments` API (`Files.Image`, `Files.Document` with `fromStorage / fromPath / fromUrl / fromId / fromUpload / fromString` constructors). The attachment surface is what lets users pass documents and images into prompts without re-uploading — a core Laravel ergonomic.
@@ -58,6 +67,7 @@ Provider tools (`WebSearch`, `WebFetch`, `FileSearch`) differ from user-defined 
 | `packages/ai/src/providers/workers-ai.ts` | Workers AI doesn't have web_search; throw helpful error if used |
 | `packages/ai/src/decorators.ts` | Re-export `@Queue`, `@MaxRetries`, `@RetryAfter`, `@Backoff`, `@JobTimeout` from `@roostjs/queue` for agents |
 | `packages/ai/src/provider.ts` | `AiServiceProvider` wires `callbackRegistry` + `Dispatcher` |
+| `packages/ai/package.json` | Ensure `@roostjs/queue` sits in **both** `peerDependencies` (optional) AND `devDependencies` — typecheck needs it resolvable at build time; consumers import lazily |
 
 ## Implementation Details
 
@@ -204,6 +214,9 @@ Provider-level encoding:
 // packages/ai/src/queueing/prompt-agent-job.ts
 import { Job, Queue } from '@roostjs/queue';
 
+// Note: `Job.handle()` takes NO arguments — payload is `this.payload`.
+// `@Queue`/`@MaxRetries`/etc. decorators set class-level metadata that
+// `Dispatcher.dispatch(PromptAgentJob, payload)` reads at enqueue time.
 @Queue('ai-inference')
 export class PromptAgentJob extends Job<{
   agentClass: string;
@@ -224,6 +237,10 @@ export class PromptAgentJob extends Job<{
     }
   }
 }
+
+// Enqueue path — `Dispatcher.dispatch(jobClass, payload)` NOT `.dispatch(queueName, payload)`.
+// The queue name is resolved from the class's `@Queue` decorator metadata.
+await Dispatcher.get().dispatch(PromptAgentJob, payload);
 ```
 
 ```typescript

@@ -4,15 +4,27 @@
 **Depends on**: Phase 1 (Foundation), Phase 2 (Stateful)
 **Estimated Effort**: L
 
+## Learnings from prior phases — reconciled before writing code
+
+Phase 2 committed to `StatefulAgent implements DurableObject` directly (not `extends Agent<Env>` from the CF Agents SDK). That architectural choice propagates into P7 in three ways:
+
+1. **Sub-agents RPC** cannot rely on a CF SDK `this.sdk.subAgent(name, init)` primitive because we never inherited from `Agent<Env>`. Replace with **Roost-native sub-agent RPC** built on `@roostjs/cloudflare`'s `DurableObjectClient`: `this.subAgent(SummarizerAgent, init)` returns a typed Proxy whose method calls encode as JSON RPC requests sent to the child agent's DO stub. The typing story (mapped types over `PublicMethodsOf<A>`) is unchanged.
+
+2. **MCP integration** uses the `@modelcontextprotocol/sdk` TypeScript client/server directly — no CF SDK MCP transport layer. `createMcpHandler(AgentClass)` returns a Workers-compatible `fetch` handler that speaks streamable-HTTP MCP; it does NOT rely on the CF Agents SDK's `McpAgent` class. This keeps MCP available to both `Agent` (stateless) and `StatefulAgent` (DO-backed).
+
+3. **Workflows** stay on the CF Workflows primitive (`WorkflowEntrypoint` abstract from `@cloudflare/workers-types`), wired through `@roostjs/workflow`'s `WorkflowClient`. `@Workflow(method)` generates a standalone entrypoint class — no agent-inheritance assumption — and registers it in a module-level registry the wrangler-config generator can walk later. The agent method is rewritten to dispatch via `WorkflowClient.create()`; `step` is injected inside the entrypoint `run()` only.
+
+The tradeoff: we pay slightly more Roost-side code (a small DO RPC framework, our own MCP handler) in exchange for consistency with P2's architecture and freedom from the SDK's opinionated lifecycle. The type-safety story stays the same.
+
 ## Technical Approach
 
-Phase 7 wires `StatefulAgent` into Cloudflare Workflows, ships typed sub-agent RPC, and delivers the MCP integration — both directions (consume remote servers via `McpClient`, expose agents as MCP servers via `createMcpHandler` + `McpAgent` + MCP portals).
+Phase 7 wires `StatefulAgent` into Cloudflare Workflows, ships typed sub-agent RPC built on Roost's DO client, and delivers MCP integration in both directions — consume remote servers via `McpClient` and expose agents as MCP servers via `createMcpHandler` + `McpAgent` + MCP portals.
 
-**Workflows**: `@Workflow` method decorator transforms an agent method into a `WorkflowEntrypoint`-backed execution. Steps within the method use CF SDK's `step.do()`. The decorator generates a companion `WorkflowClient` the agent uses to trigger, monitor, and terminate runs. Compensation via `Compensable` from `@roostjs/workflow` is available.
+**Workflows**: `@Workflow` method decorator transforms an agent method into a `WorkflowEntrypoint`-backed execution. Steps within the method use `step.do()` (injected via a symbol-keyed argument when run inside workflow context). The decorator generates a companion `AgentMethodWorkflow extends WorkflowEntrypoint` class registered at module load; the rewritten method dispatches via `WorkflowClient.create()` instead of executing inline. Compensation via `Compensable` from `@roostjs/workflow` is available.
 
-**Sub-agents**: The CF Agents SDK exposes `subAgent()`, `abortSubAgent()`, `deleteSubAgent()` on the agent runtime. We wrap these with typed RPC — `this.subAgent(SummarizerAgent, { input })` returns a typed handle whose methods are proxied through the DO-to-DO RPC. The typing is critical: without it, sub-agents become stringly-typed and fragile.
+**Sub-agents** (Roost-native): `this.subAgent(SummarizerAgent, init)` returns a typed handle backed by a `DurableObjectClient` stub. Method calls on the handle are proxied to the child agent's DO via an RPC envelope (`{method, args}`) encoded over `fetch`. `abortSubAgent(handle)` and `deleteSubAgent(handle)` issue control-plane RPCs (`/_/abort`, `/_/delete`) the child's `fetch()` handler recognizes.
 
-**MCP client**: `McpClient` connects to a remote MCP server (stdio, HTTP, SSE, streamable HTTP). Auto-discovers tools, resources, prompts. Discovered tools adapt to `Tool` interface, injected into agents that opt-in. `McpAgent` reverses the flow: wraps an Agent as an MCP server, mapping its `tools()` to MCP tools, `messages()` to MCP prompts, `sessions` to MCP resources. `createMcpHandler(agent)` returns a fetch handler compatible with CF's MCP transport. MCP portals compose multiple remote servers behind a single endpoint — useful for aggregation.
+**MCP client**: `McpClient` connects to a remote MCP server (HTTP, SSE, streamable HTTP). Auto-discovers tools, resources, prompts. Discovered tools adapt to `Tool` interface and inject into agents that opt-in. `McpAgent` reverses the flow: wraps an Agent class as an MCP server, mapping its `tools()` to MCP tools, `messages()` (when `Conversational`) to MCP prompts, and — for `StatefulAgent` with `RemembersConversations` — `sessions` to MCP resources. `createMcpHandler(AgentClass)` returns a pure-fetch handler that speaks streamable-HTTP MCP. MCP portals compose multiple remote servers behind a single endpoint for aggregation.
 
 ## Feedback Strategy
 
@@ -57,12 +69,12 @@ Phase 7 wires `StatefulAgent` into Cloudflare Workflows, ships typed sub-agent R
 
 | File Path | Changes |
 | --- | --- |
-| `packages/ai/src/stateful/agent.ts` | Add `this.subAgent()`, `this.workflow` (client instance), `this.mcpClient(url)` |
+| `packages/ai/src/stateful/agent.ts` | Add `this.subAgent()`, `this.workflow` (client instance), `this.mcpClient(url)`; extend `onRequest()` with `/_/rpc`, `/_/abort`, `/_/delete` control-plane routes consumed by sub-agent RPC |
 | `packages/ai/src/decorators.ts` | Add `@Workflow()`, `@WorkflowStep()`, `@SubAgentCapable()` |
 | `packages/ai/src/provider.ts` | `AiServiceProvider` registers WorkflowClient factory + MCP portals config |
 | `packages/ai/src/stateful/context.ts` | `getCurrentAgent()` also accessible inside workflow steps |
 | `packages/ai/src/tool.ts` | `Tool.fromMcp(mcpTool)` factory for adapters |
-| `packages/ai/package.json` | Add `@modelcontextprotocol/sdk` dep; add `./mcp` subpath |
+| `packages/ai/package.json` | Add `@modelcontextprotocol/sdk` dep (pinned); add `./mcp` subpath. **Do NOT** add `agents` CF SDK — sub-agents and MCP are Roost-native (see "Learnings from prior phases") |
 
 ## Implementation Details
 
@@ -107,14 +119,16 @@ Companion `AgentMethodWorkflow` class: when CF invokes the workflow, it looks up
 
 **Feedback loop**: `bun test packages/ai/__tests__/workflows/`
 
-### 2. Typed Sub-Agent RPC
+### 2. Typed Sub-Agent RPC (Roost-native)
 
-**Pattern to follow**: CF SDK `subAgent` + TypeScript proxy tricks.
+**Pattern to follow**: `@roostjs/cloudflare`'s `DurableObjectClient` + TypeScript mapped-type proxy.
 
-**Overview**: `this.subAgent(SummarizerAgent, init)` returns a handle whose surface mirrors `SummarizerAgent`'s public methods. All calls are forwarded via DO-to-DO RPC.
+**Overview**: `this.subAgent(SummarizerAgent, init)` returns a handle whose surface mirrors `SummarizerAgent`'s public methods. Each method call encodes as a JSON RPC envelope (`{method, args}`) sent via `fetch` to the child DO's `/_/rpc` route. The child's `fetch()` handler (added to `StatefulAgent` base class in this phase) dispatches to the real method and returns the JSON-serialized result.
 
 ```typescript
 // packages/ai/src/sub-agents/sub-agent.ts
+import { DurableObjectClient } from '@roostjs/cloudflare';
+
 export type SubAgentHandle<A extends StatefulAgent> = {
   readonly id: string;
   abort(): Promise<void>;
@@ -128,29 +142,54 @@ export type SubAgentHandle<A extends StatefulAgent> = {
 export function subAgent<A extends StatefulAgent>(
   parent: StatefulAgent,
   AgentClass: new (...args: any[]) => A,
-  init?: { namespace?: string; args?: ConstructorParameters<typeof AgentClass> },
+  init?: { namespace?: string; bindingName?: string },
 ): SubAgentHandle<A> {
-  const handle = parent.sdk.subAgent(AgentClass.name, init);  // CF SDK primitive
-  return new Proxy(handle, {
-    get(target, prop) {
-      if (prop === 'id' || prop === 'abort' || prop === 'delete') return target[prop];
+  const client = resolveSubAgentClient(parent, AgentClass, init);
+  const stubId = init?.namespace
+    ? `${AgentClass.name}:${init.namespace}`
+    : `${AgentClass.name}:${crypto.randomUUID()}`;
+  const stub = client.get(stubId);
+
+  const call = async (method: string, args: unknown[]) => {
+    const res = await stub.fetch(new Request('https://internal/_/rpc', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ method, args }),
+    }));
+    if (!res.ok) throw new Error(`Sub-agent RPC failed: ${res.status} ${await res.text()}`);
+    return res.json();
+  };
+
+  return new Proxy({} as SubAgentHandle<A>, {
+    get(_target, prop) {
+      if (prop === 'id') return stubId;
+      if (prop === 'abort') return () => stub.fetch(new Request('https://internal/_/abort', { method: 'POST' }));
+      if (prop === 'delete') return () => stub.fetch(new Request('https://internal/_/delete', { method: 'POST' }));
       if (typeof prop !== 'string') return undefined;
-      return (...args: unknown[]) => target.call(prop, args);
+      return (...args: unknown[]) => call(prop, args);
     },
-  }) as SubAgentHandle<A>;
+  });
 }
 ```
 
+On the child side, `StatefulAgent.fetch()` (already in P2) gains three new route handlers:
+- `POST /_/rpc` → parse envelope, invoke `this[method](...args)`, serialize return
+- `POST /_/abort` → signal in-flight `prompt()` / `stream()` via `AbortController`
+- `POST /_/delete` → `state.storage.deleteAll()` then kill DO
+
 **Key decisions**:
+- **No CF SDK dependency** — uses Roost's `DurableObjectClient` from `@roostjs/cloudflare` (same binding abstraction P2 uses for DO registration).
 - Proxy-based forwarding; no code-gen.
-- Public-method type extraction via mapped types.
-- `init.namespace` supports multiple sub-agents of the same type per parent.
+- Public-method type extraction via `PublicMethodsOf<A>` mapped type.
+- `init.namespace` supports multiple sub-agents of the same type per parent — stable ids across DO evictions via `idFromName(stubId)`.
+- `init.bindingName` overrides the binding (defaults to `AgentClass.name` + decorator lookup).
 
 **Implementation steps**:
-1. Implement Proxy wrapper.
-2. Implement `abort()` / `delete()` forwarding to CF SDK primitives.
-3. Add `this.subAgent()` on `StatefulAgent` as convenience.
-4. Type-test file exercising `SubAgentHandle<A>` with various agent shapes.
+1. Extend `StatefulAgent.onRequest()` (`packages/ai/src/stateful/agent.ts`) to recognize the three `/_/` control-plane routes BEFORE the user's dispatch.
+2. Implement `resolveSubAgentClient(parent, AgentClass, init)` — looks up the child's binding name via `@Stateful` decorator metadata, instantiates `DurableObjectClient`.
+3. Implement the Proxy wrapper + RPC envelope encoding.
+4. Add an `AbortController` field on `StatefulAgent` that `/_/abort` signals; `prompt()`/`stream()` check it between iteration steps.
+5. Type-test file exercising `SubAgentHandle<A>` with various agent shapes (instance methods, getters, overloads).
 
 **Feedback loop**: `bun test packages/ai/__tests__/sub-agents/`
 
@@ -250,9 +289,9 @@ export class McpAgent<A extends Agent> {
 2. Implement resource exposure (Sessions / RAG data).
 3. Implement prompt exposure (predefined prompts from agent).
 
-### 6. createMcpHandler
+### 6. createMcpHandler (pure fetch handler — no CF SDK dep)
 
-**Overview**: Returns a fetch handler implementing MCP protocol that can be registered at any route.
+**Overview**: Returns a fetch handler implementing MCP protocol. Works with both `Agent` (stateless) and `StatefulAgent` (DO-backed); there is no inheritance requirement because the handler just consults the agent class's `tools()` / `messages()` / `sessions`.
 
 ```typescript
 // packages/ai/src/mcp/handler.ts
@@ -262,9 +301,12 @@ export function createMcpHandler<A extends Agent>(
 ): ExportedHandler<Env> {
   const mcpAgent = new McpAgent(AgentClass);
   return {
-    async fetch(req, env, ctx) {
-      // Decode MCP request, route to mcpAgent methods
-      // Encode MCP response with the configured transport
+    async fetch(req, env, _ctx) {
+      // Decode JSON-RPC request (or SSE frame) per the chosen transport.
+      // Route `tools/list` → `mcpAgent.exposedTools()`,
+      //       `tools/call` → `mcpAgent.handleToolCall(name, args)`,
+      //       `resources/list` → `mcpAgent.handleListResources()`, etc.
+      // Encode response per transport.
     },
   };
 }
@@ -276,9 +318,11 @@ export default createMcpHandler(BugAgent, { transport: 'streamable-http', path: 
 ```
 
 **Implementation steps**:
-1. Implement MCP request decoder (JSON-RPC over HTTP/SSE).
-2. Implement method router: `tools/list`, `tools/call`, `resources/list`, etc.
+1. Implement MCP request decoder (JSON-RPC over HTTP/SSE/streamable-http).
+2. Implement method router: `tools/list`, `tools/call`, `resources/list`, `prompts/list`, `prompts/get`.
 3. Implement response encoder per transport.
+4. **Preferred transport**: streamable-HTTP. Workers can't hold long-lived SSE connections efficiently without hibernation; streamable-HTTP degrades gracefully.
+5. Auth: accept `Authorization: Bearer {token}` by default; allow override via `opts.authorize(req)` callback.
 
 ### 7. McpPortal (Server Composition)
 
@@ -376,6 +420,8 @@ bun test packages/ai/__tests__/integration/mcp.miniflare.test.ts
 
 ## Open Items
 
-- [ ] Confirm CF SDK's sub-agent API shape — if not exactly `subAgent/abortSubAgent/deleteSubAgent`, adapt names.
+- [x] ~~Confirm CF SDK's sub-agent API shape~~ — N/A. Sub-agents are Roost-native per the "Learnings from prior phases" reconciliation; no CF SDK dependency.
 - [ ] Workflow binding auto-generation CLI — defer or stub a README with manual steps.
-- [ ] MCP transport default — lean toward streamable-http for Workers.
+- [ ] MCP transport default — lean toward streamable-http for Workers (decided; see §6).
+- [ ] RPC envelope schema versioning — initial is `{method, args}`; add `{v: 1, method, args}` with version gate before shipping sub-agents for the first time so we have a forward-compat path.
+- [ ] Sub-agent cold-start latency vs CF SDK's facet model — measure in the miniflare integration test; CF SDK's `subAgent()` is optimized for in-process facets and may be faster for hot parent-child pairs. If the gap is significant (>50ms typical), revisit.

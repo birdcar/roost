@@ -4,6 +4,14 @@
 **Depends on**: All prior phases (1-8)
 **Estimated Effort**: M
 
+## Learnings from prior phases — incorporated into this spec
+
+1. **Coverage harness doesn't exist yet**. P1/P2/P3 all carried "no coverage tool wired" forward. P9 OWNS the decision: adopt `bun test --coverage` (built-in, no extra dep) + an LCOV-parsing gate script. The >95% target in the contract stays; this phase enforces it for the first time.
+2. **Test-runner split for React hook tests** — P3 attempted `@happy-dom/global-registrator` + `@testing-library/react` alongside the rest of `bun test packages/ai/` and discovered that happy-dom's global `fetch` replacement interferes with `spyOn(globalThis, 'fetch')` in non-DOM tests. P3 shipped the React hooks untested at the hook level; P9 must restore coverage for them via a separate `test:client` script that runs under a preloaded happy-dom environment in its own invocation.
+3. **StreamEvent discriminated union** — P3 migrated `StreamEvent` from the P1 flat shape to a discriminated union. Zero consumers at the time, but MIGRATION.md must document the change for anyone who tracked `-alpha.1` or held a direct reference to `@roostjs/ai`'s type exports during the alpha series.
+4. **Roost-native StatefulAgent / sub-agents / MCP** — the spec evolved away from "extends CF Agents SDK `Agent<Env>`" in P2 and P7. The contract's Success Criteria claim "Integrate every Cloudflare Agents SDK primitive" needs a softer restatement: we integrate the primitives' *semantics* (Sessions, Schedule, Sub-agents, MCP) via Roost-native implementations, not by inheriting the SDK's base classes. The README + MIGRATION.md should frame this as an intentional architectural choice.
+5. **Miniflare integration scope** — P2 and P3 integration tests ran against inline Worker scripts, not against bundled `@roostjs/ai` code. The consolidated `test:integration` harness in §4 should either (a) ship an esbuild-driven bundle step so miniflare tests exercise the real package, or (b) explicitly document that integration tests validate contracts (storage layout, SSE wire format, DO alarm semantics) rather than the full import graph. Lean toward (b) + a follow-up (`v0.3.1`) for (a).
+
 ## Technical Approach
 
 Phase 9 takes the feature-complete `@roostjs/ai` v0.3.0-alpha and ships it as v0.3.0. This phase is primarily documentation, coverage auditing, integration test consolidation, and release mechanics. No new runtime behavior — everything added here is developer-facing.
@@ -41,14 +49,18 @@ Four workstreams:
 | `packages/ai/scripts/coverage-gate.ts` | Coverage threshold enforcer for CI |
 | `packages/ai/scripts/integration-harness.ts` | Miniflare setup + teardown wrapper |
 | `packages/ai/CHANGELOG.md` | v0.3.0 changelog entry |
+| `packages/ai/__tests__/client/happy-dom-preload.ts` | Preload that registers `@happy-dom/global-registrator` before React test modules import. Consumed by `test:client` script only — must not be loaded in the default `test` invocation |
+| `packages/ai/bunfig.toml` | `[test] preload = ["./__tests__/client/happy-dom-preload.ts"]` scoped to the `test:client` script via its own CWD (or a bunfig flag) |
+| `packages/ai/__tests__/client/use-agent.test.tsx` | React hook unit tests restored under the split runner (P3 skipped these; P9 owns the restoration) |
+| `packages/ai/__tests__/client/use-agent-stream.test.tsx` | Ditto |
 
 ### Modified Files
 
 | File Path | Changes |
 | --- | --- |
 | `packages/ai/README.md` | Full rewrite matching Laravel AI docs structure |
-| `packages/ai/package.json` | Bump to `0.3.0`; remove `-alpha` tag; add `test:integration` + `test:coverage` scripts |
-| `.github/workflows/ci.yml` (or equivalent) | Add coverage gate + integration tests to required checks |
+| `packages/ai/package.json` | Bump to `0.3.0`; remove `-alpha` tag; add `test:integration`, `test:coverage`, and `test:client` scripts. Add `@happy-dom/global-registrator`, `@testing-library/react`, `@testing-library/dom` as `devDependencies` (restored from P3 removal) |
+| `.github/workflows/ci.yml` (or equivalent) | Add coverage gate + integration tests + client tests (separate job) to required checks |
 | Every `src/**/*.ts` below 95% coverage | Add targeted tests closing gaps |
 
 ## Implementation Details
@@ -93,6 +105,37 @@ grep -n "\.prompt(.*{ queued: true }" packages/**/*.ts
 
 ### `@Model` now accepts provider-scoped names
 ...
+
+### `StreamEvent` migrated to discriminated union (v0.3.0-alpha.3+)
+
+**Before (v0.3.0-alpha.1/.2)**: flat shape
+\`\`\`ts
+interface StreamEvent {
+  type: 'text-delta' | 'tool-call' | 'tool-result' | 'usage' | 'error' | 'done';
+  text?: string;
+  toolCall?: ToolCall;
+  toolResult?: ToolResult;
+  usage?: Usage;
+  message?: string;
+  code?: string;
+}
+\`\`\`
+
+**After (v0.3.0)**: discriminated union — narrow on \`type\` before accessing payload fields.
+\`\`\`ts
+type StreamEvent =
+  | { type: 'text-delta'; text: string }
+  | { type: 'tool-call'; id: string; name: string; arguments: Record<string, unknown> }
+  | { type: 'tool-result'; toolCallId: string; content: string }
+  | { type: 'usage'; promptTokens: number; completionTokens: number }
+  | { type: 'error'; message: string; code?: string }
+  | { type: 'done' };
+\`\`\`
+
+Regex recipe for direct field access:
+\`\`\`
+grep -rnE "\.toolCall\b|\.toolResult\b|\.message\?" packages/**/*.ts | grep StreamEvent
+\`\`\`
 ```
 
 **Implementation steps**:
@@ -174,6 +217,36 @@ if (failing.length > 0) {
 4. Wire into CI as required check.
 
 **Feedback loop**: `bun run test:coverage`; inspect gap report; write tests; repeat.
+
+### 3.5. Test Runner Split — React Hook Tests
+
+**Overview**: Split the test suite into three scripts that run in separate `bun test` invocations so happy-dom's global pollution never interferes with fetch-spy assertions in the non-DOM suite.
+
+```json
+// package.json scripts
+{
+  "test": "bun test packages/ai/__tests__ packages/ai/src --exclude __tests__/client --exclude __tests__/integration",
+  "test:client": "bun test packages/ai/__tests__/client",
+  "test:integration": "bun test packages/ai/__tests__/integration",
+  "test:coverage": "bun test --coverage packages/ai/ && bun run scripts/coverage-gate.ts",
+  "test:all": "bun run test && bun run test:client && bun run test:integration"
+}
+```
+
+The `test:client` script preloads `__tests__/client/happy-dom-preload.ts`, which registers DOM globals BEFORE any React test module loads. `@testing-library/react` + `@happy-dom/global-registrator` are reinstated as `devDependencies` here (P3 removed them because they broke the single-runner flow).
+
+**Key decisions**:
+- **Three invocations, not one** — `bun test` shares global state across files in a single invocation. Happy-dom's `fetch` replacement is global and affects every subsequent file once registered. Separate invocations give each suite a clean runtime.
+- **`test:all` for CI** — runs all three in sequence. Local dev can target one.
+- **Coverage combines** — `bun test --coverage` across the whole package is still feasible because each invocation writes to the same LCOV file via `append: true`, then the gate script reads the union. If bun doesn't support append, run each invocation with a distinct coverage dir and union them in `coverage-gate.ts`.
+
+**Implementation steps**:
+1. Write `happy-dom-preload.ts` with `GlobalRegistrator.register()` at module top (runs before `@testing-library/react` imports).
+2. Author `bunfig.toml` with `[test] preload = [...]` scoped to the package.
+3. Restore the two React-hook test files removed in P3 (`use-agent.test.tsx`, `use-agent-stream.test.tsx`).
+4. Wire all three scripts into CI.
+
+**Feedback loop**: `bun run test:client` for hook iteration; `bun run test:all` before merge.
 
 ### 4. Integration Test Suite
 
@@ -310,8 +383,14 @@ bun run --filter @roostjs/ai typecheck
 # Full test suite (unit + coverage gate)
 bun run test:coverage
 
+# React hook tests (separate invocation — happy-dom preloaded)
+bun run test:client
+
 # Integration
 bun run test:integration
+
+# All three, sequenced (matches CI)
+bun run test:all
 
 # Build verification
 bun run --filter @roostjs/ai build
@@ -338,3 +417,6 @@ npm publish --dry-run packages/ai/
 - [ ] Decide whether to ship a deprecated `CloudflareAIProvider` re-export in v0.3.0 (removed in v0.4) vs hard-remove. Lean: soft-deprecate for one version.
 - [ ] Doc-test script for README examples — stretch goal; defer if time-constrained.
 - [ ] Decide release channel — `@latest` vs `@next` for initial v0.3.0. Lean: `@next` for 1 week, then `@latest`.
+- [ ] Coverage union across the three invocations — confirm `bun test --coverage` supports append, otherwise implement per-invocation LCOV merge in `coverage-gate.ts`.
+- [ ] Miniflare tests bundling `@roostjs/ai` source — if we go with option (b) in learning #5 for v0.3.0, schedule the bundled variant for v0.3.1.
+- [ ] Soften "Integrate every Cloudflare Agents SDK primitive" in the contract's Success Criteria to "Integrate Cloudflare Agents SDK primitive *semantics* (Sessions, Schedule, Sub-agents, MCP) via Roost-native implementations where full SDK inheritance conflicts with Roost's DO conventions." Carry that wording into README "Philosophy."
