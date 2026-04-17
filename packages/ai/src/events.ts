@@ -92,3 +92,58 @@ export class MaxStepsExhausted extends Event {
     super();
   }
 }
+
+/* ---------------------------- Phase 2: Stateful events ---------------------------- */
+
+/** Dispatched when `RemembersConversations` creates a new conversation for a user. */
+export class ConversationStarted extends Event {
+  constructor(
+    public readonly agentName: string,
+    public readonly conversationId: string,
+    public readonly userId?: string,
+  ) {
+    super();
+  }
+}
+
+/** Dispatched when `RemembersConversations.continue(id)` resumes an existing conversation. */
+export class ConversationContinued extends Event {
+  constructor(
+    public readonly agentName: string,
+    public readonly conversationId: string,
+    public readonly userId?: string,
+  ) {
+    super();
+  }
+}
+
+/**
+ * Dispatched when a conversation has been compacted. `droppedCount` is the
+ * number of nodes removed (or summarized away); `strategy` matches the strategy
+ * name passed to `Sessions.compact()`.
+ */
+export class ConversationCompacted extends Event {
+  constructor(
+    public readonly conversationId: string,
+    public readonly strategy: 'summarize' | 'drop-oldest' | 'llm',
+    public readonly droppedCount: number,
+  ) {
+    super();
+  }
+}
+
+/**
+ * Dispatched when a scheduled method fires but the callback no longer exists
+ * on the agent class (e.g. the method was renamed after the schedule was
+ * created). The schedule is dropped; emitting the event gives applications a
+ * chance to observe/alert.
+ */
+export class ScheduledMethodMissing extends Event {
+  constructor(
+    public readonly agentName: string,
+    public readonly scheduleId: string,
+    public readonly method: string,
+  ) {
+    super();
+  }
+}

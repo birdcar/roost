@@ -10,6 +10,16 @@ import { FailoverProvider } from './providers/failover.js';
 import { ProviderRegistry } from './providers/registry.js';
 import { Agent } from './agent.js';
 import { Lab } from './enums.js';
+import { _iterateStatefulClasses, getStatefulConfig } from './decorators.js';
+
+export class MissingDurableObjectBindingError extends Error {
+  override readonly name = 'MissingDurableObjectBindingError';
+  constructor(agentName: string, binding: string) {
+    super(
+      `@Stateful agent '${agentName}' requires a Durable Object binding named '${binding}' — add it under 'do.bindings.${binding}' in your config or remove the @Stateful decorator.`,
+    );
+  }
+}
 
 /**
  * Registers every provider backend and wires the default failover chain
@@ -38,6 +48,18 @@ export class AiServiceProvider extends ServiceProvider {
 
     const chain = this.resolveDefaultChain(registry);
     Agent.setProvider(chain);
+
+    this.validateStatefulBindings();
+  }
+
+  private validateStatefulBindings(): void {
+    for (const ctor of _iterateStatefulClasses()) {
+      const cfg = getStatefulConfig(ctor);
+      if (!cfg) continue;
+      if (!this.app.config.has(`do.bindings.${cfg.binding}`)) {
+        throw new MissingDurableObjectBindingError((ctor as { name: string }).name, cfg.binding);
+      }
+    }
   }
 
   private bootGateway(registry: ProviderRegistry, fallback: WorkersAIProvider): void {

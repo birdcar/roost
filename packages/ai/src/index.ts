@@ -52,8 +52,12 @@ export {
   Timeout,
   UseCheapestModel,
   UseSmartestModel,
+  Stateful,
+  Scheduled,
   getAgentConfig,
+  getStatefulConfig,
 } from './decorators.js';
+export type { StatefulConfig } from './decorators.js';
 
 // Tools.
 export type { Tool, ToolRequest } from './tool.js';
@@ -92,6 +96,10 @@ export {
   ProviderFailoverTriggered,
   AllProvidersFailed,
   MaxStepsExhausted,
+  ConversationStarted,
+  ConversationContinued,
+  ConversationCompacted,
+  ScheduledMethodMissing,
   dispatchEvent,
 } from './events.js';
 

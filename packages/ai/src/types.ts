@@ -111,3 +111,53 @@ export interface ProviderResponse {
   usage?: Usage;
   taskId?: string;
 }
+
+/* ------------------------------ Phase 2: Sessions ----------------------------- */
+
+/** Opaque identifier for a Sessions-backed conversation. */
+export type ConversationId = string;
+
+/** Role of a message within a session node. Matches `AgentMessage.role`. */
+export type SessionNodeRole = 'system' | 'user' | 'assistant' | 'tool';
+
+/**
+ * A single node in the Sessions tree. `parentId` is `null` for the root node
+ * of a conversation; forks ("branches") reuse an existing node as the parent
+ * of a new linear path.
+ */
+export interface SessionNode {
+  id: string;
+  parentId: string | null;
+  role: SessionNodeRole;
+  content: string;
+  metadata?: Record<string, unknown>;
+  createdAt: number;
+}
+
+/**
+ * Summary returned by `Sessions.list()`. Carries just enough to render a
+ * conversation list without walking the full tree.
+ */
+export interface ConversationSummary {
+  id: ConversationId;
+  userId?: string;
+  createdAt: number;
+  messageCount: number;
+  /** `content` of the most recent node, truncated to ~140 chars for preview. */
+  preview?: string;
+}
+
+/**
+ * Returned from `Sessions.branch()` — the id of the new branch conversation
+ * and the node id within the parent conversation the branch forked from.
+ */
+export interface SessionBranch {
+  conversationId: ConversationId;
+  branchedFrom: string;
+}
+
+/** Compaction strategies supported by `Sessions.compact()`. */
+export type CompactionStrategy =
+  | { kind: 'summarize'; tokenBudget?: number }
+  | { kind: 'drop-oldest'; keep?: number; tokenBudget?: number }
+  | { kind: 'llm'; summarize: (nodes: SessionNode[]) => Promise<string> };

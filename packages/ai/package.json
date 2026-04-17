@@ -26,6 +26,10 @@
     "./client": {
       "types": "./src/client/index.ts",
       "import": "./src/client/index.ts"
+    },
+    "./stateful": {
+      "types": "./src/stateful/index.ts",
+      "import": "./src/stateful/index.ts"
     }
   },
   "scripts": {
@@ -33,10 +37,11 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@roostjs/core": "workspace:*",
     "@roostjs/cloudflare": "workspace:*",
+    "@roostjs/core": "workspace:*",
+    "@roostjs/events": "workspace:*",
     "@roostjs/schema": "workspace:*",
-    "@roostjs/events": "workspace:*"
+    "agents": "0.11.2"
   },
   "peerDependencies": {
     "@roostjs/broadcast": "workspace:*",
@@ -44,13 +49,20 @@
     "@roostjs/workflow": "workspace:*"
   },
   "peerDependenciesMeta": {
-    "@roostjs/broadcast": { "optional": true },
-    "@roostjs/queue": { "optional": true },
-    "@roostjs/workflow": { "optional": true }
+    "@roostjs/broadcast": {
+      "optional": true
+    },
+    "@roostjs/queue": {
+      "optional": true
+    },
+    "@roostjs/workflow": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@cloudflare/workers-types": "catalog:",
     "bun-types": "catalog:",
+    "miniflare": "4.20260415.0",
     "typescript": "catalog:"
   },
   "license": "MIT",
