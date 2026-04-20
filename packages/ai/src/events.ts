@@ -194,3 +194,19 @@ export { GeneratingImage, ImageGenerated } from './media/image/events.js';
 export { GeneratingAudio, AudioGenerated } from './media/audio/events.js';
 export { GeneratingTranscription, TranscriptionGenerated } from './media/transcription/events.js';
 export { UnsupportedOptionDropped } from './media/shared/events.js';
+
+/* ---------------------------- Phase 8: Advanced events --------------------------- */
+
+export {
+  ApprovalRequested,
+  ApprovalDecided,
+  ApprovalExpired,
+  ToolCharged,
+  InvalidPayment,
+  VoiceSessionOpened,
+  VoiceSessionClosed,
+  EmailSent,
+  EmailReceived,
+  BrowserNavigated,
+  CodeModeExecuted,
+} from './advanced-events.js';

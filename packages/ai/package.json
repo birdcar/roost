@@ -42,6 +42,34 @@
     "./stateful": {
       "types": "./src/stateful/index.ts",
       "import": "./src/stateful/index.ts"
+    },
+    "./hitl": {
+      "types": "./src/hitl/index.ts",
+      "import": "./src/hitl/index.ts"
+    },
+    "./memory": {
+      "types": "./src/memory/index.ts",
+      "import": "./src/memory/index.ts"
+    },
+    "./payments": {
+      "types": "./src/payments/index.ts",
+      "import": "./src/payments/index.ts"
+    },
+    "./voice": {
+      "types": "./src/voice/index.ts",
+      "import": "./src/voice/index.ts"
+    },
+    "./email": {
+      "types": "./src/email/index.ts",
+      "import": "./src/email/index.ts"
+    },
+    "./browser": {
+      "types": "./src/browser/index.ts",
+      "import": "./src/browser/index.ts"
+    },
+    "./code-mode": {
+      "types": "./src/code-mode/index.ts",
+      "import": "./src/code-mode/index.ts"
     }
   },
   "scripts": {

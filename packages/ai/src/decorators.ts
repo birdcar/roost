@@ -203,3 +203,50 @@ export function SubAgentCapable() {
 export function isSubAgentCapable(target: Function): boolean {
   return subAgentCapableClasses.has(target);
 }
+
+/* ------------------------------ Phase 8: @RequiresApproval / @CodeMode ----------------------------- */
+
+export { CodeMode } from './code-mode/code-mode.js';
+
+const requiresApprovalRegistry = new WeakMap<Function, Map<string, { step: string }>>();
+
+/**
+ * Method decorator: gate method execution behind a human-approval prompt. On
+ * invocation, the method first calls `this.requireApproval(step, { args })`;
+ * only if the decision is `approved` does the original body run. Rejections,
+ * expirations, and unapproved outcomes surface as `ApprovalRejectedError`.
+ */
+export function RequiresApproval(step: string) {
+  return function (target: object, propertyKey: string, descriptor: PropertyDescriptor) {
+    const ctor = (target as { constructor: Function }).constructor;
+    let map = requiresApprovalRegistry.get(ctor);
+    if (!map) {
+      map = new Map();
+      requiresApprovalRegistry.set(ctor, map);
+    }
+    map.set(propertyKey, { step });
+
+    const original = descriptor.value as (...args: unknown[]) => unknown;
+    descriptor.value = async function (this: { requireApproval?: (step: string, payload: Record<string, unknown>) => Promise<{ status: string }> }, ...args: unknown[]) {
+      if (typeof this.requireApproval !== 'function') {
+        throw new Error(`@RequiresApproval requires ${propertyKey} on a StatefulAgent with requireApproval`);
+      }
+      const result = await this.requireApproval(step, { args });
+      if (result.status !== 'approved') {
+        throw new ApprovalRejectedError(step, result.status);
+      }
+      return original.apply(this, args);
+    };
+  };
+}
+
+export function getRequiresApproval(target: Function, method: string): { step: string } | undefined {
+  return requiresApprovalRegistry.get(target)?.get(method);
+}
+
+export class ApprovalRejectedError extends Error {
+  override readonly name = 'ApprovalRejectedError';
+  constructor(step: string, status: string) {
+    super(`Approval for '${step}' resolved as '${status}'.`);
+  }
+}

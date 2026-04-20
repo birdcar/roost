@@ -15,6 +15,13 @@ import {
 } from '../sub-agents/typed-rpc.js';
 import { McpClient } from '../mcp/client.js';
 import type { McpConnectOptions } from '../mcp/types.js';
+import { Memory, type MemoryDeps } from '../memory/tiers.js';
+import {
+  requireApproval as requireApprovalImpl,
+  type ApprovalRequest,
+  type RequireApprovalOpts,
+} from '../hitl/approval.js';
+import { runCodeMode as runCodeModeImpl, type CodeModeOpts, type CodeModeResult } from '../code-mode/code-mode.js';
 import {
   assertPrompted as assertPromptedImpl,
   assertNotPrompted as assertNotPromptedImpl,
@@ -98,11 +105,48 @@ export abstract class StatefulAgent<Env = unknown> {
   private _sessions?: Sessions;
   private _scheduler?: Scheduler;
   private _abortController?: AbortController;
+  private _memory?: Memory;
 
   constructor(ctx: StatefulAgentCtx, env: Env) {
     this._ctx = ctx;
     this.env = env;
     this.registerCronSchedules();
+  }
+
+  /* ------------------------------- Phase 8: Advanced primitive accessors ------------------------------- */
+
+  /** Aggregated memory tiers (context, short-form, knowledge, skills). */
+  get memory(): Memory {
+    if (!this._memory) this._memory = new Memory(this, this.memoryDeps());
+    return this._memory;
+  }
+
+  /**
+   * Override in subclasses to seed context data or wire a knowledge backend.
+   * Default returns empty deps.
+   */
+  protected memoryDeps(): MemoryDeps {
+    return {};
+  }
+
+  /**
+   * Request human approval for `step`. Persists the request in DO storage and
+   * suspends until `approve()` lands or the timeout elapses.
+   */
+  requireApproval(
+    step: string,
+    payload: Record<string, unknown> = {},
+    opts: RequireApprovalOpts = {},
+  ): Promise<ApprovalRequest> {
+    return requireApprovalImpl(this, step, payload, opts);
+  }
+
+  /**
+   * Execute `intent` as generated code inside a sandbox. Bindings and
+   * configuration follow `CodeModeOpts`.
+   */
+  codeMode(intent: string, opts: CodeModeOpts = {}): Promise<CodeModeResult> {
+    return runCodeModeImpl(this, intent, opts);
   }
 
   abstract instructions(): string;
