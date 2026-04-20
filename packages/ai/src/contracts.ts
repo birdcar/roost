@@ -1,5 +1,5 @@
 import type { schema, SchemaBuilder } from '@roostjs/schema';
-import type { Tool } from './tool.js';
+import type { Tool, ProviderTool } from './tool.js';
 import type { AgentMessage } from './types.js';
 import type { AgentMiddleware } from './middleware.js';
 import type { Lab } from './enums.js';
@@ -15,7 +15,7 @@ export interface Conversational {
 }
 
 export interface HasTools {
-  tools(): Tool[];
+  tools(): Array<Tool | ProviderTool>;
 }
 
 export interface HasStructuredOutput<_T = unknown> {

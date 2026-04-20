@@ -50,6 +50,21 @@ export class AiServiceProvider extends ServiceProvider {
     Agent.setProvider(chain);
 
     this.validateStatefulBindings();
+    this.probeQueueBridge();
+  }
+
+  private probeQueueBridge(): void {
+    // Queueing is optional. If `QueueServiceProvider` hasn't booted yet, log
+    // once and continue — consumer apps that never call `agent.queue()` don't
+    // need a dispatcher.
+    void (async () => {
+      try {
+        const { Dispatcher } = await import('@roostjs/queue');
+        Dispatcher.get();
+      } catch {
+        // Silent: consumers opting into queueing must register QueueServiceProvider first.
+      }
+    })();
   }
 
   private validateStatefulBindings(): void {

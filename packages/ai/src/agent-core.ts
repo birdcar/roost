@@ -1,4 +1,4 @@
-import type { Tool } from './tool.js';
+import type { Tool, ProviderTool } from './tool.js';
 import type {
   AgentConfig,
   AgentMessage,
@@ -12,7 +12,7 @@ import type { AIProvider } from './providers/interface.js';
 import type { Lab } from './enums.js';
 import type { AgentPrompt } from './prompt.js';
 import { resolveModel } from './capability-table.js';
-import { createToolRequest, toolToProviderTool, resolveToolName } from './tool.js';
+import { createToolRequest, toolToProviderTool, resolveToolName, partitionTools } from './tool.js';
 import { StructuredAgentResponse } from './responses/agent-response.js';
 import { dispatchEvent, InvokingTool, ToolInvoked, MaxStepsExhausted } from './events.js';
 import { hasTools, hasStructuredOutput, hasProviderOptions } from './contracts.js';
@@ -46,8 +46,9 @@ export async function runAgentCore(input: AgentCoreInput): Promise<AgentResponse
     { role: 'user', content: prompt.prompt },
   ];
 
-  const tools: Tool[] = hasTools(agent) ? agent.tools() : [];
-  const providerTools = tools.map(toolToProviderTool);
+  const allTools: Array<Tool | ProviderTool> = hasTools(agent) ? agent.tools() : [];
+  const { userTools, providerTools: nativeProviderTools } = partitionTools(allTools);
+  const encodedTools = userTools.map(toolToProviderTool);
   const providerOptions = collectProviderOptions(agent, provider, prompt.options);
 
   const maxSteps = config.maxSteps ?? 5;
@@ -60,7 +61,8 @@ export async function runAgentCore(input: AgentCoreInput): Promise<AgentResponse
     const response = await provider.chat({
       model,
       messages: currentMessages,
-      tools: providerTools.length > 0 ? providerTools : undefined,
+      tools: encodedTools.length > 0 ? encodedTools : undefined,
+      providerTools: nativeProviderTools.length > 0 ? nativeProviderTools : undefined,
       maxTokens: config.maxTokens,
       temperature: config.temperature,
       providerOptions,
@@ -73,7 +75,7 @@ export async function runAgentCore(input: AgentCoreInput): Promise<AgentResponse
     if (response.toolCalls.length === 0) break;
 
     currentMessages.push({ role: 'assistant', content: response.text });
-    await runToolCalls(tools, response.toolCalls, currentMessages);
+    await runToolCalls(userTools, response.toolCalls, currentMessages);
   }
 
   if (step >= maxSteps) {

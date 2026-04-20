@@ -1,11 +1,12 @@
 import type { schema, SchemaBuilder } from '@roostjs/schema';
-import type { Tool } from './tool.js';
+import type { Tool, ProviderTool } from './tool.js';
 import type {
   AgentConfig,
   AgentMessage,
   AgentPromptOptions,
   PromptResult,
   ProviderOptions,
+  ProviderToolConfig,
   ToolCall,
   ToolResult,
 } from './types.js';
@@ -14,7 +15,7 @@ import type { AIProvider } from './providers/interface.js';
 import type { Lab } from './enums.js';
 import { getAgentConfig } from './decorators.js';
 import { resolveModel } from './capability-table.js';
-import { createToolRequest, toolToProviderTool, resolveToolName } from './tool.js';
+import { createToolRequest, toolToProviderTool, resolveToolName, partitionTools } from './tool.js';
 import { AgentPrompt } from './prompt.js';
 import { runPipeline, type AgentMiddleware } from './middleware.js';
 import { AgentFake, type FakeResolver } from './testing/fakes.js';
@@ -39,6 +40,7 @@ import {
 } from './events.js';
 import { StreamableAgentResponse } from './streaming/streamable-response.js';
 import { buildAgentStream, StreamingUnsupportedError } from './streaming/agent-stream.js';
+import { QueuedPromptHandle, generatePromptId, type QueueOptions } from './queueing/queue-bridge.js';
 import {
   hasTools,
   hasStructuredOutput,
@@ -137,8 +139,9 @@ export abstract class Agent implements AgentInterface {
       { role: 'user', content: prompt.prompt },
     ];
 
-    const tools: Tool[] = hasTools(this) ? this.tools() : [];
-    const providerTools = tools.map(toolToProviderTool);
+    const allTools: Array<Tool | ProviderTool> = hasTools(this) ? this.tools() : [];
+    const { userTools, providerTools: nativeProviderTools } = partitionTools(allTools);
+    const encodedTools = userTools.map(toolToProviderTool);
     const providerOptions = this.collectProviderOptions(provider, prompt.options);
 
     // Queued inference (legacy v0.2 path; v0.3 consumers should use .queue()).
@@ -146,7 +149,8 @@ export abstract class Agent implements AgentInterface {
       const response = await provider.chat({
         model,
         messages,
-        tools: providerTools.length > 0 ? providerTools : undefined,
+        tools: encodedTools.length > 0 ? encodedTools : undefined,
+        providerTools: nativeProviderTools.length > 0 ? nativeProviderTools : undefined,
         maxTokens: config.maxTokens,
         temperature: config.temperature,
         queueRequest: true,
@@ -176,7 +180,8 @@ export abstract class Agent implements AgentInterface {
       const response = await provider.chat({
         model,
         messages: currentMessages,
-        tools: providerTools.length > 0 ? providerTools : undefined,
+        tools: encodedTools.length > 0 ? encodedTools : undefined,
+        providerTools: nativeProviderTools.length > 0 ? nativeProviderTools : undefined,
         maxTokens: config.maxTokens,
         temperature: config.temperature,
         providerOptions,
@@ -189,7 +194,7 @@ export abstract class Agent implements AgentInterface {
       if (response.toolCalls.length === 0) break;
 
       currentMessages.push({ role: 'assistant', content: response.text });
-      await this.runToolCalls(tools, response.toolCalls, currentMessages);
+      await this.runToolCalls(userTools, response.toolCalls, currentMessages);
     }
 
     if (step >= maxSteps) {
@@ -271,6 +276,14 @@ export abstract class Agent implements AgentInterface {
     } catch {
       return base;
     }
+  }
+
+  queue(input: string, options: QueueOptions = {}): QueuedPromptHandle {
+    return dispatchQueuedPrompt(this, input, options);
+  }
+
+  queueAfter(seconds: number, input: string, options: QueueOptions = {}): QueuedPromptHandle {
+    return dispatchQueuedPrompt(this, input, options, seconds);
   }
 
   stream(input: string, options: AgentPromptOptions = {}): StreamableAgentResponse {
@@ -389,6 +402,49 @@ function toPromptResult(response: AgentResponse): PromptResult {
     usage: response.usage,
     conversationId: response.conversationId,
   };
+}
+
+function dispatchQueuedPrompt(
+  agent: Agent,
+  input: string,
+  options: QueueOptions,
+  delaySeconds?: number,
+): QueuedPromptHandle {
+  const ctor = agent.constructor as typeof Agent;
+  const promptId = options.promptId ?? generatePromptId();
+  const fake = fakes.get(ctor);
+
+  if (fake) {
+    fake.recordQueued(new AgentPrompt(input, options, ctor.name));
+    return new QueuedPromptHandle(promptId);
+  }
+
+  const handle = new QueuedPromptHandle(promptId);
+  const { agentArgs, promptId: _id, agentClass, ...promptOptions } = options;
+  const payload = {
+    agentClass: agentClass ?? ctor.name,
+    agentArgs: agentArgs ?? [],
+    input,
+    options: promptOptions,
+    promptId,
+  };
+
+  void (async () => {
+    try {
+      const { PromptAgentJob } = await import('./queueing/prompt-agent-job.js');
+      if (delaySeconds !== undefined) {
+        await PromptAgentJob.dispatchAfter(delaySeconds, payload);
+      } else {
+        await PromptAgentJob.dispatch(payload);
+      }
+    } catch (err) {
+      const { getCallbackRegistry } = await import('./queueing/callback-registry.js');
+      const error = err instanceof Error ? err : new Error(String(err));
+      await getCallbackRegistry().reject(promptId, error);
+    }
+  })();
+
+  return handle;
 }
 
 // Re-export the anonymous agent helper from its own module.

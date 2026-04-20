@@ -35,6 +35,17 @@ export interface AgentPromptOptions extends Partial<AgentConfig> {
 }
 
 /**
+ * Provider-native tools that ship markers in the request rather than being
+ * dispatched by our tool loop. Concrete classes live in `src/tools/provider-tools/`.
+ * We reference them structurally here to avoid a circular dep with `./tool.js`.
+ */
+export interface ProviderToolConfig {
+  readonly kind: 'provider';
+  readonly name: string;
+  toRequest(provider: string): Record<string, unknown>;
+}
+
+/**
  * Structural placeholder for attachment inputs. Concrete types ship in Phase 4
  * under `src/attachments/`. Kept minimal here to avoid a circular dep.
  */
@@ -92,6 +103,12 @@ export interface ProviderRequest {
   model: string;
   messages: AgentMessage[];
   tools?: ProviderTool[];
+  /**
+   * Provider-native tools (web search, web fetch, file search). Encoded
+   * per-provider at request-build time. Kept as a sibling field so user-defined
+   * tool handling in `tools` stays strictly-shaped.
+   */
+  providerTools?: ProviderToolConfig[];
   maxTokens?: number;
   temperature?: number;
   queueRequest?: boolean;

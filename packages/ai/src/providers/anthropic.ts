@@ -2,6 +2,7 @@ import type { AIProvider, ProviderCapabilities } from './interface.js';
 import type { ProviderRequest, ProviderResponse, AgentMessage, ToolCall, StreamEvent } from '../types.js';
 import { Lab } from '../enums.js';
 import { iterateSSELines } from '../streaming/sse-lines.js';
+import { encodeAll, type EncodedAttachment } from './attachment-encoding.js';
 
 const CAPS: ProviderCapabilities = {
   name: Lab.Anthropic,
@@ -48,21 +49,19 @@ export class AnthropicProvider implements AIProvider {
   async chat(request: ProviderRequest): Promise<ProviderResponse> {
     const url = `${this.config.baseUrl ?? 'https://api.anthropic.com'}/v1/messages`;
     const system = request.messages.find((m) => m.role === 'system')?.content;
+    const encodedAttachments = await encodeAll(request.attachments);
+    const messages = buildAnthropicMessages(
+      request.messages.filter((m) => m.role !== 'system'),
+      encodedAttachments,
+    );
+    const tools = buildAnthropicTools(request);
     const body: Record<string, unknown> = {
       model: request.model,
       max_tokens: request.maxTokens ?? 4096,
-      messages: request.messages.filter((m) => m.role !== 'system').map(toAnthropicMessage),
+      messages,
       ...(system ? { system } : {}),
       ...(request.temperature !== undefined ? { temperature: request.temperature } : {}),
-      ...(request.tools && request.tools.length > 0
-        ? {
-            tools: request.tools.map((t) => ({
-              name: t.name,
-              description: t.description,
-              input_schema: t.parameters,
-            })),
-          }
-        : {}),
+      ...(tools ? { tools } : {}),
       ...(request.providerOptions ?? {}),
     };
 
@@ -102,22 +101,20 @@ export class AnthropicProvider implements AIProvider {
   async *stream(request: ProviderRequest): AsyncIterable<StreamEvent> {
     const url = `${this.config.baseUrl ?? 'https://api.anthropic.com'}/v1/messages`;
     const system = request.messages.find((m) => m.role === 'system')?.content;
+    const encodedAttachments = await encodeAll(request.attachments);
+    const messages = buildAnthropicMessages(
+      request.messages.filter((m) => m.role !== 'system'),
+      encodedAttachments,
+    );
+    const tools = buildAnthropicTools(request);
     const body: Record<string, unknown> = {
       model: request.model,
       max_tokens: request.maxTokens ?? 4096,
       stream: true,
-      messages: request.messages.filter((m) => m.role !== 'system').map(toAnthropicMessage),
+      messages,
       ...(system ? { system } : {}),
       ...(request.temperature !== undefined ? { temperature: request.temperature } : {}),
-      ...(request.tools && request.tools.length > 0
-        ? {
-            tools: request.tools.map((t) => ({
-              name: t.name,
-              description: t.description,
-              input_schema: t.parameters,
-            })),
-          }
-        : {}),
+      ...(tools ? { tools } : {}),
       ...(request.providerOptions ?? {}),
     };
 
@@ -216,4 +213,51 @@ function toAnthropicMessage(m: AgentMessage): Record<string, unknown> {
     };
   }
   return { role: m.role, content: m.content };
+}
+
+function buildAnthropicMessages(
+  messages: AgentMessage[],
+  attachments: EncodedAttachment[],
+): Array<Record<string, unknown>> {
+  const encoded = messages.map(toAnthropicMessage);
+  if (attachments.length === 0) return encoded;
+
+  for (let i = encoded.length - 1; i >= 0; i--) {
+    const msg = encoded[i]!;
+    if (msg.role !== 'user') continue;
+    const existing = Array.isArray(msg.content)
+      ? (msg.content as Array<Record<string, unknown>>)
+      : [{ type: 'text', text: String(msg.content ?? '') }];
+    const attachmentBlocks = attachments.map(toAnthropicAttachmentBlock);
+    encoded[i] = { ...msg, content: [...attachmentBlocks, ...existing] };
+    return encoded;
+  }
+
+  encoded.push({ role: 'user', content: attachments.map(toAnthropicAttachmentBlock) });
+  return encoded;
+}
+
+function toAnthropicAttachmentBlock(att: EncodedAttachment): Record<string, unknown> {
+  const blockType = att.isImage ? 'image' : 'document';
+  if (att.source === 'url' && att.url) {
+    return { type: blockType, source: { type: 'url', url: att.url } };
+  }
+  if (att.source === 'id' && att.providerFileId) {
+    return { type: blockType, source: { type: 'file', file_id: att.providerFileId } };
+  }
+  return {
+    type: blockType,
+    source: { type: 'base64', media_type: att.mimeType, data: att.base64 ?? '' },
+  };
+}
+
+function buildAnthropicTools(request: ProviderRequest): Array<Record<string, unknown>> | undefined {
+  const userTools = request.tools?.map((t) => ({
+    name: t.name,
+    description: t.description,
+    input_schema: t.parameters,
+  })) ?? [];
+  const providerTools = (request.providerTools ?? []).map((pt) => pt.toRequest(Lab.Anthropic));
+  const combined = [...userTools, ...providerTools];
+  return combined.length > 0 ? combined : undefined;
 }

@@ -62,14 +62,71 @@ export {
   UseSmartestModel,
   Stateful,
   Scheduled,
+  Queue,
+  Delay,
+  MaxRetries,
+  RetryAfter,
+  Backoff,
+  JobTimeout,
   getAgentConfig,
   getStatefulConfig,
+  getJobConfig,
 } from './decorators.js';
 export type { StatefulConfig } from './decorators.js';
 
 // Tools.
-export type { Tool, ToolRequest } from './tool.js';
-export { createToolRequest, toolToProviderTool } from './tool.js';
+export type { Tool, ToolRequest, ProviderTool } from './tool.js';
+export {
+  createToolRequest,
+  toolToProviderTool,
+  resolveToolName,
+  isProviderTool,
+  partitionTools,
+  UnsupportedProviderToolError,
+  ProviderToolNameCollisionError,
+} from './tool.js';
+
+// Provider-native tools (web search, web fetch, file search).
+export { WebSearch, WebFetch, FileSearch, FileSearchQuery } from './tools/provider-tools/index.js';
+export type {
+  WebSearchLocation,
+  FileSearchFilter,
+  FileSearchOptions,
+} from './tools/provider-tools/index.js';
+
+// Attachments.
+export {
+  StorableFile,
+  Files,
+  Image,
+  Document,
+  AttachmentTooLargeError,
+  FileNotFoundError,
+  setStorageResolver,
+  getStorageResolver,
+  detectMimeType,
+} from './attachments/index.js';
+export type { FileRecord, StorageResolver, ImageDimensions } from './attachments/index.js';
+
+// Queueing bridge.
+export {
+  AgentRegistry,
+  AgentClassNotRegisteredError,
+  InMemoryCallbackRegistry,
+  setCallbackRegistry,
+  getCallbackRegistry,
+  resetCallbackRegistry,
+  PromptAgentJob,
+  QueuedPromptHandle,
+  generatePromptId,
+} from './queueing/index.js';
+export type {
+  CallbackRegistry,
+  PromptCallback,
+  RejectCallback,
+  PromptAgentJobPayload,
+  QueueOptions,
+} from './queueing/index.js';
 
 // Providers.
 export { WorkersAIProvider, CloudflareAIProvider } from './providers/workers-ai.js';
@@ -125,7 +182,7 @@ export type {
   ProviderOptions,
   ProviderRequest,
   ProviderResponse,
-  ProviderTool,
+  ProviderToolConfig,
   StorableFileLike,
   StreamEvent,
   ToolCall,

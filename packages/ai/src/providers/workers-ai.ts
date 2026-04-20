@@ -3,6 +3,7 @@ import type { AIProvider, ProviderCapabilities, EmbedRequest, EmbedResponse } fr
 import type { ProviderRequest, ProviderResponse, StreamEvent } from '../types.js';
 import { Lab } from '../enums.js';
 import { iterateSSELines } from '../streaming/sse-lines.js';
+import { UnsupportedProviderToolError } from '../tool.js';
 
 const CAPS: ProviderCapabilities = {
   name: Lab.WorkersAI,
@@ -22,6 +23,9 @@ export class WorkersAIProvider implements AIProvider {
   }
 
   async chat(request: ProviderRequest): Promise<ProviderResponse> {
+    if (request.providerTools && request.providerTools.length > 0) {
+      throw new UnsupportedProviderToolError(request.providerTools[0]!.name, Lab.WorkersAI);
+    }
     const messages = request.messages.map((m) => ({
       role: m.role as 'system' | 'user' | 'assistant',
       content: m.content,
@@ -48,6 +52,9 @@ export class WorkersAIProvider implements AIProvider {
   }
 
   async *stream(request: ProviderRequest): AsyncIterable<StreamEvent> {
+    if (request.providerTools && request.providerTools.length > 0) {
+      throw new UnsupportedProviderToolError(request.providerTools[0]!.name, Lab.WorkersAI);
+    }
     const messages = request.messages.map((m) => ({
       role: m.role as 'system' | 'user' | 'assistant',
       content: m.content,

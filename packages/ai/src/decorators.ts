@@ -2,6 +2,22 @@ import type { AgentConfig } from './types.js';
 import type { Lab } from './enums.js';
 import { registerScheduledMethod } from './stateful/scheduled-registry.js';
 
+/**
+ * Re-export queueing decorators from `@roostjs/queue` so agent classes can
+ * declare queue metadata with `@Queue('ai-inference')`, `@MaxRetries(3)`,
+ * `@Backoff('exponential')`, etc. These are optional and only resolved at
+ * queue-dispatch time via `getJobConfig(target)`.
+ */
+export {
+  Queue,
+  Delay,
+  MaxRetries,
+  RetryAfter,
+  Backoff,
+  JobTimeout,
+  getJobConfig,
+} from '@roostjs/queue';
+
 const configMap = new WeakMap<Function, AgentConfig>();
 
 /** Decorator-registered `@Stateful({binding})` metadata, keyed by class. */

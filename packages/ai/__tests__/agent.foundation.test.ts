@@ -117,7 +117,7 @@ describe('Agent foundation', () => {
             if (call === 1) {
               return {
                 text: '',
-                toolCalls: [{ id: 'c1', name: 'Calculator', arguments: { a: 2, b: 3 } }],
+                toolCalls: [{ id: 'c1', name: 'calculator', arguments: { a: 2, b: 3 } }],
               };
             }
             return { text: 'final', toolCalls: [] };

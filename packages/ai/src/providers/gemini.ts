@@ -2,6 +2,7 @@ import type { AIProvider, ProviderCapabilities } from './interface.js';
 import type { ProviderRequest, ProviderResponse, AgentMessage, ToolCall, StreamEvent } from '../types.js';
 import { Lab } from '../enums.js';
 import { iterateSSELines } from '../streaming/sse-lines.js';
+import { encodeAll, type EncodedAttachment } from './attachment-encoding.js';
 
 const CAPS: ProviderCapabilities = {
   name: Lab.Gemini,
@@ -41,23 +42,17 @@ export class GeminiProvider implements AIProvider {
     const base = this.config.baseUrl ?? 'https://generativelanguage.googleapis.com';
     const url = `${base}/v1beta/models/${request.model}:generateContent?key=${this.config.apiKey}`;
     const system = request.messages.find((m) => m.role === 'system')?.content;
+    const encodedAttachments = await encodeAll(request.attachments);
+    const contents = buildGeminiContents(
+      request.messages.filter((m) => m.role !== 'system'),
+      encodedAttachments,
+    );
+    const tools = buildGeminiTools(request);
 
     const body: Record<string, unknown> = {
-      contents: request.messages.filter((m) => m.role !== 'system').map(toGeminiContent),
+      contents,
       ...(system ? { systemInstruction: { parts: [{ text: system }] } } : {}),
-      ...(request.tools && request.tools.length > 0
-        ? {
-            tools: [
-              {
-                functionDeclarations: request.tools.map((t) => ({
-                  name: t.name,
-                  description: t.description,
-                  parameters: t.parameters,
-                })),
-              },
-            ],
-          }
-        : {}),
+      ...(tools ? { tools } : {}),
       generationConfig: {
         ...(request.temperature !== undefined ? { temperature: request.temperature } : {}),
         ...(request.maxTokens !== undefined ? { maxOutputTokens: request.maxTokens } : {}),
@@ -101,22 +96,16 @@ export class GeminiProvider implements AIProvider {
     const base = this.config.baseUrl ?? 'https://generativelanguage.googleapis.com';
     const url = `${base}/v1beta/models/${request.model}:streamGenerateContent?alt=sse&key=${this.config.apiKey}`;
     const system = request.messages.find((m) => m.role === 'system')?.content;
+    const encodedAttachments = await encodeAll(request.attachments);
+    const contents = buildGeminiContents(
+      request.messages.filter((m) => m.role !== 'system'),
+      encodedAttachments,
+    );
+    const tools = buildGeminiTools(request);
     const body: Record<string, unknown> = {
-      contents: request.messages.filter((m) => m.role !== 'system').map(toGeminiContent),
+      contents,
       ...(system ? { systemInstruction: { parts: [{ text: system }] } } : {}),
-      ...(request.tools && request.tools.length > 0
-        ? {
-            tools: [
-              {
-                functionDeclarations: request.tools.map((t) => ({
-                  name: t.name,
-                  description: t.description,
-                  parameters: t.parameters,
-                })),
-              },
-            ],
-          }
-        : {}),
+      ...(tools ? { tools } : {}),
       generationConfig: {
         ...(request.temperature !== undefined ? { temperature: request.temperature } : {}),
         ...(request.maxTokens !== undefined ? { maxOutputTokens: request.maxTokens } : {}),
@@ -176,4 +165,51 @@ function toGeminiContent(m: AgentMessage): Record<string, unknown> {
     };
   }
   return { role, parts: [{ text: m.content }] };
+}
+
+function buildGeminiContents(
+  messages: AgentMessage[],
+  attachments: EncodedAttachment[],
+): Array<Record<string, unknown>> {
+  const encoded = messages.map(toGeminiContent);
+  if (attachments.length === 0) return encoded;
+
+  for (let i = encoded.length - 1; i >= 0; i--) {
+    const msg = encoded[i]!;
+    if (msg.role !== 'user') continue;
+    const existingParts = Array.isArray(msg.parts) ? (msg.parts as Array<Record<string, unknown>>) : [];
+    const attachmentParts = attachments.map(toGeminiAttachmentPart);
+    encoded[i] = { ...msg, parts: [...attachmentParts, ...existingParts] };
+    return encoded;
+  }
+
+  encoded.push({ role: 'user', parts: attachments.map(toGeminiAttachmentPart) });
+  return encoded;
+}
+
+function toGeminiAttachmentPart(att: EncodedAttachment): Record<string, unknown> {
+  if (att.source === 'url' && att.url) {
+    return { file_data: { mime_type: att.mimeType, file_uri: att.url } };
+  }
+  if (att.source === 'id' && att.providerFileId) {
+    return { file_data: { mime_type: att.mimeType, file_uri: att.providerFileId } };
+  }
+  return { inline_data: { mime_type: att.mimeType, data: att.base64 ?? '' } };
+}
+
+function buildGeminiTools(request: ProviderRequest): Array<Record<string, unknown>> | undefined {
+  const tools: Array<Record<string, unknown>> = [];
+  if (request.tools && request.tools.length > 0) {
+    tools.push({
+      functionDeclarations: request.tools.map((t) => ({
+        name: t.name,
+        description: t.description,
+        parameters: t.parameters,
+      })),
+    });
+  }
+  for (const pt of request.providerTools ?? []) {
+    tools.push(pt.toRequest(Lab.Gemini));
+  }
+  return tools.length > 0 ? tools : undefined;
 }

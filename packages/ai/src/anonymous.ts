@@ -1,21 +1,26 @@
 import type { schema, SchemaBuilder } from '@roostjs/schema';
 import { Agent } from './agent.js';
-import type { Tool } from './tool.js';
+import type { Tool, ProviderTool } from './tool.js';
 import type { AgentMessage, AgentPromptOptions, PromptResult, ProviderOptions } from './types.js';
 import type { AIProvider } from './providers/interface.js';
 import type { Lab } from './enums.js';
 import type { AgentMiddleware } from './middleware.js';
 import type { Conversational, HasTools, HasStructuredOutput, HasMiddleware, HasProviderOptions } from './contracts.js';
+import type { BackoffStrategy } from '@roostjs/queue';
 
 export interface AgentOptions {
   instructions: string | (() => string);
   name?: string;
   messages?: Iterable<AgentMessage> | (() => Iterable<AgentMessage> | Promise<Iterable<AgentMessage>>);
-  tools?: Tool[] | (() => Tool[]);
+  tools?: Array<Tool | ProviderTool> | (() => Array<Tool | ProviderTool>);
   schema?: (s: typeof schema) => Record<string, SchemaBuilder>;
   middleware?: AgentMiddleware[] | (() => AgentMiddleware[]);
   providerOptions?: (provider: Lab | string) => Record<string, unknown>;
   provider?: AIProvider | Lab | Lab[] | string | string[];
+  /** Queue the anonymous agent's prompts get dispatched to (bypasses the @Queue decorator path). */
+  queue?: string;
+  maxRetries?: number;
+  backoff?: BackoffStrategy;
 }
 
 export interface AnonymousAgent {
@@ -38,7 +43,7 @@ export function agent(options: AgentOptions): AnonymousAgent {
       return typeof options.messages === 'function' ? options.messages() : options.messages;
     }
 
-    tools(): Tool[] {
+    tools(): Array<Tool | ProviderTool> {
       if (options.tools === undefined) return [];
       return typeof options.tools === 'function' ? options.tools() : options.tools;
     }
@@ -59,6 +64,21 @@ export function agent(options: AgentOptions): AnonymousAgent {
 
   // Optional: assign a friendly name (improves error messages + event telemetry)
   if (options.name) Object.defineProperty(AnonAgent, 'name', { value: options.name });
+
+  // Anonymous agents cannot use decorators, so carry queue config via options.
+  if (options.queue || options.maxRetries !== undefined || options.backoff) {
+    const cfg = ((AnonAgent as unknown as { _jobConfig?: Record<string, unknown> })._jobConfig ??= {
+      queue: 'default',
+      maxRetries: 3,
+      retryAfter: 60,
+      delay: 0,
+      backoff: 'fixed',
+      timeout: 0,
+    });
+    if (options.queue) cfg.queue = options.queue;
+    if (options.maxRetries !== undefined) cfg.maxRetries = options.maxRetries;
+    if (options.backoff) cfg.backoff = options.backoff;
+  }
 
   const instance = new AnonAgent();
 

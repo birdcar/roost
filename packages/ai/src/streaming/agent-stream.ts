@@ -1,4 +1,4 @@
-import type { Tool } from '../tool.js';
+import type { Tool, ProviderTool } from '../tool.js';
 import type {
   AgentConfig,
   AgentMessage,
@@ -10,7 +10,7 @@ import type { AIProvider } from '../providers/interface.js';
 import type { Lab } from '../enums.js';
 import type { AgentPrompt } from '../prompt.js';
 import { resolveModel } from '../capability-table.js';
-import { toolToProviderTool } from '../tool.js';
+import { toolToProviderTool, partitionTools } from '../tool.js';
 import { hasTools, hasProviderOptions, isConversational } from '../contracts.js';
 import { dispatchEvent, StreamingAgent } from '../events.js';
 
@@ -53,15 +53,17 @@ export async function* buildAgentStream(input: AgentStreamInput): AsyncIterable<
     { role: 'user', content: prompt.prompt },
   ];
 
-  const tools: Tool[] = hasTools(agent) ? agent.tools() : [];
-  const providerTools = tools.map(toolToProviderTool);
+  const allTools: Array<Tool | ProviderTool> = hasTools(agent) ? agent.tools() : [];
+  const { userTools, providerTools: nativeProviderTools } = partitionTools(allTools);
+  const encodedTools = userTools.map(toolToProviderTool);
   const providerOptions = collectProviderOptions(agent, provider, prompt.options);
 
   try {
     yield* provider.stream({
       model,
       messages,
-      tools: providerTools.length > 0 ? providerTools : undefined,
+      tools: encodedTools.length > 0 ? encodedTools : undefined,
+      providerTools: nativeProviderTools.length > 0 ? nativeProviderTools : undefined,
       maxTokens: config.maxTokens,
       temperature: config.temperature,
       providerOptions,

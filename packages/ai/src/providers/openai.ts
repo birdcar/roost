@@ -2,6 +2,7 @@ import type { AIProvider, ProviderCapabilities, EmbedRequest, EmbedResponse } fr
 import type { ProviderRequest, ProviderResponse, AgentMessage, ToolCall, StreamEvent } from '../types.js';
 import { Lab } from '../enums.js';
 import { iterateSSELines } from '../streaming/sse-lines.js';
+import { encodeAll, type EncodedAttachment } from './attachment-encoding.js';
 
 const CAPS: ProviderCapabilities = {
   name: Lab.OpenAI,
@@ -45,19 +46,15 @@ export class OpenAIProvider implements AIProvider {
 
   async chat(request: ProviderRequest): Promise<ProviderResponse> {
     const url = `${this.config.baseUrl ?? 'https://api.openai.com'}/v1/chat/completions`;
+    const encodedAttachments = await encodeAll(request.attachments);
+    const messages = buildOpenAIMessages(request.messages, encodedAttachments);
+    const tools = buildOpenAITools(request);
     const body: Record<string, unknown> = {
       model: request.model,
-      messages: request.messages.map(toOpenAIMessage),
+      messages,
       ...(request.temperature !== undefined ? { temperature: request.temperature } : {}),
       ...(request.maxTokens !== undefined ? { max_tokens: request.maxTokens } : {}),
-      ...(request.tools && request.tools.length > 0
-        ? {
-            tools: request.tools.map((t) => ({
-              type: 'function',
-              function: { name: t.name, description: t.description, parameters: t.parameters },
-            })),
-          }
-        : {}),
+      ...(tools ? { tools } : {}),
       ...(request.providerOptions ?? {}),
     };
 
@@ -91,21 +88,17 @@ export class OpenAIProvider implements AIProvider {
 
   async *stream(request: ProviderRequest): AsyncIterable<StreamEvent> {
     const url = `${this.config.baseUrl ?? 'https://api.openai.com'}/v1/chat/completions`;
+    const encodedAttachments = await encodeAll(request.attachments);
+    const messages = buildOpenAIMessages(request.messages, encodedAttachments);
+    const tools = buildOpenAITools(request);
     const body: Record<string, unknown> = {
       model: request.model,
-      messages: request.messages.map(toOpenAIMessage),
+      messages,
       stream: true,
       stream_options: { include_usage: true },
       ...(request.temperature !== undefined ? { temperature: request.temperature } : {}),
       ...(request.maxTokens !== undefined ? { max_tokens: request.maxTokens } : {}),
-      ...(request.tools && request.tools.length > 0
-        ? {
-            tools: request.tools.map((t) => ({
-              type: 'function',
-              function: { name: t.name, description: t.description, parameters: t.parameters },
-            })),
-          }
-        : {}),
+      ...(tools ? { tools } : {}),
       ...(request.providerOptions ?? {}),
     };
 
@@ -191,6 +184,59 @@ function toOpenAIMessage(m: AgentMessage): Record<string, unknown> {
     return { role: 'tool', content: m.content, tool_call_id: m.toolCallId };
   }
   return { role: m.role, content: m.content };
+}
+
+function buildOpenAIMessages(
+  messages: AgentMessage[],
+  attachments: EncodedAttachment[],
+): Array<Record<string, unknown>> {
+  const encoded = messages.map(toOpenAIMessage);
+  if (attachments.length === 0) return encoded;
+
+  for (let i = encoded.length - 1; i >= 0; i--) {
+    const msg = encoded[i]!;
+    if (msg.role !== 'user') continue;
+    const existing = typeof msg.content === 'string'
+      ? [{ type: 'text', text: msg.content }]
+      : Array.isArray(msg.content)
+        ? (msg.content as Array<Record<string, unknown>>)
+        : [];
+    const attachmentParts = attachments.map(toOpenAIAttachmentPart);
+    encoded[i] = { ...msg, content: [...attachmentParts, ...existing] };
+    return encoded;
+  }
+
+  encoded.push({ role: 'user', content: attachments.map(toOpenAIAttachmentPart) });
+  return encoded;
+}
+
+function toOpenAIAttachmentPart(att: EncodedAttachment): Record<string, unknown> {
+  if (att.isImage) {
+    if (att.source === 'url' && att.url) {
+      return { type: 'image_url', image_url: { url: att.url } };
+    }
+    if (att.source === 'id' && att.providerFileId) {
+      return { type: 'image_url', image_url: { url: att.providerFileId } };
+    }
+    return { type: 'image_url', image_url: { url: `data:${att.mimeType};base64,${att.base64 ?? ''}` } };
+  }
+  if (att.source === 'id' && att.providerFileId) {
+    return { type: 'file', file: { file_id: att.providerFileId } };
+  }
+  return {
+    type: 'file',
+    file: { filename: att.name, file_data: `data:${att.mimeType};base64,${att.base64 ?? ''}` },
+  };
+}
+
+function buildOpenAITools(request: ProviderRequest): Array<Record<string, unknown>> | undefined {
+  const userTools = request.tools?.map((t) => ({
+    type: 'function',
+    function: { name: t.name, description: t.description, parameters: t.parameters },
+  })) ?? [];
+  const providerTools = (request.providerTools ?? []).map((pt) => pt.toRequest(Lab.OpenAI));
+  const combined = [...userTools, ...providerTools];
+  return combined.length > 0 ? combined : undefined;
 }
 
 function safeParse(raw: string): Record<string, unknown> {
