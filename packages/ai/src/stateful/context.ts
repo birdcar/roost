@@ -11,6 +11,12 @@ export interface AgentContextSlot<A = unknown> {
   connection: unknown | undefined;
   request: Request | undefined;
   email: unknown | undefined;
+  /**
+   * When a workflow step is currently executing, its handle is exposed here so
+   * agent code invoked from inside the workflow can reach it via
+   * `getCurrentAgent().workflowStep` without plumbing it through every call.
+   */
+  workflowStep?: unknown;
 }
 
 const als = new AsyncLocalStorage<AgentContextSlot<unknown>>();
@@ -28,6 +34,7 @@ export function runInAgentContext<A, T>(
     connection: slot.connection,
     request: slot.request,
     email: slot.email,
+    workflowStep: slot.workflowStep,
   };
   return als.run(full as AgentContextSlot<unknown>, fn);
 }
@@ -39,6 +46,13 @@ export function runInAgentContext<A, T>(
  */
 export function getCurrentAgent<A = unknown>(): AgentContextSlot<A> {
   const slot = als.getStore();
-  if (!slot) return { agent: undefined, connection: undefined, request: undefined, email: undefined };
+  if (!slot)
+    return {
+      agent: undefined,
+      connection: undefined,
+      request: undefined,
+      email: undefined,
+      workflowStep: undefined,
+    };
   return slot as AgentContextSlot<A>;
 }

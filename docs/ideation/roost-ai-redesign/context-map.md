@@ -1,10 +1,69 @@
 # Context Map: roost-ai-redesign
 
-**Phase**: 6 (Media: Image + Audio + Transcription)
-**Scout Confidence**: 74/100
-**Verdict**: GO
+**Phase**: 7 (Workflows + Sub-agents + MCP)
+**Scout Confidence**: 82/100
+**Verdict**: GO (inline exploration — scout subagent rejected)
 
-## Dimensions (Phase 6)
+## Dimensions (Phase 7)
+
+| Dimension | Score | Notes |
+|---|---|---|
+| Scope clarity | 17/20 | Spec is explicit: Workflows via `@roostjs/workflow` Workflow base (not raw CF `WorkflowEntrypoint`), sub-agents via Roost-native `DurableObjectClient` RPC, MCP via `@modelcontextprotocol/sdk` TypeScript client. `@modelcontextprotocol/sdk` is NOT yet installed — must be added. |
+| Pattern familiarity | 16/20 | `WorkflowClient` at `packages/workflow/src/client.ts`, `Workflow` abstract at `packages/workflow/src/workflow.ts:7-34`, `DurableObjectClient` at `packages/cloudflare/src/bindings/durable-objects.ts:1-25`. Existing `packages/mcp/` is a standalone server package (NOT consumed by @roostjs/ai) — our `/mcp` subpath is separate. |
+| Dependency awareness | 16/20 | `StatefulAgent` consumed by `packages/ai/__tests__/stateful/*.test.ts`. `decorators.ts` consumed broadly. `provider.ts` has its own validation logic — must not break stateful validation. |
+| Edge case coverage | 15/20 | Gaps: (1) `run()` wrapper for workflow method must allow `step` injection via symbol-keyed first arg — CF runtime calls `run(event, step)`. (2) Sub-agent RPC must reject non-public methods. (3) MCP tool adapter — JSON Schema subset is `type/properties/required` — SchemaBuilder exposes `object/string/number/array`. |
+| Test strategy | 18/20 | `TestStatefulAgentHarness` + `MockDurableObjectState` allow full unit tests without miniflare. `bun:test` with `describe/it/expect`. Miniflare integration exists but deferred in P7 per scope. |
+
+## Key Patterns (Phase 7)
+
+- `packages/workflow/src/workflow.ts:7-34` — `Workflow<Env, TParams> extends WorkflowEntrypoint` abstract with `run(event, step)`; static `fake/restore/assertCreated` keyed by WeakMap. Used as base for `AgentMethodWorkflow`.
+- `packages/workflow/src/client.ts:4-37` — `WorkflowClient<TParams>` wraps CF `Workflow<TParams>` binding, exposes `create/get/terminate` returning `WorkflowInstanceHandle`.
+- `packages/workflow/src/testing.ts:1-37` — `WorkflowFake` with `assertCreated/assertNotCreated`.
+- `packages/workflow/src/compensable.ts:1-22` — LIFO compensation registry for workflow steps.
+- `packages/cloudflare/src/bindings/durable-objects.ts:1-25` — `DurableObjectClient.get(string | id)` returns stub. Used for sub-agent RPC.
+- `packages/ai/src/stateful/agent.ts:198-210` — `fetch()` / `onRequest()` pattern. Extend `onRequest()` to recognize `/_/rpc`, `/_/abort`, `/_/delete` BEFORE user dispatch.
+- `packages/ai/src/decorators.ts:1-162` — WeakMap-keyed decorator registries (configMap, statefulMap, statefulClasses). Add @Workflow/@WorkflowStep/@SubAgentCapable following same pattern.
+- `packages/ai/src/tool.ts:9-18` — `Tool` interface: `name?/description/schema/handle`. Tool factory `toolFromMcp` must return object satisfying this shape.
+- `packages/ai/src/testing/stateful-harness.ts:28-130` — `TestStatefulAgentHarness.for(Agent).build()` pattern; returns `{agent, cleanup, advance, setNow, state}`.
+- `packages/ai/src/testing/mock-do-state.ts:90-144` — `MockDurableObjectState` implements `StatefulAgentCtx` minus the socket/alarm features not needed for P7 tests.
+- `packages/ai/src/tools/provider-tools/` — sibling tools dir for Tool shape references.
+
+## Dependencies (Phase 7)
+
+- `packages/ai/src/stateful/agent.ts` — modify `onRequest()` to add control-plane routes; add `subAgent()` helper method, `workflows` accessor (Map of binding name → WorkflowClient), `abort` hook to `AbortController`. Consumers: `packages/ai/__tests__/stateful/agent.test.ts`, `packages/ai/__tests__/streaming/`, `packages/ai/__tests__/integration/stateful-agent.miniflare.test.ts`.
+- `packages/ai/src/decorators.ts` — add `@Workflow`, `@WorkflowStep`, `@SubAgentCapable`. Consumers: user agent classes; test files in `__tests__/decorators.test.ts`.
+- `packages/ai/src/provider.ts` — extend `AiServiceProvider` to register WorkflowClient factories per `@Workflow` binding and MCP portals config. Consumer: integration flow.
+- `packages/ai/src/stateful/context.ts` — `getCurrentAgent()` already exists; extend `AgentContextSlot` to include optional `workflowStep` for step-inside-workflow access.
+- `packages/ai/src/tool.ts` — add `Tool.fromMcp(mcpTool)` factory (spec says function, not method — implement as `toolFromMcp` imported from `mcp/tool-adapter.ts`).
+- `packages/ai/package.json` — add `@modelcontextprotocol/sdk` dep; `./mcp` subpath already declared. Add `@roostjs/workflow` to deps (currently peer).
+
+## Conventions (Phase 7)
+
+- **Naming**: Classes `PascalCase`; files `kebab-case.ts`; tests `{feature}.test.ts` under `__tests__/{subsys}/`.
+- **Imports**: Relative + `.js` extension (NodeNext). `import type { X }` for type-only. Reference `@roostjs/cloudflare`/`@roostjs/workflow` via workspace deps.
+- **Barrel files**: Project uses them — `mcp/index.ts`, `workflows/index.ts` OK.
+- **Error handling**: Typed errors extending `Error` with `override readonly name = 'X'`. See `MissingScheduledMethodError`, `NoProviderRegisteredError`.
+- **Types**: Discriminated unions for variants. WeakMap-keyed metadata on constructor for decorators.
+- **Testing**: `bun:test` with `describe/it/expect/beforeEach/afterEach`.
+- **Decorators**: Class decorators set in WeakMap against the constructor; method decorators receive `(target, propertyKey, descriptor)` where `target` is the prototype; we resolve via `target.constructor`.
+- **Typed RPC via Proxy**: JavaScript `Proxy` with `get` trap, returning closures that encode `{method, args}` JSON.
+
+## Risks (Phase 7)
+
+- **CF SDK `agents` dependency still present in package.json** (MEDIUM): Spec says NOT to add but it was already added by earlier phases. Do not remove; don't depend on.
+- **`@modelcontextprotocol/sdk` install** (MEDIUM): Not currently installed. Must add pinned version. Protocol types/client class may differ across versions — guard against unpinned bumps.
+- **Workflow step-context injection** (HIGH): CF `WorkflowEntrypoint.run(event, step)` is called by the runtime — we cannot intercept. Our `AgentMethodWorkflow.run()` must call the original agent method with `step` injected via a well-known symbol on the args tuple so the method can access it via `getStep()` helper.
+- **`WorkflowClient` binding resolution** (HIGH): Spec code snippet references `this.workflows.get(bindingName)` — but no such accessor exists on `StatefulAgent`. We'll add `this.workflows` as a `Map<string, WorkflowClient>` populated via registration helper. In tests, we use the `WorkflowFake` through `FakeWorkflowClient` or a minimal Map stub.
+- **Sub-agent circular spawn** (MEDIUM): Spec says cap depth at 5. Track depth via header `x-roost-sub-agent-depth` on RPC request.
+- **Abort semantics** (MEDIUM): `AbortController` on `StatefulAgent` must be checked by `prompt/stream` — P2 code doesn't do this yet. Add `this.abortSignal` accessor; leave actual checking to callers (document).
+- **MCP transport in Workers** (LOW): Streamable-HTTP preferred. SSE + stdio present but stub-level in Workers.
+- **Tool name collision via MCP** (LOW): When `toolFromMcp` imports a tool whose name collides with existing, emit warning.
+
+---
+
+## Retained — Phase 6 Sections
+
+### Dimensions (Phase 6)
 
 | Dimension | Score | Notes |
 |---|---|---|
@@ -14,7 +73,7 @@
 | Edge case coverage | 14/20 | Gaps: R2 bucket binding validation, `UnsupportedOptionDropped` event missing, `.queue().then()` callback TTL in-memory only. |
 | Test strategy | 15/20 | `packages/ai/__tests__/media/` doesn't exist yet. Fixtures needed. Miniflare patterns established. |
 
-## Key Patterns (Phase 6)
+### Key Patterns (Phase 6)
 
 - `packages/ai/src/rag/reranking/reranking.ts:51-119` — `RerankingBuilder` + static `Reranking.of/.fake/.restore/.assertReranked` namespace.
 - `packages/ai/src/rag/files/files.ts:16-46` — `FilesFake` counter + `stored[]` + `deleted[]` + `records` Map pattern.
@@ -24,81 +83,11 @@
 - `packages/ai/src/agent.ts:407-448` — `dispatchQueuedPrompt` fake-shortcut + job dispatch pattern.
 - `packages/ai/src/providers/openai.ts:154-170` — `async embed(req): Promise<EmbedResponse>` HTTP template.
 - `packages/ai/src/events.ts:27-45, 69-77, 99-117` — Event class pattern.
-- `packages/ai/src/providers/attachment-encoding.ts:25-46` — `encodeAttachment` + `encodeAll` reusable for Image.
-- `packages/ai/src/testing/fakes.ts:29-92` — `AgentFake` template.
-- `packages/ai/src/testing/assertions.ts:11-77` — assertion helpers.
-- `packages/ai/src/prompt.ts:11-35` — `AgentPrompt` value object.
-- `packages/cloudflare/src/bindings/r2.ts:1-27` — `R2Storage.put/get/delete/list/head`.
 
-## Dependencies (Phase 6)
+## Retained — Phase 5, 4, 3, 2, 1 Sections
 
-- `packages/ai/src/providers/interface.ts:45-52` — extend `AIProvider` with optional `image?`, `audio?`, `transcribe?`.
-- `packages/ai/src/providers/workers-ai.ts:8-14` (CAPS), `:25-99` — add `image()` (flux), `audio()` (melotts), `transcribe()` (whisper).
-- `packages/ai/src/providers/openai.ts:7-13` (CAPS) — add `image()`, `audio()`, `transcribe()`.
-- `packages/ai/src/providers/gemini.ts` — add `image()` (Imagen).
-- `packages/ai/src/providers/anthropic.ts` — no native media; skip.
-- `packages/ai/src/providers/failover.ts:18-62` — extend with `image?/audio?/transcribe?` methods.
-- `packages/ai/src/media/index.ts` — replace stub with re-exports.
-- `packages/ai/src/events.ts` — add 6 media event re-exports.
-- `packages/ai/src/testing/index.ts` — re-export media fakes/assertions.
-- `packages/ai/package.json` — add `./media/image`, `./media/audio`, `./media/transcription` subpaths.
-
-## Conventions (Phase 6)
-
-- **Naming**: Classes `PascalCase`; files `kebab-case.ts`; tests `{feature}.test.ts` under `__tests__/media/{mediaName}/`.
-- **Imports**: Relative + `.js` extension (NodeNext). `import type { X }` for type-only. Dynamic imports for optional deps.
-- **Barrel files**: Project uses them — `media/index.ts` and sub-barrels OK.
-- **Error handling**: Typed errors extending `Error` with `override readonly name = 'X'`.
-- **Types**: Discriminated unions for source tracking.
-- **Testing**: `bun:test` with `describe/it/expect/beforeEach/afterEach/spyOn`.
-- **Events**: `extends Event` from `@roostjs/events`. `dispatchEvent(EventCtor, new EventCtor(...))`.
-- **Builder fluency**: Every fluent method returns `this`. Terminals `generate()` + `queue()`. `timeout(seconds)` on every builder.
-
-## Risks (Phase 6)
-
-- **`CapabilityNotSupportedError` undefined** (HIGH): Add to `packages/ai/src/providers/interface.ts`.
-- **`FailoverProvider` media support** (HIGH): Only forwards `chat()` — needs `image()/audio()/transcribe()` methods.
-- **R2 public URL wiring** (HIGH): No precedent — add config key `ai.r2.publicUrl`.
-- **`handleId` vs `promptId`** (MEDIUM): Callback registry typed to `AgentResponse` — generalize with generic or coerce.
-- **Transcription no `.store()` helpers** (MEDIUM): Document subclass divergence.
-- **Workers AI TTS model churn** (MEDIUM): Lock ID behind capability check.
-- **`UnsupportedOptionDropped` event** (LOW): Add to media events.
-- **Callback registry in-memory only** (LOW): Document; KV-backed registry future work.
-
----
-
-## Retained — Phase 5 Sections
-
-### Dimensions (Phase 5)
-
-| Dimension | Score | Notes |
-|---|---|---|
-| Scope clarity | 14/20 | 17 new files + 7 modified. |
-| Pattern familiarity | 15/20 | `RAGPipeline.fake()/restore()/assertIngested()/assertQueried()` at `pipeline.ts:93-132`. |
-| Dependency awareness | 13/20 | `@roostjs/orm` lacks `whereVectorSimilarTo` — inlined. |
-| Edge case coverage | 14/20 | Gaps: empty docs array in Reranking; concurrent `Stores.create` idempotency. |
-| Test strategy | 14/20 | `__tests__/rag/` + Miniflare 4 integration. |
-
-### Key Patterns (Phase 5)
-
-- `packages/ai/src/rag/pipeline.ts:8-14, 93-132` — canonical `RAGPipeline.fake()/restore()/assertIngested()/assertQueried()`.
-- `packages/cloudflare/src/bindings/kv.ts:41-47` — `put(key, value, {expirationTtl})` with 30-day default.
-- `packages/ai/src/providers/openai.ts:154-170` — `embed(EmbedRequest): EmbedResponse` fetch pattern.
-- `packages/ai/src/providers/interface.ts:4-16` — `ProviderCapability` union.
-- `packages/ai/src/providers/gateway.ts:55-97` — Gateway routing pattern.
-
-## Retained — Phase 4 Sections
-
-### Key Patterns (Phase 4)
-
-- `packages/ai/src/streaming/broadcast-stream-job.ts` — PromptAgentJob template.
-- `packages/queue/src/job.ts` (7-30) — Job<TPayload> dispatch API.
-- `packages/queue/src/decorators.ts` (4-33) — canonical @Queue/@MaxRetries decorator pattern.
-- `packages/ai/src/tool.ts` — Tool.name() kebab-case default.
-- `packages/ai/src/testing/fakes.ts` — AgentFake.recordQueued pattern.
-
-## Retained — Phase 3, 2, 1 Sections
-
+Phase 5 — RAG + Files + Stores + Reranking.
+Phase 4 — Tools + Attachments + Queueing.
 Phase 3 — Streaming + realtime + React client.
 Phase 2 — Stateful agents on DOs.
 Phase 1 — Foundation rewrite.

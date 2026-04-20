@@ -49,16 +49,17 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "1.22.0",
     "@roostjs/cloudflare": "workspace:*",
     "@roostjs/core": "workspace:*",
     "@roostjs/events": "workspace:*",
     "@roostjs/schema": "workspace:*",
+    "@roostjs/workflow": "workspace:*",
     "agents": "0.11.2"
   },
   "peerDependencies": {
     "@roostjs/broadcast": "workspace:*",
     "@roostjs/queue": "workspace:*",
-    "@roostjs/workflow": "workspace:*",
     "react": "catalog:"
   },
   "peerDependenciesMeta": {
@@ -66,9 +67,6 @@
       "optional": true
     },
     "@roostjs/queue": {
-      "optional": true
-    },
-    "@roostjs/workflow": {
       "optional": true
     },
     "react": {

@@ -1,6 +1,7 @@
 import type { AgentConfig } from './types.js';
 import type { Lab } from './enums.js';
 import { registerScheduledMethod } from './stateful/scheduled-registry.js';
+export { Workflow } from './workflows/workflow-method.js';
 
 /**
  * Re-export queueing decorators from `@roostjs/queue` so agent classes can
@@ -159,4 +160,46 @@ export function Scheduled(cron: string) {
     const ctor = (target as { constructor: Function }).constructor;
     registerScheduledMethod(ctor, propertyKey, cron);
   };
+}
+
+/* ------------------------------ Phase 7: @WorkflowStep / @SubAgentCapable ----------------------------- */
+
+const workflowStepRegistry = new WeakMap<Function, Set<string>>();
+
+/**
+ * Mark a method as a named workflow step. Does not rewrite the method — it
+ * records the step identifier so tooling can cross-reference `step.do()` calls
+ * against declared steps.
+ */
+export function WorkflowStep(name?: string) {
+  return (target: object, propertyKey: string, _descriptor: PropertyDescriptor) => {
+    const ctor = (target as { constructor: Function }).constructor;
+    let set = workflowStepRegistry.get(ctor);
+    if (!set) {
+      set = new Set<string>();
+      workflowStepRegistry.set(ctor, set);
+    }
+    set.add(name ?? propertyKey);
+  };
+}
+
+export function getWorkflowSteps(target: Function): ReadonlySet<string> {
+  return workflowStepRegistry.get(target) ?? new Set();
+}
+
+const subAgentCapableClasses = new Set<Function>();
+
+/**
+ * Mark an agent class as capable of spawning sub-agents. Advisory; runtime
+ * sub-agent spawning works regardless, but this flag drives docs / tooling
+ * warnings when misused.
+ */
+export function SubAgentCapable() {
+  return (target: Function) => {
+    subAgentCapableClasses.add(target);
+  };
+}
+
+export function isSubAgentCapable(target: Function): boolean {
+  return subAgentCapableClasses.has(target);
 }

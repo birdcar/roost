@@ -11,6 +11,9 @@ import { ProviderRegistry } from './providers/registry.js';
 import { Agent } from './agent.js';
 import { Lab } from './enums.js';
 import { _iterateStatefulClasses, getStatefulConfig } from './decorators.js';
+import { AgentWorkflowClient } from './workflows/workflow-client.js';
+import { getWorkflowRegistrations } from './workflows/workflow-method.js';
+import type { McpConnectOptions } from './mcp/types.js';
 
 export class MissingDurableObjectBindingError extends Error {
   override readonly name = 'MissingDurableObjectBindingError';
@@ -50,7 +53,37 @@ export class AiServiceProvider extends ServiceProvider {
     Agent.setProvider(chain);
 
     this.validateStatefulBindings();
+    this.registerWorkflowClients();
+    this.registerMcpPortals();
     this.probeQueueBridge();
+  }
+
+  /**
+   * Register a `WorkflowClient` factory for every `@Workflow`-decorated method
+   * discovered in the registry. Each factory resolves the declared Workflow
+   * binding from the app config and wraps it in `AgentWorkflowClient`.
+   */
+  private registerWorkflowClients(): void {
+    const container = this.app.container as { has?: (key: string) => boolean; singleton: (key: string, f: (c: unknown) => unknown) => void };
+    for (const [bindingName] of getWorkflowRegistrations()) {
+      const key = `workflow:${bindingName}`;
+      if (container.has?.(key)) continue;
+      container.singleton(key, (c) => {
+        const binding = (c as { resolve<T>(token: string): T }).resolve<unknown>(bindingName);
+        return AgentWorkflowClient.fromBinding(binding as Workflow<unknown>);
+      });
+    }
+  }
+
+  /**
+   * Pre-register MCP portal configuration. Users declare portals under
+   * `ai.mcp.portals` in their application config; this method wires the config
+   * through the container so handlers resolve it without re-reading.
+   */
+  private registerMcpPortals(): void {
+    const portals = this.configOrNull<Array<{ prefix: string; connect: McpConnectOptions }>>('ai.mcp.portals');
+    if (!portals || portals.length === 0) return;
+    this.app.container.singleton('ai.mcp.portals', () => portals);
   }
 
   private probeQueueBridge(): void {

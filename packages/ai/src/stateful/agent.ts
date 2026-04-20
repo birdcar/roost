@@ -3,6 +3,18 @@ import type { AgentResponse } from '../responses/agent-response.js';
 import type { AIProvider } from '../providers/interface.js';
 import type { FakeResolver } from '../testing/fakes.js';
 import { AgentFake } from '../testing/fakes.js';
+import type { AgentWorkflowClient } from '../workflows/workflow-client.js';
+import { subAgent as spawnSubAgent, type SubAgentInit } from '../sub-agents/sub-agent.js';
+import type { SubAgentHandle } from '../sub-agents/typed-rpc.js';
+import {
+  SUB_AGENT_DEPTH_HEADER,
+  SUB_AGENT_MAX_DEPTH,
+  SubAgentDepthExceededError,
+  SubAgentRpcError,
+  type SubAgentRpcEnvelope,
+} from '../sub-agents/typed-rpc.js';
+import { McpClient } from '../mcp/client.js';
+import type { McpConnectOptions } from '../mcp/types.js';
 import {
   assertPrompted as assertPromptedImpl,
   assertNotPrompted as assertNotPromptedImpl,
@@ -48,6 +60,19 @@ export interface StatefulAgentCtx extends SessionsStateLike {
 const fakes = new WeakMap<Function, AgentFake>();
 const providers = new WeakMap<Function, AIProvider>();
 
+const RESERVED_RPC_METHODS = new Set([
+  'constructor',
+  'fetch',
+  'onRequest',
+  'onConnect',
+  'onMessage',
+  'alarm',
+  'webSocketMessage',
+  'webSocketClose',
+  'webSocketError',
+  'handleControlPlaneRoute',
+]);
+
 /**
  * `StatefulAgent` — base class for agents that run on a Durable Object and
  * persist conversation state. Follows the Roost DO convention established by
@@ -64,8 +89,15 @@ export abstract class StatefulAgent<Env = unknown> {
   readonly _ctx: StatefulAgentCtx;
   readonly env: Env;
 
+  /** Workflow clients keyed by binding name. Populated via `registerWorkflowClient()`. */
+  readonly workflows = new Map<string, AgentWorkflowClient<unknown>>();
+
+  /** @internal — set by sub-agent dispatch so nested spawns know their depth. */
+  _subAgentDepth = 0;
+
   private _sessions?: Sessions;
   private _scheduler?: Scheduler;
+  private _abortController?: AbortController;
 
   constructor(ctx: StatefulAgentCtx, env: Env) {
     this._ctx = ctx;
@@ -196,6 +228,12 @@ export abstract class StatefulAgent<Env = unknown> {
   /* ---------------------------- DO entrypoints ---------------------------- */
 
   async fetch(request: Request): Promise<Response> {
+    const url = new URL(request.url);
+    if (request.method === 'POST' && url.pathname.startsWith('/_/')) {
+      return runInAgentContext({ agent: this, request }, async () =>
+        this.handleControlPlaneRoute(url.pathname, request),
+      );
+    }
     return runInAgentContext({ agent: this, request }, async () => this.onRequest(request));
   }
 
@@ -207,6 +245,96 @@ export abstract class StatefulAgent<Env = unknown> {
       return Response.json(response);
     }
     return new Response('Not Found', { status: 404 });
+  }
+
+  /**
+   * Handle control-plane routes consumed by sub-agent RPC. Runs from `fetch()`
+   * before any subclass `onRequest()` override so callers cannot shadow these
+   * endpoints.
+   */
+  private async handleControlPlaneRoute(pathname: string, request: Request): Promise<Response> {
+    const depthHeader = request.headers.get(SUB_AGENT_DEPTH_HEADER);
+    const depth = depthHeader === null ? 0 : Number(depthHeader);
+    if (!Number.isFinite(depth) || depth < 0) {
+      return new Response(`Invalid ${SUB_AGENT_DEPTH_HEADER} header`, { status: 400 });
+    }
+    if (depth > SUB_AGENT_MAX_DEPTH) {
+      return new Response(new SubAgentDepthExceededError(depth, SUB_AGENT_MAX_DEPTH).message, { status: 429 });
+    }
+    this._subAgentDepth = depth;
+
+    if (pathname === '/_/abort') {
+      this._abortController?.abort();
+      return new Response(null, { status: 204 });
+    }
+    if (pathname === '/_/delete') {
+      this._abortController?.abort();
+      await this._ctx.storage.deleteAll?.();
+      return new Response(null, { status: 204 });
+    }
+    if (pathname === '/_/rpc') {
+      let envelope: SubAgentRpcEnvelope;
+      try {
+        envelope = (await request.json()) as SubAgentRpcEnvelope;
+      } catch {
+        return new Response('Invalid JSON body', { status: 400 });
+      }
+      if (envelope.v !== 1 || typeof envelope.method !== 'string') {
+        return new Response('Unsupported RPC envelope', { status: 400 });
+      }
+      if (envelope.method.startsWith('_') || RESERVED_RPC_METHODS.has(envelope.method)) {
+        return new Response(
+          new SubAgentRpcError(404, `Method '${envelope.method}' is not callable`).message,
+          { status: 404 },
+        );
+      }
+      const fn = (this as unknown as Record<string, unknown>)[envelope.method];
+      if (typeof fn !== 'function') {
+        return new Response(`Method '${envelope.method}' not found`, { status: 404 });
+      }
+      const args = Array.isArray(envelope.args) ? envelope.args : [];
+      const result = await (fn as (...p: unknown[]) => unknown).apply(this, args);
+      return new Response(JSON.stringify(result ?? null), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    return new Response('Not Found', { status: 404 });
+  }
+
+  /* --------------------------- Sub-agent helpers --------------------------- */
+
+  /**
+   * Spawn a typed sub-agent handle. Method calls on the handle proxy over
+   * `fetch` to the child DO's control-plane RPC route.
+   */
+  subAgent<A extends StatefulAgent>(
+    AgentClass: new (...args: unknown[]) => A,
+    init?: SubAgentInit,
+  ): SubAgentHandle<A> {
+    return spawnSubAgent(this, AgentClass, init);
+  }
+
+  /**
+   * Connect to a remote MCP server, discovering tools/resources/prompts for
+   * injection into this agent's tool set.
+   */
+  mcpClient(opts: McpConnectOptions): Promise<McpClient> {
+    return McpClient.connect(opts);
+  }
+
+  /**
+   * Register a workflow client under `bindingName`. Wire this at provider-boot
+   * time — see `AiServiceProvider.registerAgentWorkflow`.
+   */
+  registerWorkflowClient(bindingName: string, client: AgentWorkflowClient<unknown>): void {
+    this.workflows.set(bindingName, client);
+  }
+
+  /** `AbortController` signalled when a sub-agent `/_/abort` lands. */
+  get abortSignal(): AbortSignal {
+    if (!this._abortController) this._abortController = new AbortController();
+    return this._abortController.signal;
   }
 
   /** WebSocket lifecycle stubs — fleshed out in Phase 3 (Streaming + Realtime). */

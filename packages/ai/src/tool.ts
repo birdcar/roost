@@ -86,6 +86,18 @@ export function isProviderTool(value: unknown): value is ProviderTool {
 }
 
 /**
+ * Tool factories. Namespaced as `Tool.fromMcp(client, descriptor)` so consumers
+ * can inject a discovered MCP tool into any agent's `tools()` list without
+ * importing from the `@roostjs/ai/mcp` subpath directly.
+ */
+export const Tool = {
+  async fromMcp(client: import('./mcp/client.js').McpClient, descriptor: import('./mcp/types.js').McpToolDescriptor): Promise<Tool> {
+    const mod = await import('./mcp/tool-adapter.js');
+    return mod.toolFromMcp(client, descriptor);
+  },
+};
+
+/**
  * Split a mixed tool array into user-defined tools (run by our tool loop) and
  * provider-native tools (encoded as request markers). Rejects collisions where
  * a user tool resolves to the same name as a provider tool.
