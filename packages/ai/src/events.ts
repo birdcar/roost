@@ -187,3 +187,10 @@ export {
   RerankingStarted,
   Reranked,
 } from './rag/events.js';
+
+/* ---------------------------- Phase 6: Media events --------------------------- */
+
+export { GeneratingImage, ImageGenerated } from './media/image/events.js';
+export { GeneratingAudio, AudioGenerated } from './media/audio/events.js';
+export { GeneratingTranscription, TranscriptionGenerated } from './media/transcription/events.js';
+export { UnsupportedOptionDropped } from './media/shared/events.js';

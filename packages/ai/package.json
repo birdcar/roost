@@ -15,6 +15,18 @@
       "types": "./src/media/index.ts",
       "import": "./src/media/index.ts"
     },
+    "./media/image": {
+      "types": "./src/media/image/index.ts",
+      "import": "./src/media/image/index.ts"
+    },
+    "./media/audio": {
+      "types": "./src/media/audio/index.ts",
+      "import": "./src/media/audio/index.ts"
+    },
+    "./media/transcription": {
+      "types": "./src/media/transcription/index.ts",
+      "import": "./src/media/transcription/index.ts"
+    },
     "./mcp": {
       "types": "./src/mcp/index.ts",
       "import": "./src/mcp/index.ts"

@@ -1,15 +1,25 @@
-import type { AIProvider, ProviderCapabilities } from './interface.js';
+import type {
+  AIProvider,
+  ProviderCapabilities,
+  ImageRequest,
+  ImageResponse,
+} from './interface.js';
 import type { ProviderRequest, ProviderResponse, AgentMessage, ToolCall, StreamEvent } from '../types.js';
 import { Lab } from '../enums.js';
 import { iterateSSELines } from '../streaming/sse-lines.js';
 import { encodeAll, type EncodedAttachment } from './attachment-encoding.js';
+import { detectImageMimeType } from '../media/shared/mime.js';
+import { UnsupportedOptionDropped } from '../media/shared/events.js';
+import { dispatchEvent } from '../events.js';
 
 const CAPS: ProviderCapabilities = {
   name: Lab.Gemini,
-  supported: new Set(['chat', 'stream', 'tools', 'structured-output', 'files']),
+  supported: new Set(['chat', 'stream', 'tools', 'structured-output', 'files', 'image']),
   cheapestChat: 'gemini-2.0-flash',
   smartestChat: 'gemini-2.5-pro',
 };
+
+const DEFAULT_IMAGE_MODEL = 'imagen-3.0-generate-001';
 
 interface GeminiResponse {
   candidates: Array<{
@@ -154,6 +164,82 @@ export class GeminiProvider implements AIProvider {
     if (lastUsage) yield { type: 'usage', ...lastUsage };
     yield { type: 'done' };
   }
+
+  async image(request: ImageRequest): Promise<ImageResponse> {
+    const model = request.model ?? DEFAULT_IMAGE_MODEL;
+    const base = this.config.baseUrl ?? 'https://generativelanguage.googleapis.com';
+    const url = `${base}/v1beta/models/${model}:predict?key=${this.config.apiKey}`;
+
+    if (request.referenceImages && request.referenceImages.length > 0) {
+      await dispatchEvent(
+        UnsupportedOptionDropped,
+        new UnsupportedOptionDropped(
+          'image',
+          this.name,
+          'referenceImages',
+          `${model} does not accept reference images via :predict — use an Imagen Edit model instead`,
+        ),
+      );
+    }
+
+    const body: Record<string, unknown> = {
+      instances: [{ prompt: request.prompt }],
+      parameters: {
+        sampleCount: 1,
+        ...(request.aspect ? { aspectRatio: mapGeminiAspect(request.aspect) } : {}),
+        ...(request.negativePrompt ? { negativePrompt: request.negativePrompt } : {}),
+        ...(typeof request.seed === 'number' ? { seed: request.seed } : {}),
+        ...(request.providerOptions ?? {}),
+      },
+    };
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) throw new Error(`Gemini image ${response.status}: ${await response.text()}`);
+    const data = (await response.json()) as GeminiImagePredictResponse;
+    const prediction = data.predictions?.[0];
+    if (!prediction) throw new Error('Gemini image: no prediction returned');
+    const b64 = prediction.bytesBase64Encoded ?? prediction.image?.bytesBase64Encoded;
+    if (!b64) throw new Error('Gemini image: prediction missing bytesBase64Encoded');
+    const bytes = base64ToBytes(b64);
+    return {
+      bytes,
+      mimeType: detectImageMimeType(bytes, 'image/png'),
+      model,
+      provider: this.name,
+    };
+  }
+}
+
+interface GeminiImagePredictResponse {
+  predictions?: Array<{
+    bytesBase64Encoded?: string;
+    image?: { bytesBase64Encoded?: string };
+  }>;
+}
+
+function mapGeminiAspect(aspect: 'square' | 'portrait' | 'landscape'): string {
+  switch (aspect) {
+    case 'square':
+      return '1:1';
+    case 'portrait':
+      return '9:16';
+    case 'landscape':
+      return '16:9';
+  }
+}
+
+function base64ToBytes(input: string): Uint8Array {
+  if (typeof globalThis.Buffer !== 'undefined') {
+    return new Uint8Array(Buffer.from(input, 'base64'));
+  }
+  const binary = atob(input);
+  const out = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) out[i] = binary.charCodeAt(i);
+  return out;
 }
 
 function toGeminiContent(m: AgentMessage): Record<string, unknown> {

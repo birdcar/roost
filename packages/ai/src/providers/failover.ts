@@ -1,4 +1,13 @@
-import type { AIProvider, ProviderCapabilities } from './interface.js';
+import type {
+  AIProvider,
+  ProviderCapabilities,
+  ImageRequest,
+  ImageResponse,
+  AudioRequest,
+  AudioResponse,
+  TranscribeRequest,
+  TranscribeResponse,
+} from './interface.js';
 import type { ProviderRequest, ProviderResponse } from '../types.js';
 import { ProviderFailoverTriggered, AllProvidersFailed, dispatchEvent } from '../events.js';
 
@@ -51,6 +60,42 @@ export class FailoverProvider implements AIProvider {
       } catch (err) {
         causes.push(err);
         const next = this.providers[i + 1];
+        if (next) {
+          await dispatchEvent(ProviderFailoverTriggered, new ProviderFailoverTriggered(provider, next, err));
+        }
+      }
+    }
+    await dispatchEvent(AllProvidersFailed, new AllProvidersFailed(causes));
+    throw new AllProvidersFailedError(causes);
+  }
+
+  async image(request: ImageRequest): Promise<ImageResponse> {
+    return this.tryMedia('image', (p) => p.image?.(request));
+  }
+
+  async audio(request: AudioRequest): Promise<AudioResponse> {
+    return this.tryMedia('audio', (p) => p.audio?.(request));
+  }
+
+  async transcribe(request: TranscribeRequest): Promise<TranscribeResponse> {
+    return this.tryMedia('transcribe', (p) => p.transcribe?.(request));
+  }
+
+  private async tryMedia<T>(
+    capability: 'image' | 'audio' | 'transcribe',
+    call: (p: AIProvider) => Promise<T> | undefined,
+  ): Promise<T> {
+    const causes: unknown[] = [];
+    for (let i = 0; i < this.providers.length; i++) {
+      const provider = this.providers[i];
+      if (!provider.capabilities().supported.has(capability)) continue;
+      try {
+        const result = await call(provider);
+        if (result === undefined) continue;
+        return result;
+      } catch (err) {
+        causes.push(err);
+        const next = this.providers.slice(i + 1).find((p) => p.capabilities().supported.has(capability));
         if (next) {
           await dispatchEvent(ProviderFailoverTriggered, new ProviderFailoverTriggered(provider, next, err));
         }

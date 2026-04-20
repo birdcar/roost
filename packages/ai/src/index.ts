@@ -183,6 +183,13 @@ export {
   FileRemovedFromStore,
   RerankingStarted,
   Reranked,
+  GeneratingImage,
+  ImageGenerated,
+  GeneratingAudio,
+  AudioGenerated,
+  GeneratingTranscription,
+  TranscriptionGenerated,
+  UnsupportedOptionDropped,
   dispatchEvent,
 } from './events.js';
 
