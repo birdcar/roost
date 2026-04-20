@@ -8,6 +8,8 @@ export const Lab = {
   OpenAI: 'openai',
   Gemini: 'gemini',
   Gateway: 'gateway',
+  Cohere: 'cohere',
+  Jina: 'jina',
 } as const;
 
 export type Lab = (typeof Lab)[keyof typeof Lab];

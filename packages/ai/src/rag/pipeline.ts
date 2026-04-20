@@ -46,21 +46,31 @@ export class RAGPipeline {
     return { inserted: vectors.length };
   }
 
-  async query(text: string): Promise<QueryResult[]> {
+  async query(
+    text: string,
+    opts?: {
+      namespace?: string;
+      filter?: Record<string, unknown>;
+      topK?: number;
+      minSimilarity?: number;
+    },
+  ): Promise<QueryResult[]> {
     const fake = fakes.get(RAGPipeline);
     if (fake) {
       fake.recordQuery(text);
       return fake.nextQueryResponse();
     }
 
-    const [queryVector] = await this.embeddings.embed([text]);
+    const [queryVector] = await this.embeddings.embed([text], { cache: true });
+    const namespace = opts?.namespace ?? this.config.namespace;
     const matches = await this.store.query(queryVector, {
-      topK: this.config.topK ?? 5,
-      ...(this.config.namespace ? { namespace: this.config.namespace } : {}),
+      topK: opts?.topK ?? this.config.topK ?? 5,
+      ...(namespace ? { namespace } : {}),
+      ...(opts?.filter ? { filter: opts.filter as VectorizeVectorMetadataFilter } : {}),
       returnMetadata: 'all',
     });
 
-    const threshold = this.config.similarityThreshold ?? 0.75;
+    const threshold = opts?.minSimilarity ?? this.config.similarityThreshold ?? 0.5;
 
     const results: QueryResult[] = matches.matches
       .filter((m) => m.score >= threshold)

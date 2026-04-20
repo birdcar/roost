@@ -94,6 +94,10 @@ export type {
   FileSearchOptions,
 } from './tools/provider-tools/index.js';
 
+// Semantic search tool (Phase 5).
+export { SimilaritySearch } from './tools/similarity-search.js';
+export type { SimilaritySearchOptions, ModelLike } from './tools/similarity-search.js';
+
 // Attachments.
 export {
   StorableFile,
@@ -167,6 +171,18 @@ export {
   ScheduledMethodMissing,
   StreamingAgent,
   AgentStreamed,
+  GeneratingEmbeddings,
+  EmbeddingsGenerated,
+  FileStored,
+  FileDeleted,
+  CreatingStore,
+  StoreCreated,
+  AddingFileToStore,
+  FileAddedToStore,
+  RemovingFileFromStore,
+  FileRemovedFromStore,
+  RerankingStarted,
+  Reranked,
   dispatchEvent,
 } from './events.js';
 

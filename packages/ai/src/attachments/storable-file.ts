@@ -142,22 +142,32 @@ export abstract class StorableFile {
   }
 
   /**
-   * Upload to the selected provider's Files API. Phase 5 ships concrete
-   * implementations. Phase 4 throws to signal the capability is not yet wired.
+   * Upload to the selected provider's Files API. Routes through `Files.store()`
+   * which resolves the appropriate adapter. Phase 4 attachments are the input;
+   * Phase 5 adds the adapter routing.
    */
-  async put(_opts?: { provider?: Lab | string }): Promise<FileRecord> {
-    throw new Error("StorableFile.put() requires provider Files API (ships in Phase 5).");
+  async put(opts: { provider?: Lab | string; purpose?: string } = {}): Promise<FileRecord> {
+    const { Files } = await import('../rag/files/files.js');
+    const record = await Files.store(this, { provider: opts.provider, purpose: opts.purpose });
+    this._providerFileId = record.id;
+    this._providerLab = record.provider;
+    return record;
   }
 
   async get(): Promise<FileRecord> {
-    if (!this._providerFileId) {
-      throw new Error("StorableFile.get() requires a provider file ID — construct with fromId() or call put() first.");
+    if (this._providerFileId) {
+      const { Files } = await import('../rag/files/files.js');
+      return Files.get(this._providerFileId, { provider: this._providerLab as string | undefined });
     }
-    return { id: this._providerFileId, provider: this._providerLab };
+    throw new Error("StorableFile.get() requires a provider file ID — construct with fromId() or call put() first.");
   }
 
   async delete(): Promise<void> {
-    throw new Error("StorableFile.delete() requires provider Files API (ships in Phase 5).");
+    if (!this._providerFileId) {
+      throw new Error("StorableFile.delete() requires a provider file ID — construct with fromId() or call put() first.");
+    }
+    const { Files } = await import('../rag/files/files.js');
+    await Files.delete(this._providerFileId, { provider: this._providerLab as string | undefined });
   }
 }
 

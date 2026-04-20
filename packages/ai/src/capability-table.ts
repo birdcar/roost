@@ -39,6 +39,12 @@ const seed: Record<Lab, ModelHints> = {
   [Lab.Gateway]: {
     // Gateway inherits the selected provider's hints at resolve time.
   },
+  [Lab.Cohere]: {
+    // Cohere is reranker-only in v0.3 — no chat/embed hints.
+  },
+  [Lab.Jina]: {
+    // Jina is reranker-only in v0.3 — no chat/embed hints.
+  },
 };
 
 export type ModelResolverStrategy = 'cheapest' | 'smartest';

@@ -170,3 +170,20 @@ export class ScheduledMethodMissing extends Event {
     super();
   }
 }
+
+/* ---------------------------- Phase 5: RAG events ---------------------------- */
+
+export {
+  GeneratingEmbeddings,
+  EmbeddingsGenerated,
+  FileStored,
+  FileDeleted,
+  CreatingStore,
+  StoreCreated,
+  AddingFileToStore,
+  FileAddedToStore,
+  RemovingFileFromStore,
+  FileRemovedFromStore,
+  RerankingStarted,
+  Reranked,
+} from './rag/events.js';

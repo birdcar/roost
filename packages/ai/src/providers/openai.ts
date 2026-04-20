@@ -6,7 +6,7 @@ import { encodeAll, type EncodedAttachment } from './attachment-encoding.js';
 
 const CAPS: ProviderCapabilities = {
   name: Lab.OpenAI,
-  supported: new Set(['chat', 'stream', 'embed', 'tools', 'structured-output']),
+  supported: new Set(['chat', 'stream', 'embed', 'tools', 'structured-output', 'files', 'stores']),
   cheapestChat: 'gpt-4o-mini',
   smartestChat: 'gpt-4o',
   defaultEmbed: 'text-embedding-3-small',

@@ -6,7 +6,7 @@ import { encodeAll, type EncodedAttachment } from './attachment-encoding.js';
 
 const CAPS: ProviderCapabilities = {
   name: Lab.Gemini,
-  supported: new Set(['chat', 'stream', 'tools', 'structured-output']),
+  supported: new Set(['chat', 'stream', 'tools', 'structured-output', 'files']),
   cheapestChat: 'gemini-2.0-flash',
   smartestChat: 'gemini-2.5-pro',
 };

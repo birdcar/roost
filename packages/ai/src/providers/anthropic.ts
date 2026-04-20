@@ -6,7 +6,7 @@ import { encodeAll, type EncodedAttachment } from './attachment-encoding.js';
 
 const CAPS: ProviderCapabilities = {
   name: Lab.Anthropic,
-  supported: new Set(['chat', 'stream', 'tools', 'structured-output', 'thinking']),
+  supported: new Set(['chat', 'stream', 'tools', 'structured-output', 'thinking', 'files']),
   cheapestChat: 'claude-haiku-4-5-20251001',
   smartestChat: 'claude-opus-4-7',
 };

@@ -1,6 +1,3 @@
-import { Image } from './image.js';
-import { Document } from './document.js';
-
 export {
   StorableFile,
   AttachmentTooLargeError,
@@ -14,4 +11,7 @@ export { Image } from './image.js';
 export type { ImageDimensions } from './image.js';
 export { Document } from './document.js';
 
-export const Files = { Image, Document } as const;
+// `Files` is lifted to `rag/files/files.ts` in Phase 5 so it can carry
+// `.store/.get/.delete/.fake` alongside `.Image/.Document`. Re-exported here
+// for P4 backward compat.
+export { Files } from '../rag/files/files.js';
