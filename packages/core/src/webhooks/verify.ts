@@ -1,3 +1,4 @@
+/// <reference types="@cloudflare/workers-types" />
 export type WebhookAlgorithm = 'hmac-sha256' | 'hmac-sha512' | 'ed25519';
 
 export interface WebhookVerifyOptions {
