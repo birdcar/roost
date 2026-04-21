@@ -4,6 +4,8 @@
     "target": "ES2022",
     "module": "ESNext",
     "moduleResolution": "bundler",
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": false,
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
