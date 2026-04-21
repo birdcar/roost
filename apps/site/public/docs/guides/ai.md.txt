@@ -1,332 +1,406 @@
 ## How to create an AI agent
 
-Extend `Agent` and implement `instructions()` to define the system prompt. The AI binding in `wrangler.jsonc` is the only credential needed.
+Extend `Agent` and implement `instructions()`. Register `AiServiceProvider` in
+your app config, then instantiate and call `prompt()`.
 
-```json wrangler.jsonc
-{
-  "ai": { "binding": "AI" }
-}
-```
-
-```ts src/agents/SupportAgent.ts
+```ts title="src/agents/support.ts"
 
 export class SupportAgent extends Agent {
   instructions(): string {
-    return 'You are a helpful customer support agent for Acme Inc. Be concise and professional.';
+    return 'You are a helpful customer support agent for Acme Inc. Be concise.';
   }
 }
 
-// Usage in a server function
 const agent = new SupportAgent();
 const response = await agent.prompt('How do I reset my password?');
 console.log(response.text);
 ```
 
-Each agent instance maintains its own conversation history. Create a new instance for each independent user session.
+Each instance holds its own in-memory conversation history. For durable
+cross-request state, upgrade to [`StatefulAgent`](#how-to-persist-conversation-history).
+See [reference → Prompting](/docs/reference/ai#prompting.md).
 
-## How to define and register tools
+## How to register multiple providers with failover
 
-Implement the `Tool` interface and add the tool to your agent's `tools()` method.
+Pass an array to `@Provider`. The runtime tries providers in order on
+transient errors; `AllProvidersFailed` fires when every entry fails.
 
-```ts src/tools/OrderStatusTool.ts
+```ts title="src/agents/resilient.ts"
 
-export class OrderStatusTool implements Tool {
-  constructor(private db: Database) {}
-
-  description(): string {
-    return 'Look up the status of a customer order by order ID';
-  }
-
-  schema(s: typeof schema) {
-    return {
-      orderId: s.string().description('The order ID to look up'),
-    };
-  }
-
-  async handle(request: ToolRequest): Promise<string> {
-    const orderId = request.get<string>('orderId');
-    const order = await this.db.findOrder(orderId);
-    if (!order) return 'Order not found.';
-    return `Order ${orderId}: status=${order.status}, updated=${order.updatedAt}`;
-  }
+@Provider([Lab.Anthropic, Lab.OpenAI, Lab.WorkersAI])
+export class Resilient extends Agent {
+  instructions(): string { return 'Be helpful.'; }
 }
 ```
 
-```ts src/agents/SupportAgent.ts
+Configure the native adapters in `config/app.ts`:
 
-export class SupportAgent extends Agent implements HasTools {
-  constructor(private db: Database) {
-    super();
-  }
-
-  instructions(): string {
-    return 'You are a helpful customer support agent.';
-  }
-
-  tools() {
-    return [new OrderStatusTool(this.db)];
-  }
-}
-```
-
-## How to configure the model and parameters
-
-Use class decorators to set defaults. All decorators can be overridden per-prompt via the options argument.
-
-```ts src/agents/WritingAgent.ts
-
-@Model('@cf/meta/llama-3.1-70b-instruct')
-@Temperature(0.9)     // More creative responses
-@MaxTokens(4096)      // Allow longer outputs
-@MaxSteps(3)          // Max tool calls before final answer
-export class WritingAgent extends Agent {
-  instructions(): string {
-    return 'You are a creative writing assistant.';
-  }
-}
-
-// Override per-prompt
-const response = await agent.prompt('Write a haiku', {
-  temperature: 0.3,  // Override to more deterministic
-  maxTokens: 100,
-});
-```
-
-Available Cloudflare models include `@cf/meta/llama-3.1-8b-instruct`, `@cf/meta/llama-3.1-70b-instruct`, and `@cf/mistral/mistral-7b-instruct-v0.2`.
-
-## How to stream agent responses
-
-Use `agent.stream()` to get an async iterable of text chunks. Useful for real-time UI updates.
-
-```ts
-const agent = new WritingAgent();
-const stream = await agent.stream('Write a short story about a robot');
-
-// Collect and forward as a streaming response
-const encoder = new TextEncoder();
-const body = new ReadableStream({
-  async start(controller) {
-    for await (const chunk of stream) {
-      controller.enqueue(encoder.encode(chunk));
-    }
-    controller.close();
+```ts title="config/app.ts"
+export default {
+  ai: {
+    providers: {
+      anthropic: { apiKey: env.ANTHROPIC_KEY },
+      openai:    { apiKey: env.OPENAI_KEY },
+    },
+    default: [Lab.Anthropic, Lab.OpenAI],
   },
-});
-
-return new Response(body, {
-  headers: { 'content-type': 'text/plain; charset=utf-8' },
-});
+};
 ```
 
-On the client, read the stream with the Fetch API's `response.body` reader or use a library like `ai` for React streaming hooks.
+See [reference → Failover](/docs/reference/ai#failover.md).
 
-## How to manage conversation memory
+## How to call tools from an agent
 
-Agent instances maintain in-memory conversation history. For persistent cross-request memory, serialize and restore the history manually.
+Implement `Tool` for user-defined tools, or instantiate provider tools
+(`WebSearch`, `WebFetch`, `FileSearch`). Return a mix from `tools()` on an
+agent that implements `HasTools`.
+
+```ts title="src/agents/research.ts"
+
+class OrderLookupTool implements Tool {
+  constructor(private db: Database) {}
+  name() { return 'order_lookup'; }
+  description() { return 'Look up an order by ID.'; }
+  schema(s: typeof schema) { return { orderId: s.string() }; }
+  async handle(req: ToolRequest) {
+    const order = await this.db.findOrder(req.get<string>('orderId'));
+    return order ? `${order.status} · ${order.updatedAt}` : 'not found';
+  }
+}
+
+export class Research extends Agent implements HasTools {
+  constructor(private db: Database) { super(); }
+  instructions() { return 'Research assistant.'; }
+  tools() { return [new OrderLookupTool(this.db), new WebSearch()]; }
+}
+```
+
+See [reference → Tools](/docs/reference/ai#tools.md).
+
+## How to stream a response
+
+`agent.stream(input)` returns a `StreamableAgentResponse` — both an async
+iterable of `StreamEvent` and a `Response`-compatible body. Narrow on
+`event.type` before reading payload fields.
+
+```ts title="src/routes/api/chat.ts"
+
+export async function POST({ request }: { request: Request }) {
+  const { message } = await request.json<{ message: string }>();
+  const stream = new Research(db).stream(message);
+
+  return new Response(stream, {
+    headers: { 'content-type': 'text/event-stream' },
+  });
+}
+```
+
+For Vercel AI SDK clients (`useChat`), use `.usingVercelDataProtocol()`:
 
 ```ts
-const agent = new SupportAgent(db);
-
-// Conversation within a single request lifecycle
-const r1 = await agent.prompt('My order #1234 is late.');
-const r2 = await agent.prompt('Can you check the status?');
-// Agent remembers the order number from the first turn
+return new Response(new Research(db).stream(message).usingVercelDataProtocol());
 ```
 
-```ts
-// For persistent sessions, pass prior history as context in instructions
-export class SupportAgent extends Agent {
-  constructor(private history: string[]) {
-    super();
-  }
+See [reference → Streaming](/docs/reference/ai#streaming.md).
 
-  instructions(): string {
-    const context = this.history.length
-      ? '\n\nPrevious context:\n' + this.history.join('\n')
-      : '';
-    return 'You are a helpful support agent.' + context;
-  }
+## How to queue a long-running prompt
+
+Call `.queue()` instead of `.prompt()`. It returns a thenable
+`QueuedPromptHandle` backed by `@roostjs/queue`. Decorate with queue metadata.
+
+```ts title="src/agents/summarize.ts"
+
+@Queue('ai')
+@MaxRetries(3)
+@Backoff('exponential')
+@JobTimeout(300)
+export class Summarize extends Agent {
+  instructions() { return 'Summarize long documents.'; }
 }
 ```
 
-## How to route inference through AI Gateway
+```ts title="src/routes/api/summarize.ts"
 
-Use `GatewayAIProvider` when you want Cloudflare AI Gateway observability, request caching, or per-request fallback behaviour. The gateway provider wraps a direct `CloudflareAIProvider` and calls it automatically if the gateway is unavailable.
-
-1. Create an AI Gateway in the Cloudflare dashboard and note the **account ID** and **gateway ID**.
-2. Add both as secrets or config values:
-
-```sh title=".dev.vars"
-CF_ACCOUNT_ID=abc123
-AI_GATEWAY_ID=my-gateway
+// Fire and forget — resolves when the worker picks up the job.
+const handle = new Summarize().queue(documentText);
+handle.then((response) => persist(response.text));
 ```
 
-3. Wire up the provider at application startup:
+See [reference → Queueing](/docs/reference/ai#queueing.md).
 
-```ts title="src/app.ts"
+## How to persist conversation history
 
-const direct = new CloudflareAIProvider(new AIClient(env.AI));
-const gateway = new GatewayAIProvider(
-  { accountId: env.CF_ACCOUNT_ID, gatewayId: env.AI_GATEWAY_ID },
-  direct,
-);
+Extend `StatefulAgent` and apply the `RemembersConversations` mixin. Declare
+the Durable Object binding in `wrangler.jsonc`. Conversations persist in DO
+storage with tree-structured history, compaction, and FTS.
 
-// Apply to a specific agent class
-MyAgent.setProvider(gateway);
-```
+```ts title="src/agents/support-do.ts"
 
-Session affinity is applied automatically — once a conversation has more than one turn, subsequent requests carry `x-session-affinity: true` so the gateway routes them to the same cached context.
-
-## How to run async inference
-
-Use `queued: true` to enqueue a long-running inference request and return a task ID immediately. Poll for the result separately.
-
-```ts title="src/functions/summarize.ts"
-
-export async function startSummary(text: string): Promise<string> {
-  const agent = new SummarizeAgent();
-  const result = await agent.prompt(text, { queued: true });
-
-  if (!result.queued) throw new Error('Expected queued result');
-  return result.taskId; // Store this in KV or return to the client
+@Stateful({ binding: 'SUPPORT_AGENT' })
+export class Support extends RemembersConversations(StatefulAgent) {
+  instructions(): string { return 'Helpful support agent.'; }
 }
 ```
-
-Poll with `AIClient.poll()` from a separate endpoint or Durable Object alarm:
-
-```ts title="src/functions/checkSummary.ts"
-
-export async function checkSummary(taskId: string, env: Env) {
-  const client = new AIClient(env.AI);
-
-  // fetch must carry a CF API token for the REST API
-  const authenticatedFetch = (url: string) =>
-    fetch(url, { headers: { Authorization: `Bearer ${env.CF_API_TOKEN}` } });
-
-  const result = await client.poll(taskId, authenticatedFetch, env.CF_ACCOUNT_ID);
-
-  if (result.status === 'done') {
-    return result.result; // The model output
-  }
-
-  return null; // Still running
-}
-```
-
-## How to build a RAG pipeline
-
-A RAG pipeline chunks documents, embeds the chunks, stores them in Vectorize, then retrieves the most relevant chunks for a query.
-
-### 1. Configure the Vectorize index and AI binding
 
 ```jsonc title="wrangler.jsonc"
 {
-  "ai": { "binding": "AI" },
-  "vectorize": [
-    { "binding": "VECTORIZE", "index_name": "my-docs-index" }
+  "durable_objects": {
+    "bindings": [{ "name": "SUPPORT_AGENT", "class_name": "Support" }]
+  },
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["Support"] }
   ]
 }
 ```
 
-The index must match the embedding model's dimensionality. `@cf/baai/bge-base-en-v1.5` (the default) produces 768-dimensional vectors. Create the index with:
+Export the class from your Worker entry so the runtime can instantiate the DO:
 
-```sh title="terminal"
-npx wrangler vectorize create my-docs-index --dimensions=768 --metric=cosine
+```ts title="src/worker.ts"
+export { Support } from './agents/support-do';
 ```
 
-### 2. Ingest documents
+See [reference → Sessions](/docs/reference/ai#conversation-context-sessions.md).
 
-```ts title="src/scripts/ingest.ts"
+## How to schedule a method to run daily
 
-const client = new AIClient(env.AI);
-const store = new VectorStore(env.VECTORIZE);
-const chunker = new SemanticChunker({ chunkSize: 400 });
-const embeddings = new EmbeddingPipeline(client);
+Use `@Scheduled(cron)` on a `StatefulAgent` method. The decorator registers
+the method on class load; the agent's DO alarm fires at the configured cron
+time.
 
-const pipeline = new RAGPipeline(store, embeddings, chunker);
+```ts title="src/agents/digest.ts"
 
-const docs: Document[] = [
-  { id: 'doc-1', text: '...', metadata: { source: 'handbook' } },
-  { id: 'doc-2', text: '...', metadata: { source: 'handbook' } },
-];
+@Stateful({ binding: 'DIGEST_AGENT' })
+export class Digest extends StatefulAgent {
+  instructions() { return 'Daily digest generator.'; }
 
-const { inserted } = await pipeline.ingest(docs);
-console.log(`Inserted ${inserted} vectors`);
-```
-
-### 3. Query and inject context into an agent
-
-```ts title="src/agents/DocsAgent.ts"
-
-export class DocsAgent extends Agent {
-  private rag: RAGPipeline;
-
-  constructor(env: Env) {
-    super();
-    const client = new AIClient(env.AI);
-    const store = new VectorStore(env.VECTORIZE);
-    this.rag = new RAGPipeline(store, new EmbeddingPipeline(client), new SemanticChunker());
-  }
-
-  instructions(): string {
-    return 'You are a helpful assistant. Answer questions using the context provided.';
-  }
-
-  async answerWithContext(question: string): Promise<string> {
-    const results = await this.rag.query(question);
-    const context = results.map((r) => r.chunk.text).join('\n\n');
-
-    const result = await this.prompt(
-      `Context:\n${context}\n\nQuestion: ${question}`,
-    );
-
-    if (result.queued) throw new Error('unexpected queued result');
-    return result.text;
+  @Scheduled('0 9 * * *')
+  async sendDigest() {
+    const response = await this.prompt('Summarize the last 24 hours.');
+    await send(response.text);
   }
 }
 ```
 
-### 4. Test the RAG pipeline without a real index
+For ad-hoc scheduling, call `agent.schedule(when, method, payload)`:
 
-```ts title="tests/DocsAgent.test.ts"
-
-const fakeResults: QueryResult[] = [
-  { chunk: { id: 'doc-1:0', documentId: 'doc-1', text: 'Roost uses D1.', tokenCount: 5 }, score: 0.92 },
-];
-
-RAGPipeline.fake([fakeResults]);
-
-// ... run your agent test ...
-
-RAGPipeline.assertQueried((text) => text.includes('database'));
-RAGPipeline.restore();
+```ts
+await agent.schedule(60, 'sendReminder', { orderId: 42 });
 ```
 
-## How to test agents without calling the AI provider
+See [reference → Schedule](/docs/reference/ai#schedule.md).
 
-Use `Agent.fake()` to inject predetermined responses. Always call `Agent.restore()` after each test.
+## How to run a method as a durable Workflow
 
-```ts tests/agents/SupportAgent.test.ts
+Decorate a `StatefulAgent` method with `@Workflow({binding})`. The runtime
+replaces the method with a call that creates a `@roostjs/workflow` instance;
+re-runs replay prior `step.do()` results from the checkpoint cache.
 
-describe('SupportAgent', () => {
-  it('responds to password reset questions', async () => {
-    SupportAgent.fake(['To reset your password, visit /account/reset.']);
+```ts title="src/agents/report-agent.ts"
 
-    const agent = new SupportAgent(fakeDb);
-    const response = await agent.prompt('How do I reset my password?');
+@Stateful({ binding: 'REPORT_AGENT' })
+export class Report extends StatefulAgent {
+  instructions() { return 'Generate reports.'; }
+
+  @Workflow({ binding: 'REPORT_FLOW' })
+  async processReport(step, reportId: string) {
+    const raw    = await step.do('fetch',     () => this.fetchRaw(reportId));
+    const parsed = await step.do('parse',     () => this.parse(raw));
+    await step.sleep('cooldown', '1 minute');
+    return await step.do('summarize',         () => this.prompt(parsed));
+  }
+}
+```
+
+See [reference → Workflows](/docs/reference/ai#workflows.md) and
+[`@roostjs/workflow` reference](/docs/reference/workflow.md).
+
+## How to spawn a sub-agent and aggregate results
+
+From inside a `StatefulAgent` method, call `this.subAgent(OtherAgent)` to get
+a typed client. Mark the parent class `@SubAgentCapable()`.
+
+```ts title="src/agents/orchestrator.ts"
+
+@Stateful({ binding: 'ORCHESTRATOR' })
+@SubAgentCapable()
+export class Orchestrator extends StatefulAgent {
+  instructions() { return 'Coordinate research.'; }
+
+  async investigate(topic: string) {
+    const summarizer = this.subAgent(Summarizer);
+    const [overview, details] = await Promise.all([
+      summarizer.summarize(topic),
+      summarizer.detail(topic),
+    ]);
+    return { overview, details };
+  }
+}
+```
+
+Sub-agent depth is tracked; nesting beyond `SUB_AGENT_MAX_DEPTH` raises
+`SubAgentDepthExceededError`. See
+[reference → Sub-agents](/docs/reference/ai#sub-agents.md).
+
+## How to consume a remote MCP server
+
+`McpClient.connect` opens a connection to an MCP server. Merge its tools into
+your agent's `tools()` output.
+
+```ts title="src/agents/bug.ts"
+
+const github = await McpClient.connect({
+  url: 'https://mcp.github.com',
+  transport: 'streamable-http',
+  auth: { type: 'bearer', token: env.GITHUB_MCP_TOKEN },
+});
+
+export class Bug extends Agent implements HasTools {
+  instructions() { return 'Triage bugs.'; }
+  async tools() { return [...(await github.tools())]; }
+}
+```
+
+Aggregate several servers behind a single prefix-namespaced `McpPortal`:
+
+```ts
+
+const portal = new McpPortal([
+  { prefix: 'gh',   client: github },
+  { prefix: 'jira', client: await McpClient.connect({ url: 'https://mcp.jira.com' }) },
+]);
+await portal.callTool('gh.search_code', { q: 'roost' });
+```
+
+See [reference → MCP](/docs/reference/ai#mcp.md).
+
+## How to expose an agent as an MCP server
+
+`createMcpHandler(AgentClass, options)` returns a Worker fetch handler. Export
+it as the default export to serve MCP over a public URL.
+
+```ts title="src/worker.ts"
+
+export default createMcpHandler(Bug, {
+  transport: 'streamable-http',
+  path: '/mcp',
+  authorize: (req) => req.headers.get('x-api-key') === env.MCP_API_KEY,
+});
+```
+
+See [reference → MCP](/docs/reference/ai#mcp.md).
+
+## How to require human approval before a destructive action
+
+Call `requireApproval(this, step, payload)` inside a `StatefulAgent` method.
+The call persists a pending approval and returns once the approval is decided
+via `approve` from another surface (a reviewer UI, an MCP elicitation, or a
+custom route).
+
+```ts title="src/agents/treasurer.ts"
+
+@Stateful({ binding: 'TREASURER' })
+export class Treasurer extends StatefulAgent {
+  instructions() { return 'Handle payouts.'; }
+
+  @RequiresApproval('charge')
+  async chargeCustomer(customerId: string, amountCents: number) {
+    const decision = await requireApproval(this, 'charge', { customerId, amountCents });
+    if (decision.status !== 'approved') return { skipped: true };
+
+    await this.doCharge(customerId, amountCents);
+    return { charged: true };
+  }
+}
+```
+
+See [reference → HITL](/docs/reference/ai#hitl.md).
+
+## How to query RAG knowledge alongside a conversation
+
+Build a `RAGPipeline` with a vector store and an embedding pipeline; query it
+inside the agent, then weave the hits into the next prompt.
+
+```jsonc title="wrangler.jsonc"
+{
+  "ai":        { "binding": "AI" },
+  "vectorize": [{ "binding": "VECTORIZE", "index_name": "policy-docs" }]
+}
+```
+
+```ts title="src/agents/docs-agent.ts"
+
+export class Docs extends Agent {
+  private rag: RAGPipeline;
+
+  constructor(env: Env) {
+    super();
+    this.rag = new RAGPipeline(
+      new VectorStore(env.VECTORIZE),
+      new EmbeddingPipeline(new AIClient(env.AI)),
+      new SemanticChunker(),
+      { namespace: 'policy-docs', topK: 5 },
+    );
+  }
+
+  instructions() {
+    return 'You are a docs assistant. Ground answers in retrieved context.';
+  }
+
+  async ask(question: string) {
+    const hits = await this.rag.query(question);
+    const context = hits.map((h) => h.chunk.text).join('\n\n');
+    const response = await this.prompt(`Context:\n${context}\n\nQuestion: ${question}`);
+    return response.text;
+  }
+}
+```
+
+See [reference → Vector Stores](/docs/reference/ai#vector-stores.md).
+
+## How to test an agent without hitting the AI binding
+
+Call `fake()` with canned responses (strings or resolver functions). Use
+`assertPrompted` to verify inputs. `preventStrayPrompts()` throws on any call
+not matched by a canned response — useful as a final CI guard.
+
+```ts title="tests/support.test.ts"
+
+afterEach(() => Support.restore());
+
+describe('Support', () => {
+  it('answers reset-password questions', async () => {
+    Support.fake([
+      'Visit /account/reset to reset your password.',
+    ]).preventStrayPrompts();
+
+    const response = await new Support().prompt('How do I reset my password?');
 
     expect(response.text).toContain('reset');
-    SupportAgent.restore();
+    Support.assertPrompted('reset');
   });
 
-  it('was prompted with the user input', async () => {
-    SupportAgent.fake(['Order found.']);
+  it('handles order lookups with a resolver', async () => {
+    Support.fake([(p) => `Order ${p.input.match(/\d+/)?.[0]} shipped.`]);
 
-    const agent = new SupportAgent(fakeDb);
-    await agent.prompt('Check order 5678');
+    const response = await new Support().prompt('Check order 42');
 
-    SupportAgent.assertPrompted('5678');
-    SupportAgent.restore();
+    expect(response.text).toBe('Order 42 shipped.');
   });
 });
 ```
+
+For DO-backed agents, use `TestStatefulAgentHarness`:
+
+```ts
+
+const { agent, clock } = TestStatefulAgentHarness
+  .for(Support)
+  .withSessions()
+  .withMockClock()
+  .build();
+
+await agent.sendDigest();
+clock.advance(3600_000);
+```
+
+See [reference → Testing](/docs/reference/ai#testing.md).

@@ -20,6 +20,7 @@ import { Route as DocsTutorialsDeployToCloudflareRouteImport } from './routes/do
 import { Route as DocsTutorialsBuildATaskApiRouteImport } from './routes/docs/tutorials/build-a-task-api'
 import { Route as DocsTutorialsBuildASaasAppRouteImport } from './routes/docs/tutorials/build-a-saas-app'
 import { Route as DocsTutorialsBuildAChatAppRouteImport } from './routes/docs/tutorials/build-a-chat-app'
+import { Route as DocsTutorialsAiAgentWalkthroughRouteImport } from './routes/docs/tutorials/ai-agent-walkthrough'
 import { Route as DocsReferenceWorkflowRouteImport } from './routes/docs/reference/workflow'
 import { Route as DocsReferenceTestingRouteImport } from './routes/docs/reference/testing'
 import { Route as DocsReferenceStartRouteImport } from './routes/docs/reference/start'
@@ -135,6 +136,12 @@ const DocsTutorialsBuildAChatAppRoute =
   DocsTutorialsBuildAChatAppRouteImport.update({
     id: '/docs/tutorials/build-a-chat-app',
     path: '/docs/tutorials/build-a-chat-app',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const DocsTutorialsAiAgentWalkthroughRoute =
+  DocsTutorialsAiAgentWalkthroughRouteImport.update({
+    id: '/docs/tutorials/ai-agent-walkthrough',
+    path: '/docs/tutorials/ai-agent-walkthrough',
     getParentRoute: () => rootRouteImport,
   } as any)
 const DocsReferenceWorkflowRoute = DocsReferenceWorkflowRouteImport.update({
@@ -491,6 +498,7 @@ export interface FileRoutesByFullPath {
   '/docs/reference/start': typeof DocsReferenceStartRoute
   '/docs/reference/testing': typeof DocsReferenceTestingRoute
   '/docs/reference/workflow': typeof DocsReferenceWorkflowRoute
+  '/docs/tutorials/ai-agent-walkthrough': typeof DocsTutorialsAiAgentWalkthroughRoute
   '/docs/tutorials/build-a-chat-app': typeof DocsTutorialsBuildAChatAppRoute
   '/docs/tutorials/build-a-saas-app': typeof DocsTutorialsBuildASaasAppRoute
   '/docs/tutorials/build-a-task-api': typeof DocsTutorialsBuildATaskApiRoute
@@ -561,6 +569,7 @@ export interface FileRoutesByTo {
   '/docs/reference/start': typeof DocsReferenceStartRoute
   '/docs/reference/testing': typeof DocsReferenceTestingRoute
   '/docs/reference/workflow': typeof DocsReferenceWorkflowRoute
+  '/docs/tutorials/ai-agent-walkthrough': typeof DocsTutorialsAiAgentWalkthroughRoute
   '/docs/tutorials/build-a-chat-app': typeof DocsTutorialsBuildAChatAppRoute
   '/docs/tutorials/build-a-saas-app': typeof DocsTutorialsBuildASaasAppRoute
   '/docs/tutorials/build-a-task-api': typeof DocsTutorialsBuildATaskApiRoute
@@ -632,6 +641,7 @@ export interface FileRoutesById {
   '/docs/reference/start': typeof DocsReferenceStartRoute
   '/docs/reference/testing': typeof DocsReferenceTestingRoute
   '/docs/reference/workflow': typeof DocsReferenceWorkflowRoute
+  '/docs/tutorials/ai-agent-walkthrough': typeof DocsTutorialsAiAgentWalkthroughRoute
   '/docs/tutorials/build-a-chat-app': typeof DocsTutorialsBuildAChatAppRoute
   '/docs/tutorials/build-a-saas-app': typeof DocsTutorialsBuildASaasAppRoute
   '/docs/tutorials/build-a-task-api': typeof DocsTutorialsBuildATaskApiRoute
@@ -704,6 +714,7 @@ export interface FileRouteTypes {
     | '/docs/reference/start'
     | '/docs/reference/testing'
     | '/docs/reference/workflow'
+    | '/docs/tutorials/ai-agent-walkthrough'
     | '/docs/tutorials/build-a-chat-app'
     | '/docs/tutorials/build-a-saas-app'
     | '/docs/tutorials/build-a-task-api'
@@ -774,6 +785,7 @@ export interface FileRouteTypes {
     | '/docs/reference/start'
     | '/docs/reference/testing'
     | '/docs/reference/workflow'
+    | '/docs/tutorials/ai-agent-walkthrough'
     | '/docs/tutorials/build-a-chat-app'
     | '/docs/tutorials/build-a-saas-app'
     | '/docs/tutorials/build-a-task-api'
@@ -844,6 +856,7 @@ export interface FileRouteTypes {
     | '/docs/reference/start'
     | '/docs/reference/testing'
     | '/docs/reference/workflow'
+    | '/docs/tutorials/ai-agent-walkthrough'
     | '/docs/tutorials/build-a-chat-app'
     | '/docs/tutorials/build-a-saas-app'
     | '/docs/tutorials/build-a-task-api'
@@ -915,6 +928,7 @@ export interface RootRouteChildren {
   DocsReferenceStartRoute: typeof DocsReferenceStartRoute
   DocsReferenceTestingRoute: typeof DocsReferenceTestingRoute
   DocsReferenceWorkflowRoute: typeof DocsReferenceWorkflowRoute
+  DocsTutorialsAiAgentWalkthroughRoute: typeof DocsTutorialsAiAgentWalkthroughRoute
   DocsTutorialsBuildAChatAppRoute: typeof DocsTutorialsBuildAChatAppRoute
   DocsTutorialsBuildASaasAppRoute: typeof DocsTutorialsBuildASaasAppRoute
   DocsTutorialsBuildATaskApiRoute: typeof DocsTutorialsBuildATaskApiRoute
@@ -1002,6 +1016,13 @@ declare module '@tanstack/react-router' {
       path: '/docs/tutorials/build-a-chat-app'
       fullPath: '/docs/tutorials/build-a-chat-app'
       preLoaderRoute: typeof DocsTutorialsBuildAChatAppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs/tutorials/ai-agent-walkthrough': {
+      id: '/docs/tutorials/ai-agent-walkthrough'
+      path: '/docs/tutorials/ai-agent-walkthrough'
+      fullPath: '/docs/tutorials/ai-agent-walkthrough'
+      preLoaderRoute: typeof DocsTutorialsAiAgentWalkthroughRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/docs/reference/workflow': {
@@ -1467,6 +1488,7 @@ const rootRouteChildren: RootRouteChildren = {
   DocsReferenceStartRoute: DocsReferenceStartRoute,
   DocsReferenceTestingRoute: DocsReferenceTestingRoute,
   DocsReferenceWorkflowRoute: DocsReferenceWorkflowRoute,
+  DocsTutorialsAiAgentWalkthroughRoute: DocsTutorialsAiAgentWalkthroughRoute,
   DocsTutorialsBuildAChatAppRoute: DocsTutorialsBuildAChatAppRoute,
   DocsTutorialsBuildASaasAppRoute: DocsTutorialsBuildASaasAppRoute,
   DocsTutorialsBuildATaskApiRoute: DocsTutorialsBuildATaskApiRoute,

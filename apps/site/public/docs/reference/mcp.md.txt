@@ -1,3 +1,10 @@
+> **Using with AI agents?** `@roostjs/ai` ships its own MCP client and
+> handler at `@roostjs/ai/mcp` — including `McpClient`, `McpPortal`, and
+> `createMcpHandler(AgentClass)` for exposing an agent as an MCP server. This
+> page documents the standalone `@roostjs/mcp` package (server primitives
+> without the agent runtime). See
+> [AI reference → MCP](/docs/reference/ai#mcp.md) for agent-side APIs.
+
 ## Installation
 
 ```bash title="terminal"

@@ -18,6 +18,7 @@ const sections = [
       { to: '/docs/tutorials/build-a-chat-app', label: 'Build an AI Chat App' },
       { to: '/docs/tutorials/build-a-saas-app', label: 'Build a SaaS App' },
       { to: '/docs/tutorials/build-a-task-api', label: 'Build a REST API' },
+      { to: '/docs/tutorials/ai-agent-walkthrough', label: 'Build a Stateful AI Agent' },
       { to: '/docs/tutorials/deploy-to-cloudflare', label: 'Deploy to Cloudflare' },
     ],
   },

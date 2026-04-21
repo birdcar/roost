@@ -1,7 +1,12 @@
 ---
 title: "@roostjs/ai"
-description: Class-based AI agents with typed tools, conversation memory, and streaming. Powered exclusively by Cloudflare Workers AI — no API keys required.
+description: "Laravel-ergonomics AI agents for Cloudflare Workers. Class-based agents with tools, streaming, sessions, workflows, MCP, HITL, memory, and multi-provider failover."
 ---
+
+`@roostjs/ai` blends Laravel 13's AI SDK ergonomics with Cloudflare Agents SDK
+primitive semantics. Every primitive composes — a `StatefulAgent` decorated
+with `@Stateful({binding})` unlocks Sessions, Schedule, Workflows, sub-agents,
+MCP, and HITL without additional wiring.
 
 ## Installation
 
@@ -9,11 +14,49 @@ description: Class-based AI agents with typed tools, conversation memory, and st
 bun add @roostjs/ai @roostjs/schema
 ```
 
+Subpaths (opt-in per feature):
+
+```ts
+import { Agent } from '@roostjs/ai';
+import { StatefulAgent } from '@roostjs/ai/stateful';
+import { RAGPipeline, Files, Stores, Reranking } from '@roostjs/ai/rag';
+import { Image, Audio, Transcription } from '@roostjs/ai/media';
+import { McpClient, createMcpHandler, McpPortal } from '@roostjs/ai/mcp';
+import { useAgent, useAgentStream } from '@roostjs/ai/client';
+import { requireApproval, approve } from '@roostjs/ai/hitl';
+import { Memory } from '@roostjs/ai/memory';
+import { chargeForTool, payAgent } from '@roostjs/ai/payments';
+import { Voice } from '@roostjs/ai/voice';
+import { Email, createEmailHandler } from '@roostjs/ai/email';
+import { Browser } from '@roostjs/ai/browser';
+import { runCodeMode, CodeMode } from '@roostjs/ai/code-mode';
+```
+
 ## Configuration
 
-The AI package uses **Cloudflare Workers AI exclusively**. There are no
-API keys and no external AI providers. The `AI` binding must be declared
-in `wrangler.jsonc`:
+Register `AiServiceProvider` in your Roost app config. `binding` is the
+Workers AI binding name; `providers` configures native adapters; `default`
+picks the failover order used by agents without an explicit `@Provider`.
+
+```ts title="config/app.ts"
+import { AiServiceProvider, Lab } from '@roostjs/ai';
+
+export default {
+  providers: [AiServiceProvider],
+  ai: {
+    binding: 'AI',
+    gateway: { accountId: env.CF_ACCOUNT_ID, gatewayId: 'roost-ai' },
+    providers: {
+      anthropic: { apiKey: env.ANTHROPIC_KEY },
+      openai: { apiKey: env.OPENAI_KEY, organization: env.OPENAI_ORG },
+      gemini: { apiKey: env.GEMINI_KEY },
+    },
+    default: [Lab.Anthropic, Lab.OpenAI],
+  },
+};
+```
+
+The `AI` binding must also be declared in `wrangler.jsonc`:
 
 ```jsonc title="wrangler.jsonc"
 {
@@ -21,419 +64,918 @@ in `wrangler.jsonc`:
 }
 ```
 
-Register the service provider to inject the provider into all agent classes:
+## Custom Base URLs
 
-```ts title="src/app.ts"
-import { AiServiceProvider } from '@roostjs/ai';
-app.register(AiServiceProvider);
-```
-
-The default model is `@cf/meta/llama-3.1-8b-instruct`. Override per class
-using the `@Model` decorator.
-
-## Agent API
-
-`Agent` is an abstract base class. Extend it and implement
-`instructions()`. One agent instance represents one conversation.
-
-#### `abstract instructions(): string`
-
-Returns the system prompt sent as the first message in every conversation turn.
-
-#### `async prompt(input: string, options?: Partial<AgentConfig>): Promise<AgentResponse>`
-
-Send a user message. Appends the message to the conversation history, calls the
-Cloudflare AI model, executes any tool calls returned by the model (up to
-`maxSteps`), and returns the final response. Conversation history is
-retained on the instance for subsequent calls.
+Route external providers through
+[Cloudflare AI Gateway](https://developers.cloudflare.com/ai-gateway/) for
+observability, caching, and rate limiting:
 
 ```ts
-const response = await agent.prompt('Hello');
-console.log(response.text);       // Model text response
-console.log(response.toolCalls);  // Tool calls made (if any)
+ai: {
+  gateway: {
+    accountId: 'your-cf-account-id',
+    gatewayId: 'your-gateway-id',
+  },
+}
+```
+
+When `gateway` is configured, external providers (OpenAI, Anthropic, Gemini)
+route through Gateway by default. Workers AI stays direct via the binding to
+preserve zero-hop latency.
+
+## Provider Support
+
+| Provider   | Transport         | Streaming | Tools | Structured |
+|------------|-------------------|-----------|-------|------------|
+| Workers AI | direct binding    | ✓         | ✓     | ✓          |
+| Anthropic  | Gateway or native | ✓         | ✓     | ✓          |
+| OpenAI     | Gateway or native | ✓         | ✓     | ✓          |
+| Gemini     | Gateway or native | ✓         | ✓     | ✓          |
+
+Providers implement the `AIProvider` interface from `./providers/interface.js`.
+Built-in implementations are `WorkersAIProvider`, `GatewayAIProvider`,
+`AnthropicProvider`, `OpenAIProvider`, `GeminiProvider`, and
+`FailoverProvider` (all exported from `@roostjs/ai`).
+
+## Agents
+
+`Agent` is an abstract base class. Extend it, implement `instructions()`, and
+opt into capabilities by implementing contract interfaces (`Conversational`,
+`HasTools`, `HasStructuredOutput`, `HasMiddleware`, `HasProviderOptions`).
+
+### Prompting
+
+```ts title="src/agents/support.ts"
+import { Agent } from '@roostjs/ai';
+
+class SupportAgent extends Agent {
+  instructions() { return 'You are a support bot.'; }
+}
+
+const response = await new SupportAgent().prompt('How do I reset my password?');
+console.log(response.text);       // Final model text
+console.log(response.toolCalls);  // Any tool calls made during the loop
 console.log(response.messages);   // Full message history
 ```
 
-#### `async stream(input: string): Promise<ReadableStream<Uint8Array>>`
+`prompt()` enters the agentic loop: the agent sends the current message
+history to the model, executes any tool calls returned, appends results, and
+repeats until the model emits a final response or `maxSteps` is reached.
 
-Send a user message and return a Server-Sent Events stream. Each chunk is a JSON
-object with a `type` field (`'text-delta'` or `'done'`).
+### Conversation Context (Sessions)
 
-#### `static setProvider(provider: AIProvider): void`
+For durable conversation state across requests, extend `StatefulAgent` and
+apply `RemembersConversations`:
 
-Set the AI provider for this agent class. Called automatically by
-`AiServiceProvider` during boot. Use in tests or custom setups.
+```ts title="src/agents/support.ts"
+import { StatefulAgent, RemembersConversations } from '@roostjs/ai/stateful';
+import { Stateful } from '@roostjs/ai';
 
-#### `static clearProvider(): void`
-
-Remove the provider set via `setProvider()`.
-
-#### `static fake(responses?: string[]): void`
-
-Enable fake mode. All `prompt()` calls return from the `responses`
-array in order (cycling the last response when exhausted) without calling the AI binding.
-
-#### `static restore(): void`
-
-Disable fake mode and restore normal provider behaviour.
-
-#### `static assertPrompted(textOrFn: string | ((prompt: string) => boolean)): void`
-
-Assert that at least one `prompt()` call matched. Accepts a substring
-or a predicate function. Throws if no match is found. Only valid after
-`fake()`.
-
-#### `static assertNeverPrompted(): void`
-
-Assert that no `prompt()` calls were made. Only valid after `fake()`.
-
-## HasTools Interface
-
-Implement `HasTools` on an agent subclass to enable tool use. The agent
-will pass all registered tools to the model and execute their handlers when the
-model requests a tool call.
-
-#### `tools(): Tool[]`
-
-Return the list of tool instances available to this agent.
-
-## HasStructuredOutput Interface
-
-#### `schema(s: typeof schema): Record<string, SchemaBuilder>`
-
-Define the expected JSON output shape using the schema builder.
-
-## Tool Interface
-
-Implement the `Tool` interface to create a callable tool. Tools are
-passed to the model as function definitions and invoked by the agent runtime
-when the model emits a tool call.
-
-#### `description(): string`
-
-One-sentence description of what the tool does. Sent to the model to aid tool selection.
-
-#### `schema(s: typeof schema): Record<string, SchemaBuilder>`
-
-Define the tool's input parameters. Each key in the returned object is a parameter name mapped to a schema builder.
-
-#### `async handle(request: ToolRequest): Promise<string>`
-
-Execute the tool. Must return a string. The string is fed back to the model as the tool result.
-
-## ToolRequest API
-
-#### `get<T>(key: string): T`
-
-Retrieve a typed parameter value from the tool call arguments.
-
-## CloudflareAIProvider
-
-The only built-in `AIProvider` implementation. Wraps `AIClient`
-from `@roostjs/cloudflare`, which in turn wraps the Cloudflare Workers
-`Ai` binding. Registered automatically by `AiServiceProvider`.
-
-#### `constructor(client: AIClient)`
-
-Construct with an `AIClient` wrapping the `AI` binding.
-
-#### `async chat(request: ProviderRequest): Promise<ProviderResponse>`
-
-Send a chat request to Cloudflare Workers AI and return the response.
-
-## agent() Factory
-
-#### `agent(options: { instructions: string; tools?: Tool[]; provider?: AIProvider }): { prompt: (input: string) => Promise<AgentResponse> }`
-
-Create an anonymous agent without defining a class. Returns an object with a single
-`prompt` method.
-
-## Decorators
-
-Class decorators applied to `Agent` subclasses. All are optional.
-
-#### `@Model(model: string)`
-
-Set the Cloudflare Workers AI model identifier. Default is
-`@cf/meta/llama-3.1-8b-instruct`. The value must be a valid model
-available in your Cloudflare account.
-
-#### `@MaxSteps(maxSteps: number)`
-
-Maximum number of tool-call iterations per `prompt()` call. Defaults to
-`5`. The model stops looping once it emits a response with no tool calls
-or when this limit is reached.
-
-#### `@Temperature(temperature: number)`
-
-Sampling temperature passed to the model. Range: `0` (deterministic) to `1`.
-
-#### `@MaxTokens(maxTokens: number)`
-
-Maximum number of tokens in the model response.
-
-#### `@Provider(provider: string)`
-
-Named provider identifier. Stored in the agent config for custom provider lookup logic.
-
-#### `@Timeout(timeout: number)`
-
-Timeout in milliseconds for a single model call.
-
-## Types
-
-```ts
-interface AgentConfig {
-  provider?: string;
-  model?: string;
-  maxSteps?: number;
-  maxTokens?: number;
-  temperature?: number;
-  timeout?: number;
-  queued?: boolean;
-}
-
-interface AgentMessage {
-  role: 'system' | 'user' | 'assistant' | 'tool';
-  content: string;
-  toolCallId?: string;
-  toolName?: string;
-}
-
-interface AgentResponse {
-  text: string;
-  messages: AgentMessage[];
-  toolCalls: ToolCall[];
-  usage?: { promptTokens: number; completionTokens: number };
-}
-
-type PromptResult =
-  | { queued: false; text: string; messages: AgentMessage[]; toolCalls: ToolCall[]; usage?: { promptTokens: number; completionTokens: number } }
-  | { queued: true; taskId: string };
-
-interface ToolCall {
-  id: string;
-  name: string;
-  arguments: Record<string, unknown>;
-}
-
-interface ProviderRequest {
-  model: string;
-  messages: AgentMessage[];
-  tools?: ProviderTool[];
-  maxTokens?: number;
-  temperature?: number;
-  queueRequest?: boolean;
-}
-
-interface ProviderResponse {
-  text: string;
-  toolCalls: ToolCall[];
-  usage?: { promptTokens: number; completionTokens: number };
-  taskId?: string;
+@Stateful({ binding: 'SUPPORT_AGENT' })
+class Support extends RemembersConversations(StatefulAgent) {
+  instructions() { return 'help'; }
 }
 ```
 
-## GatewayAIProvider
+Conversations persist in Durable Object storage with tree-structured history,
+compaction, and full-text search. See [Stateful Agents](#stateful-agents).
 
-Routes inference requests through [Cloudflare AI Gateway](https://developers.cloudflare.com/ai-gateway/) instead of the direct Workers AI binding. Adds observability, request caching, and automatic fallback.
+Import from `@roostjs/ai/stateful`.
 
-The gateway URL format used is:
-`https://gateway.ai.cloudflare.com/v1/{accountId}/{gatewayId}/workers-ai/{model}`
+### Structured Output
 
-#### `constructor(config: GatewayConfig, fallback: CloudflareAIProvider)`
-
-Construct with an account/gateway pair and a fallback provider. The fallback is called automatically when the gateway returns a non-2xx status or is unreachable.
+Implement `HasStructuredOutput` to constrain the model output to a schema.
+`prompt()` returns a `StructuredAgentResponse` with a `data` field validated
+against the schema.
 
 ```ts
-interface GatewayConfig {
-  accountId: string;
-  gatewayId: string;
+import { Agent, type HasStructuredOutput } from '@roostjs/ai';
+import type { schema } from '@roostjs/schema';
+
+class ReportAgent extends Agent implements HasStructuredOutput {
+  instructions() { return 'Extract structured data.'; }
+  schema(s: typeof schema) {
+    return { summary: s.string(), tags: s.array().items(s.string()) };
+  }
+}
+
+const { data } = await new ReportAgent().prompt('Analyze: ...');
+console.log(data.tags);
+```
+
+### Attachments
+
+Attach images or documents to a prompt via `Files.Image` or `Files.Document`
+constructors from `@roostjs/ai/rag`. Supported sources: URL, path, buffer,
+blob, base64, and uploaded file.
+
+```ts
+import { Files } from '@roostjs/ai/rag';
+
+const image = await Files.Image.fromUrl('https://example.com/diagram.png');
+await new VisualAgent().prompt('Describe this', { attachments: [image] });
+```
+
+### Streaming
+
+`agent.stream(input)` returns a `StreamableAgentResponse` that is both an
+async iterable of `StreamEvent` values and a `Response`-compatible body.
+Narrow on `event.type` before reading payload fields.
+
+```ts
+const response = new Support().stream('hi');
+
+for await (const event of response) {
+  if (event.type === 'text-delta') process.stdout.write(event.text);
+  if (event.type === 'tool-call') console.log('tool:', event.name);
+  if (event.type === 'done') break;
 }
 ```
 
-#### `async chat(request: ProviderRequest): Promise<ProviderResponse>`
+Use the Vercel AI SDK data protocol when streaming to a `useChat`-compatible
+client:
 
-Send a chat request through the AI Gateway REST endpoint. If the request contains more than one non-system message, the `x-session-affinity: true` header is included automatically to enable prefix caching on the gateway. Falls back to the direct `CloudflareAIProvider` on any error.
+```ts
+return new Support().stream('hi').usingVercelDataProtocol();
+```
 
-### Session Affinity and Prefix Caching
+`StreamEvent` is a discriminated union:
 
-`GatewayAIProvider` automatically adds `x-session-affinity: true` to requests that contain conversation history (more than one non-system message). This header instructs the AI Gateway to route the request to the same backend replica, enabling KV-based prefix cache hits for repeated conversation prefixes. No manual configuration is required.
+```ts
+type StreamEvent =
+  | { type: 'text-delta'; text: string }
+  | { type: 'tool-call'; id: string; name: string; arguments: Record<string, unknown> }
+  | { type: 'tool-result'; toolCallId: string; content: string }
+  | { type: 'usage'; promptTokens: number; completionTokens: number }
+  | { type: 'error'; message: string; code?: string }
+  | { type: 'done' };
+```
 
-### Usage
+### Broadcasting
 
-```ts title="src/app.ts"
-import { GatewayAIProvider } from '@roostjs/ai';
-import { CloudflareAIProvider, AIClient } from '@roostjs/cloudflare';
+Fan a streamed agent response out to every connected WebSocket client by
+wrapping each `StreamEvent` in a `BroadcastableEvent` and dispatching it
+through `BroadcastManager`:
 
-const directProvider = new CloudflareAIProvider(new AIClient(env.AI));
-const gatewayProvider = new GatewayAIProvider(
-  { accountId: env.CF_ACCOUNT_ID, gatewayId: env.AI_GATEWAY_ID },
-  directProvider,
+```ts
+import { BroadcastManager, Channel, type BroadcastableEvent } from '@roostjs/broadcast';
+import type { StreamEvent } from '@roostjs/ai';
+
+class StreamEventBroadcast implements BroadcastableEvent {
+  constructor(
+    private readonly event:    StreamEvent,
+    private readonly channels: Channel[],
+  ) {}
+  broadcastOn()   { return this.channels; }
+  broadcastWith() { return this.event as unknown as Record<string, unknown>; }
+  broadcastAs()   { return 'ai.stream'; }
+}
+
+const manager  = BroadcastManager.get();
+const channels = [new Channel('conv:42')];
+
+for await (const event of new Support().stream('hi')) {
+  await manager.broadcast(new StreamEventBroadcast(event, channels));
+}
+```
+
+`@roostjs/broadcast` must be configured at app boot for `BroadcastManager.get()`
+to resolve. See [`@roostjs/broadcast` reference](/docs/reference/broadcast)
+for channel configuration and DO setup.
+
+### Queueing
+
+`.queue(input)` bridges to `@roostjs/queue`. Returns a `QueuedPromptHandle`
+that is thenable — await it to resolve the final `AgentResponse`.
+
+```ts
+const handle = new ReportAgent()
+  .queue('Analyze Q3 data')
+  .then((response) => store(response.text));
+```
+
+Add queue metadata via decorators:
+
+```ts
+import { Queue, MaxRetries, Backoff, JobTimeout } from '@roostjs/ai';
+
+@Queue('ai')
+@MaxRetries(3)
+@Backoff('exponential')
+@JobTimeout(300)
+class ReportAgent extends Agent { /* ... */ }
+```
+
+### Tools
+
+Tools are classes implementing the `Tool` interface. Return tool instances
+from `tools()` on an agent that implements `HasTools`.
+
+```ts
+import { Agent, type HasTools, type Tool, type ToolRequest } from '@roostjs/ai';
+import type { schema } from '@roostjs/schema';
+
+class LookupTool implements Tool {
+  name() { return 'lookup'; }
+  description() { return 'Look up a user by id'; }
+  schema(s: typeof schema) { return { id: s.string() }; }
+  async handle(request: ToolRequest) { return queryDB(request.get<string>('id')); }
+}
+
+class Support extends Agent implements HasTools {
+  tools() { return [new LookupTool(), new WebSearch()]; }
+}
+```
+
+Provider tools (`WebSearch`, `WebFetch`, `FileSearch`) are native provider
+capabilities exposed as tool instances — the provider executes them, the
+handler is never invoked locally.
+
+### Middleware
+
+Wrap every prompt/response in a middleware chain. Each middleware receives
+the current `AgentPrompt` and a `next` function; call `next(prompt)` to
+continue the chain.
+
+```ts
+import { Agent, type HasMiddleware, type AgentMiddleware } from '@roostjs/ai';
+
+class Support extends Agent implements HasMiddleware {
+  middleware(): AgentMiddleware[] {
+    return [
+      async (prompt, next) => {
+        logPrompt(prompt);
+        const response = await next(prompt);
+        metrics.record(response.usage);
+        return response;
+      },
+    ];
+  }
+}
+```
+
+### Anonymous Agents
+
+Create a one-off agent without a class via the `agent()` factory. Supports
+`instructions`, `messages`, `tools`, `schema`, `middleware`, `providerOptions`,
+and `provider`. Returns an object with a single `prompt()` method.
+
+```ts
+import { agent } from '@roostjs/ai';
+
+const quick = agent({
+  instructions: 'Be terse.',
+  tools: [new LookupTool()],
+});
+
+await quick.prompt('hi');
+```
+
+### Agent Configuration (decorators)
+
+Class decorators configure model selection, limits, and runtime behaviour.
+
+| Decorator | Purpose |
+|---|---|
+| `@Provider(lab)` | Choose a provider. Pass an array to enable failover. |
+| `@Model(name)` | Provider-scoped model name, e.g. `'anthropic/claude-4-opus'`. |
+| `@MaxSteps(n)` | Maximum tool-call iterations per `prompt()`. |
+| `@MaxTokens(n)` | Per-call token cap on the response. |
+| `@Temperature(t)` | Sampling temperature (0–1). |
+| `@Timeout(ms)` | Single-call timeout. |
+| `@UseCheapestModel(lab?)` | Auto-select cheapest capable model. |
+| `@UseSmartestModel(lab?)` | Auto-select smartest capable model. |
+| `@Stateful({binding})` | Mark as DO-backed (see Stateful Agents). |
+| `@Scheduled(cron)` | Cron-triggered method on a `StatefulAgent`. |
+| `@Queue(name)` | Queue binding for `.queue()`. |
+| `@MaxRetries(n)` | Queued-job retry limit. |
+| `@RetryAfter(ms)` | Queued-job fixed backoff. |
+| `@Backoff(strategy)` | Queued-job backoff strategy (`'exponential'` / `'linear'`). |
+| `@JobTimeout(s)` | Queued-job visibility timeout. |
+| `@SubAgentCapable()` | Allow a StatefulAgent to spawn sub-agents. |
+| `@RequiresApproval(step)` | Require HITL approval before a method runs. |
+| `@CodeMode()` | Execute a method through the CodeMode sandbox. |
+
+```ts
+import { Agent, Provider, Model, MaxTokens, Temperature, Timeout, Lab } from '@roostjs/ai';
+
+@Provider([Lab.Anthropic, Lab.OpenAI])
+@Model('anthropic/claude-4-opus')
+@MaxTokens(4096)
+@Temperature(0.3)
+@Timeout(30_000)
+class Precise extends Agent {
+  instructions() { return 'Be precise.'; }
+}
+```
+
+### Provider Options
+
+Implement `HasProviderOptions` to return a per-provider options object.
+Unknown keys for the active provider are dropped silently (the
+`UnsupportedOptionDropped` event fires for observability).
+
+```ts
+import { Agent, type HasProviderOptions, Lab } from '@roostjs/ai';
+
+class Support extends Agent implements HasProviderOptions {
+  providerOptions(provider: Lab | string) {
+    if (provider === Lab.Anthropic) return { reasoning: { maxTokens: 8192 } };
+    return {};
+  }
+}
+```
+
+## Images
+
+Generate images via the `Image.of(prompt)` builder. Chain aspect ratio and
+quality, then call `.generate()` to get an `ImageResponse` — `.bytes` is a
+`Uint8Array`; `.store({ disk })` writes to the configured media-storage
+resolver (R2 by default).
+
+```ts
+import { Image } from '@roostjs/ai/media/image';
+
+const image = await Image.of('a happy dog').square().quality('high').generate();
+const bytes: Uint8Array = image.bytes;
+await image.store({ disk: 'R2_IMAGES' });
+```
+
+Import from `@roostjs/ai/media/image`.
+
+## Audio (TTS)
+
+Synthesise speech via the `Audio.of(text)` builder.
+
+```ts
+import { Audio } from '@roostjs/ai/media/audio';
+
+const mp3 = await Audio.of('Hello world').female().voice('warm').generate();
+```
+
+Import from `@roostjs/ai/media/audio`.
+
+## Transcription (STT)
+
+Transcribe an audio source via `Transcription.fromStorage`, `fromPath`, or
+`fromUpload`.
+
+```ts
+import { Transcription } from '@roostjs/ai/media/transcription';
+
+const { text, segments } = await Transcription
+  .fromStorage('call.wav', { disk: 'R2_AUDIO' })
+  .diarize()
+  .generate();
+```
+
+Import from `@roostjs/ai/media/transcription`. Other sources:
+`Transcription.fromPath(path)`, `Transcription.fromUpload(blob)`,
+`Transcription.fromString(bytes, mimeType)`.
+
+## Embeddings
+
+Embed text via the `EmbeddingPipeline`. The constructor takes an `AIClient`,
+an optional model, and options for KV-backed caching. Use `Str.toEmbeddings`
+for one-off embeddings against the registered default pipeline.
+
+```ts
+import { EmbeddingPipeline, EmbeddingCache, Str } from '@roostjs/ai/rag';
+import { AIClient, KVStore } from '@roostjs/cloudflare';
+
+const pipeline = new EmbeddingPipeline(
+  new AIClient(env.AI),
+  '@cf/baai/bge-base-en-v1.5',
+  {
+    cache:           new EmbeddingCache(new KVStore(env.KV)),
+    cacheTtlSeconds: 30 * 24 * 3600,
+  },
 );
 
-MyAgent.setProvider(gatewayProvider);
+const vectors = await pipeline.embed(['hi', 'bye']);
+const vec = await Str.toEmbeddings('single doc');
 ```
-
-## Async Inference
-
-Pass `queued: true` in the options to `Agent.prompt()` to dispatch the inference request asynchronously. The model call is enqueued on Cloudflare's side and the call returns immediately with a `taskId`.
-
-#### `async prompt(input: string, options?: Partial<AgentConfig>): Promise<PromptResult>`
-
-When `options.queued` is `true`, the return value has shape `{ queued: true; taskId: string }`. Otherwise it has shape `{ queued: false; text: string; messages: AgentMessage[]; toolCalls: ToolCall[] }`. Use the `queued` discriminant before accessing `text` or `taskId`.
-
-```ts
-const result = await agent.prompt('Summarize this document', { queued: true });
-
-if (result.queued) {
-  // Stash result.taskId and poll later
-} else {
-  console.log(result.text);
-}
-```
-
-`agent.stream()` throws if called with `queued: true`.
-
-## AIClient.poll()
-
-Check the status of a queued async inference task via the Cloudflare REST API. Located in `@roostjs/cloudflare`.
-
-#### `async poll<T = string>(taskId: string, fetcher: typeof fetch, accountId: string): Promise<{ status: 'running' } | { status: 'done'; result: T }>`
-
-Polls `https://api.cloudflare.com/client/v4/accounts/{accountId}/ai/run/tasks/{taskId}`. The `fetcher` must carry an `Authorization: Bearer <CF_API_TOKEN>` header. Returns `{ status: 'running' }` while the task is in progress and `{ status: 'done'; result: T }` when complete.
-
-```ts
-import { AIClient } from '@roostjs/cloudflare';
-
-const client = new AIClient(env.AI);
-const poll = await client.poll(taskId, fetch.bind(env), env.CF_ACCOUNT_ID);
-
-if (poll.status === 'done') {
-  console.log(poll.result);
-}
-```
-
-## RAG Pipeline
 
 Import from `@roostjs/ai/rag`.
 
-### Chunkers
+## Reranking
 
-Abstract base class:
+Rerank retrieval hits via `Reranking.of(hits).rerank()`. Ships Cohere and
+Jina adapters; register others via `registerReranker`.
 
 ```ts
-abstract class Chunker {
-  abstract chunk(document: Document): Chunk[];
+import { Reranking } from '@roostjs/ai/rag';
+
+const reranked = await Reranking.of(hits).usingCohere().rerank();
+```
+
+## Files
+
+`Files.store` persists a `StorableFile` through the registered adapter and
+returns a `FileRecord`. Delete by id via `Files.delete(id)`. Attach the
+record to a prompt via `attachments`, or pass `record.id` to a `Store` to
+index it.
+
+```ts
+import { Files } from '@roostjs/ai/rag';
+import { Document } from '@roostjs/ai';
+
+const file = Document.fromUpload(blob, { name: 'doc.pdf' });
+const stored = await Files.store(file);
+await Files.delete(stored.id);
+```
+
+`FilesStoreOptions` accepts `{ provider?, purpose? }` for routing to a
+non-default adapter. Constructors on `Files.Image` and `Files.Document`
+cover URL, path, buffer, blob, base64, and upload sources.
+
+## Vector Stores
+
+`Stores.create(name)` returns a `VectorStoreHandle` — an accessor over a
+named region of the configured Vectorize index. Call `configureStores({
+index, embeddings, namespacePrefix })` once at app boot. `handle.add`
+accepts a `StorableFile` or a known file id; `handle.remove` takes a file
+id.
+
+```ts
+import { Stores, configureStores, EmbeddingPipeline } from '@roostjs/ai/rag';
+import { AIClient, VectorStore } from '@roostjs/cloudflare';
+
+// Once at app boot:
+configureStores({
+  index:           new VectorStore(env.VECTORIZE),
+  embeddings:      new EmbeddingPipeline(new AIClient(env.AI)),
+  namespacePrefix: 'stores',
+});
+
+const store = await Stores.create('legal-docs');
+await store.add(stored.id, { metadata: { dept: 'legal' } });
+await store.remove(stored.id);
+```
+
+Query via `RAGPipeline` (constructed with a store, embeddings, and a
+chunker):
+
+```ts
+import { RAGPipeline, SemanticChunker } from '@roostjs/ai/rag';
+
+const pipeline = new RAGPipeline(
+  new VectorStore(env.VECTORIZE),
+  new EmbeddingPipeline(new AIClient(env.AI)),
+  new SemanticChunker(),
+  { namespace: 'legal-docs' },
+);
+const hits = await pipeline.query('refund policy', { topK: 5 });
+```
+
+## Failover
+
+Wrap an ordered list of providers in `FailoverProvider`. Each provider is
+tried in sequence on transient errors; all-failed raises
+`AllProvidersFailedError` and dispatches `AllProvidersFailed`.
+
+```ts
+import {
+  FailoverProvider,
+  AnthropicProvider,
+  WorkersAIProvider,
+} from '@roostjs/ai';
+import { AIClient } from '@roostjs/cloudflare';
+
+const provider = new FailoverProvider([
+  new AnthropicProvider({ apiKey }),
+  new WorkersAIProvider(new AIClient(env.AI)),
+]);
+```
+
+The decorator form registers the failover list at the class level:
+
+```ts
+import { Provider, Lab } from '@roostjs/ai';
+
+@Provider([Lab.Anthropic, Lab.WorkersAI])
+class Support extends Agent { /* ... */ }
+```
+
+## Testing
+
+Fakes replace provider mocking. `fake()` attaches canned responses; `restore()`
+removes the fake. Auto-generated structured-output fakes use the agent's
+schema when no explicit response is supplied.
+
+```ts
+import { SupportAgent } from './support.js';
+import { Image } from '@roostjs/ai/media/image';
+import { Files } from '@roostjs/ai/rag';
+
+SupportAgent.fake(['canned reply', (p) => `echo: ${p.input}`]);
+Image.fake();
+Files.fake();
+
+await new SupportAgent().prompt('hi');
+SupportAgent.assertPrompted('hi');
+Image.assertNothingGenerated();
+
+SupportAgent.restore();
+Image.restore();
+```
+
+`preventStrayPrompts()` throws on any `prompt()` call not matched by a canned
+response — useful as a final guard in CI.
+
+```ts
+SupportAgent.fake(['canned']).preventStrayPrompts();
+```
+
+For Durable Object-backed agents, use `TestStatefulAgentHarness`:
+
+```ts
+import { TestStatefulAgentHarness } from '@roostjs/ai/testing';
+
+const harness = TestStatefulAgentHarness
+  .for(Support)
+  .withSessions()
+  .withMockClock()
+  .withEnv({ SOMETHING: 'x' })
+  .build();
+```
+
+Import testing helpers from `@roostjs/ai/testing`.
+
+## Events
+
+Every primitive dispatches an `Event` class via `@roostjs/events`. Register
+listener classes on an `EventServiceProvider`; each listener exposes a
+`handle(event)` method that receives a typed instance.
+
+```ts title="src/providers/ai-events.ts"
+import { EventServiceProvider } from '@roostjs/events';
+import type { EventClass, ListenerClass } from '@roostjs/events';
+import {
+  PromptingAgent,
+  AgentPrompted,
+  ProviderFailoverTriggered,
+} from '@roostjs/ai';
+
+class LogPrompting {
+  handle(e: PromptingAgent) { console.log('about to prompt', e.prompt); }
+}
+
+class RecordUsage {
+  handle(e: AgentPrompted) { metrics.record(e.response.usage); }
+}
+
+class AlertFailover {
+  handle(e: ProviderFailoverTriggered) { alerts.send(e.cause); }
+}
+
+export class AiEventsProvider extends EventServiceProvider {
+  protected listen(): Map<EventClass<any>, ListenerClass[]> {
+    return new Map<EventClass<any>, ListenerClass[]>([
+      [PromptingAgent,            [LogPrompting]],
+      [AgentPrompted,             [RecordUsage]],
+      [ProviderFailoverTriggered, [AlertFailover]],
+    ]);
+  }
 }
 ```
 
-#### `TextChunker`
-
-Splits a document into fixed-size token windows with configurable overlap.
+For one-off registration (tests, scripts) use the dispatcher directly:
 
 ```ts
-new TextChunker(options?: { chunkSize?: number; overlapPercent?: number })
+import { EventDispatcher } from '@roostjs/events';
+
+EventDispatcher.get().registerListener(PromptingAgent, LogPrompting);
 ```
 
-| Option | Default | Description |
-|---|---|---|
-| `chunkSize` | `400` | Target token count per chunk (estimated as `chars / 4`). |
-| `overlapPercent` | `0.10` | Fraction of the previous chunk's words to repeat at the start of the next chunk. |
+30+ event classes cover prompting, streaming, tools, providers, RAG, media,
+HITL, payments, voice, email, browser, and CodeMode. See `src/events.ts` and
+`src/advanced-events.ts` in the package for the full inventory.
 
-#### `SemanticChunker`
+## Stateful Agents
 
-Splits on Markdown headings and double newlines first, merges segments below 10 % of `chunkSize`, then falls back to `TextChunker` for segments that still exceed `chunkSize`.
+`StatefulAgent` is a Durable Object-backed agent base class. It implements
+the `DurableObject` interface directly — no SDK inheritance — and unlocks
+Sessions, Schedule, Workflows, sub-agents, MCP, HITL, and Memory.
 
 ```ts
-new SemanticChunker(options?: { chunkSize?: number; overlapPercent?: number })
+import { StatefulAgent } from '@roostjs/ai/stateful';
+import { Stateful } from '@roostjs/ai';
+
+@Stateful({ binding: 'SUPPORT_AGENT' })
+class Support extends StatefulAgent {
+  instructions() { return 'help'; }
+}
 ```
 
-Accepts the same options as `TextChunker`.
+Declare the binding in `wrangler.jsonc`:
 
-### EmbeddingPipeline
+```jsonc title="wrangler.jsonc"
+{
+  "durable_objects": {
+    "bindings": [
+      { "name": "SUPPORT_AGENT", "class_name": "Support" }
+    ]
+  },
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["Support"] }
+  ]
+}
+```
 
-Wraps the `AIClient` to produce embedding vectors from text.
+### Sessions
 
-#### `constructor(client: AIClient, model?: string)`
-
-Default model: `@cf/baai/bge-base-en-v1.5` (768 dimensions). The model must match the dimensionality of the Vectorize index.
-
-#### `async embed(texts: string[]): Promise<number[][]>`
-
-Returns one embedding vector per input string. Throws `EmbeddingError` if the binding returns no data or a mismatched count.
-
-### RAGPipeline
-
-Orchestrates chunking, embedding, and vector storage/retrieval.
-
-#### `constructor(store: VectorStore, embeddings: EmbeddingPipeline, chunker: Chunker, config?: RAGPipelineConfig)`
-
-#### `async ingest(documents: Document[]): Promise<{ inserted: number }>`
-
-Chunk all documents, embed each chunk, and insert the resulting vectors into the `VectorStore`. Returns the number of vectors inserted.
-
-#### `async query(text: string): Promise<QueryResult[]>`
-
-Embed the query text, search the vector store for the top-K nearest chunks, filter by `similarityThreshold`, and return results sorted by descending score.
-
-#### `static fake(responses?: QueryResult[][]): void`
-
-Enable fake mode. `query()` returns from the `responses` array in order.
-
-#### `static restore(): void`
-
-Disable fake mode.
-
-#### `static assertIngested(predicate?: (docs: Document[]) => boolean): void`
-
-Assert that `ingest()` was called at least once. Provide a predicate to assert on the specific documents passed.
-
-#### `static assertQueried(predicate?: (text: string) => boolean): void`
-
-Assert that `query()` was called at least once. Provide a predicate to match against the query text.
-
-### RAG Types
+Apply the `RemembersConversations` mixin to auto-persist tree-structured
+message history. Conversations support compaction and FTS:
 
 ```ts
-interface Document {
-  id: string;
-  text: string;
-  metadata?: Record<string, unknown>;
-}
+import { StatefulAgent, RemembersConversations } from '@roostjs/ai/stateful';
+import { Stateful } from '@roostjs/ai';
 
-interface Chunk {
-  id: string;           // `${document.id}:${chunkIndex}`
-  documentId: string;
-  text: string;
-  tokenCount: number;
-  metadata?: Record<string, unknown>;
-}
-
-interface ChunkVector {
-  chunk: Chunk;
-  embedding: number[];
-}
-
-interface QueryResult {
-  chunk: Chunk;
-  score: number;
-}
-
-interface RAGPipelineConfig {
-  /** Default: 400 */
-  chunkSize?: number;
-  /** Default: 0.10 */
-  overlapPercent?: number;
-  /** Default: '@cf/baai/bge-base-en-v1.5' */
-  embeddingModel?: string;
-  /** Default: 5 */
-  topK?: number;
-  /** Default: 0.75 */
-  similarityThreshold?: number;
-  /** Vectorize namespace for multi-tenancy */
-  namespace?: string;
-}
-
-class EmbeddingError extends Error {}
+@Stateful({ binding: 'SUPPORT_AGENT' })
+class Support extends RemembersConversations(StatefulAgent) { /* ... */ }
 ```
+
+### Schedule
+
+Schedule one-off methods with `agent.schedule(when, method, payload)`.
+Declare cron-triggered methods with `@Scheduled(cron)`:
+
+```ts
+import { Scheduled } from '@roostjs/ai';
+
+@Stateful({ binding: 'DIGEST_AGENT' })
+class Digest extends StatefulAgent {
+  @Scheduled('0 9 * * *')
+  async sendDigest() { /* runs daily at 09:00 UTC */ }
+}
+
+// Or ad-hoc:
+await agent.schedule(60, 'check', { orderId: 42 });
+```
+
+Import from `@roostjs/ai/stateful`.
+
+## Workflows
+
+The `@Workflow({binding})` method decorator runs the method as a durable
+Cloudflare Workflow. The method receives a `step` parameter bound to
+`@roostjs/workflow`'s `step.do()`, `step.sleep()`, and friends.
+
+```ts
+import { Workflow } from '@roostjs/ai';
+
+@Stateful({ binding: 'REPORT_AGENT' })
+class Report extends StatefulAgent {
+  @Workflow({ binding: 'REPORT_FLOW' })
+  async processReport(step, reportId: string) {
+    const data = await step.do('fetch', () => this.fetchData(reportId));
+    await step.sleep('cooldown', '1 minute');
+    return data;
+  }
+}
+```
+
+See [`@roostjs/workflow`](/docs/reference/workflow#workflow-api) for
+`step.do`, `step.sleep`, `pause`/`resume`, and compensation patterns.
+
+## Sub-agents
+
+From inside a `StatefulAgent`, spawn a typed sub-agent over DO RPC:
+
+```ts
+const summarizer = this.subAgent(SummarizerAgent);
+const summary = await summarizer.summarize(doc);
+await summarizer.abort();
+```
+
+Sub-agent depth is tracked via the `SUB_AGENT_DEPTH_HEADER`; calls beyond
+`SUB_AGENT_MAX_DEPTH` throw `SubAgentDepthExceededError`. Spawn capability
+requires `@SubAgentCapable()` on the parent agent class.
+
+## MCP
+
+Implements both halves of the Model Context Protocol: consume remote MCP
+servers as tools, and expose agents as MCP servers.
+
+```ts
+import { McpClient, createMcpHandler, McpPortal } from '@roostjs/ai/mcp';
+
+// Consume a remote MCP server.
+const github = await McpClient.connect({
+  url: 'https://mcp.github.com',
+  transport: 'streamable-http',
+});
+
+class Bug extends Agent implements HasTools {
+  async tools() { return [...await github.tools(), new CustomTool()]; }
+}
+
+// Expose this agent class as an MCP server.
+export default createMcpHandler(Bug, { transport: 'streamable-http' });
+
+// Or combine multiple remote servers behind a single prefix-namespaced portal.
+const portal = new McpPortal([
+  { prefix: 'gh', client: github },
+  { prefix: 'jira', client: await McpClient.connect({ url: 'https://mcp.jira.com' }) },
+]);
+await portal.callTool('gh.search_code', { q: 'roost' });
+```
+
+Transports: `streamable-http` (HTTP/SSE, production default), `sse` (legacy,
+degrades to streamable when available), `stdio` (local dev only).
+
+Import from `@roostjs/ai/mcp`. This is distinct from
+[`@roostjs/mcp`](/docs/reference/mcp), a standalone MCP server package
+(tools, resources, prompts) without the agent runtime.
+
+## HITL
+
+`requireApproval` pauses execution until a human decides via `approve`. The
+approval state is persisted on the agent and can be routed through MCP
+elicitation or any custom `ApprovalRoute`.
+
+```ts
+import { requireApproval, approve } from '@roostjs/ai/hitl';
+
+const decision = await requireApproval(this, 'charge', { amount: 500 });
+if (decision.status === 'approved') chargeCustomer();
+
+// Elsewhere — from a reviewer UI or MCP tool:
+await approve(approvalId, { approverId: 'user_42' });
+```
+
+`@RequiresApproval(step)` on a method enforces approval before the method
+body runs. Import from `@roostjs/ai/hitl`.
+
+## Memory
+
+`agent.memory` exposes four tiers on a `StatefulAgent`: read-only context
+(request-scoped), short-form (scratchpad), knowledge (vector-backed
+long-term), and skills (registered callable capabilities).
+
+```ts
+// Read the per-request context.
+const tenant = agent.memory.context.get('tenant');
+
+// Scratch a draft into short-form memory.
+await agent.memory.shortForm.set('draft', text);
+
+// Query long-term vector knowledge.
+const hits = await agent.memory.knowledge.query({ query: 'refund policy' });
+
+// Register a lazily-loaded skill (the `load` thunk returns a `Tool`).
+agent.memory.skills.register({
+  name:        'translate',
+  description: 'Translate input text to English.',
+  load:        () => new TranslateTool(),
+});
+
+// Materialise registered skills as tool instances. Pass a filter to scope.
+const tools = await agent.memory.skills.tools(['translate']);
+```
+
+Import from `@roostjs/ai/memory`.
+
+## Payments
+
+x402 primitives for per-call pricing and MPP for agent-to-agent transfers.
+`chargeForTool` wraps a `Tool` so it issues a `PaymentRequiredError` on
+un-paid calls and executes only after a verified `PaymentProof`.
+
+```ts
+import {
+  chargeForTool,
+  payAgent,
+  InMemoryWallet,
+  type MppRecipient,
+  type Price,
+} from '@roostjs/ai/payments';
+
+const premium = chargeForTool(new ReportTool(), { amount: 100, currency: 'usd' });
+
+// Agent-to-agent payment: sender signs a challenge, recipient accepts the proof.
+const sender: { wallet: InMemoryWallet } = { wallet: new InMemoryWallet(env) };
+const recipient: MppRecipient = await resolveRemoteAgent('agent-42');
+const price: Price = { amount: 250, currency: 'usd' };
+
+const proof = await payAgent(sender, recipient, price);
+```
+
+Import from `@roostjs/ai/payments`.
+
+## Voice
+
+`Voice.stream()` opens a `VoiceSession` with pluggable transcribe and
+synthesise backends. `InMemoryRealtimeBridge` is included for local testing.
+
+```ts
+import { Voice } from '@roostjs/ai/voice';
+
+const session = await Voice.stream({
+  agent,
+  transcribe: async (chunk) => transcribeChunk(chunk),
+  synthesize: async (text)  => synthesizeText(text),
+});
+
+session.onUtterance(async (text) => {
+  const response = await agent.prompt(text);
+  await session.say(response.text);
+});
+
+// Later: send audio chunks in, close the session when done.
+await session.send(audioChunk);
+await session.close();
+```
+
+Import from `@roostjs/ai/voice`. The default `InMemoryRealtimeBridge` is
+suitable for unit tests; pass `bridge` in `VoiceStreamOptions` to swap in a
+WebRTC or WebSocket implementation in production.
+
+## Email
+
+`Email.send` dispatches outbound mail through any `EmailTransport`.
+`createEmailHandler` wires inbound mail routing from
+[Cloudflare Email Workers](https://developers.cloudflare.com/email-routing/)
+into an agent.
+
+```ts
+import { Email, createEmailHandler } from '@roostjs/ai/email';
+
+// Outbound — `from` is required by EmailMessage.
+await Email.send({
+  from:    'support@acme.com',
+  to:      'x@y.com',
+  subject: 'hi',
+  text:    'hello',
+});
+
+// Inbound — route ForwardedEmail into the agent's onEmail() method.
+// The handler is a factory so each inbound email gets a fresh instance.
+export const email = createEmailHandler(() => agentStubFor(env));
+```
+
+The agent returned by the factory must implement `onEmail(message)`. Import
+from `@roostjs/ai/email`.
+
+## Browser
+
+`Browser.navigate()` drives a pluggable headless browser (
+[Cloudflare Browser Rendering](https://developers.cloudflare.com/browser-rendering/),
+Puppeteer, or any `BrowserDriver`). `Browser.asTool()` wraps it as a `Tool`
+for an agent.
+
+```ts
+import { Browser } from '@roostjs/ai/browser';
+
+// Once at app boot — register the driver.
+Browser.configure(driver);
+
+// Navigate and read content off the page.
+const page = await Browser.navigate('https://example.com');
+const html = await page.html();
+const text = await page.text();
+await page.close();
+
+class Research extends Agent implements HasTools {
+  tools() { return [Browser.asTool({ maxPages: 25 })]; }
+}
+```
+
+Import from `@roostjs/ai/browser`. `BrowserPage` exposes `html`, `text`,
+`screenshot`, `pdf`, `click`, `fill`, and `close`.
+
+## CodeMode
+
+`runCodeMode` generates and executes TypeScript in a sandbox, returning the
+typed result. `@CodeMode()` decorates a method to replace its body with a
+`runCodeMode` call driven by the method's intent and signature.
+`InMemoryCodeModeCache` keys generated code by intent hash so repeat runs
+skip generation.
+
+```ts
+import { runCodeMode, CodeMode, InProcessSandbox, InMemoryCodeModeCache } from '@roostjs/ai/code-mode';
+
+const result = await runCodeMode(agent, 'compute Levenshtein of A and B', {
+  sandbox: new InProcessSandbox(),
+  cache: new InMemoryCodeModeCache(),
+});
+
+class Compute extends Agent {
+  @CodeMode()
+  async distance(a: string, b: string): Promise<number> { /* body replaced */ return 0; }
+}
+```
+
+Import from `@roostjs/ai/code-mode`.
+
+## See Also
+
+- [`@roostjs/ai` guides](/docs/guides/ai) — task-oriented how-tos for every
+  primitive above.
+- [`@roostjs/ai` concepts](/docs/concepts/ai) — opt-in contract pattern,
+  multi-provider strategy, and the Laravel + CF-native philosophy.
+- [Tutorial: build a stateful agent](/docs/tutorials/ai-agent-walkthrough) —
+  end-to-end walkthrough from empty project to deployed agent.
+- [MIGRATION.md](https://github.com/birdcar/roost/blob/main/packages/ai/MIGRATION.md)
+  — v0.2 → v0.3 upgrade notes.

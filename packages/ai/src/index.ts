@@ -62,6 +62,7 @@ export {
   UseSmartestModel,
   Stateful,
   Scheduled,
+  Workflow,
   Queue,
   Delay,
   MaxRetries,

@@ -1,3 +1,8 @@
+> **Testing AI agents?** `@roostjs/ai/testing` ships its own fakes and
+> harnesses — `Agent.fake()`, `preventStrayPrompts()`, auto-fake structured
+> output, and `TestStatefulAgentHarness` for DO-backed agents. See
+> [AI reference → Testing](/docs/reference/ai#testing.md) for agent-side APIs.
+
 ## Installation
 
 ```bash title="terminal"

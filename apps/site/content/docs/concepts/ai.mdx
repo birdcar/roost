@@ -1,122 +1,209 @@
 ---
 title: "@roostjs/ai"
-description: Why agents are classes, how the agentic loop works, and why Cloudflare Workers AI means no external API keys or network calls.
+description: "Why agents are classes, why v0.3 integrates Cloudflare Agents SDK semantics via Roost-native primitives, and the opt-in contract pattern."
 ---
 
 ## Why Class-Based Agents
 
 Agents could be plain functions: `const agent = createAgent({ instructions, tools });`.
-This is the approach taken by several popular AI SDK libraries. Roost instead makes agents
-classes for reasons that become apparent once an application has more than one or two agents.
+This is the approach several AI SDKs take. Roost makes agents classes for reasons that
+become apparent once an application has more than one or two of them.
 
-Class-based agents have inherent identity. When you have a `ResearchAssistant`,
-a `SupportAgent`, and a `BillingConcierge`, their names appear in
-logs, error messages, and test assertions. Decorators — `@Model`, `@MaxSteps`,
-`@Temperature` — can be attached to the class rather than buried in an options
-object, making configuration visually prominent. The static `fake()` and
-`restore()` methods work on the class as a whole, so tests can fake a specific
-agent type without affecting other agents in the same test suite.
+Class-based agents have inherent identity. When you have a `ResearchAssistant`, a
+`SupportAgent`, and a `BillingConcierge`, their names appear in logs, error messages,
+and test assertions. Decorators — `@Model`, `@MaxSteps`, `@Temperature`, `@Provider`,
+`@Stateful` — attach to the class rather than hiding inside an options object, making
+configuration visually prominent. The static `fake()` and `restore()` methods work on
+the class as a whole, so a test can replace a specific agent type without touching
+other agents in the same suite.
 
-Conversation memory is also cleaner on instances: create a new agent instance for each
-independent conversation, and the instance holds that conversation's history. When the
-conversation ends, discard the instance. No external state management is required for
-the common case.
+Instance-scoped conversation memory is cleaner too: a new agent instance per conversation
+means the instance holds that conversation's history. For durable state across requests,
+`StatefulAgent` persists the conversation into Durable Object storage — same mental
+model, different lifetime.
+
+## The Opt-In Contract Pattern
+
+v0.3 replaces inline fields (`messages = [...]`, `tools = [...]`) with a set of
+opt-in contracts. Each contract is a plain TypeScript interface the `Agent` base
+class detects at runtime through a type predicate.
+
+| Contract | Method | What it unlocks |
+|---|---|---|
+| `Conversational` | `messages()` | Seed or override the message history per call. |
+| `HasTools` | `tools()` | Return `Tool[]` made available to the model each step. |
+| `HasStructuredOutput` | `schema(s)` | Constrain output to a validated schema. |
+| `HasMiddleware` | `middleware()` | Wrap every prompt/response in an async chain. |
+| `HasProviderOptions` | `providerOptions(provider)` | Per-provider option bag. |
+
+```ts
+import { Agent } from '@roostjs/ai';
+import type { Conversational, HasTools, HasStructuredOutput } from '@roostjs/ai';
+
+class Support extends Agent implements Conversational, HasTools, HasStructuredOutput {
+  instructions() { return 'help'; }
+  messages()     { return priorHistory; }
+  tools()        { return [new LookupTool()]; }
+  schema(s)      { return { reply: s.string() }; }
+}
+```
+
+Each contract is optional; the agent works without any of them. Detection happens
+once per `prompt()` call through predicates (`isConversational`, `hasTools`,
+`hasStructuredOutput`, `hasMiddleware`, `hasProviderOptions`) exported from the
+package. The runtime cost is a handful of property existence checks.
+
+The pattern keeps the `Agent` base class small — it does not have to understand
+tools, schemas, or middleware by default — while making the capabilities a subclass
+opts into visible in its `implements` clause. Grep-ability is a design goal: every
+agent that uses tools can be located by searching for `implements.*HasTools`.
 
 ## The Agentic Loop
 
-When `agent.prompt(input)` is called, it does not simply send a message and
-return a response. It enters a loop. The agent sends the current message history to the
-model. If the model responds with tool calls, the agent executes those tools and adds
-the results to the message history, then sends the updated history back to the model.
-This continues until the model responds with text (not tool calls) or until
-`maxSteps` is reached.
+`prompt()` does not simply send a message and return a response. It enters a loop.
+The agent sends the current message history to the model; if the model returns tool
+calls, the agent executes those tools, appends the results, and sends the updated
+history back. This continues until the model emits a final response without tool
+calls or until `maxSteps` is reached.
 
-This loop is what makes agents genuinely agentic rather than just "LLM with context."
-A research agent that needs to search the web, summarize three pages, and synthesize
-an answer makes multiple sequential tool calls in a single `prompt()` invocation.
-The caller receives the final synthesized answer without needing to orchestrate the
-intermediate steps.
+Two knobs shape the loop:
 
-## Cloudflare Workers AI: No API Keys, No External Calls
+- `@MaxSteps(n)` bounds the number of model calls per `prompt()`. Unbounded loops
+  are a common failure mode in agent frameworks; v0.3 requires an explicit ceiling.
+- `@Provider([...])` enables provider failover inside the loop. If a call to the
+  primary provider fails with a transient error, the next provider in the list is
+  tried before the step is considered failed. `MaxStepsExhausted` and
+  `AllProvidersFailed` events fire on exhaustion so downstream code can react.
 
-When your Roost agent runs on Cloudflare Workers, inference does not go through an
-external API. It runs on Cloudflare's own GPU infrastructure via the Workers AI binding.
-There are no API keys to manage, no OpenAI or Anthropic billing to configure, and no
-external network requests that could fail, time out, or be rate-limited by a third-party
-service.
+A research agent that searches the web, summarises three pages, and synthesises an
+answer makes several sequential tool calls inside one `prompt()` — the caller sees
+the final synthesised reply, not the intermediate steps.
 
-The `CloudflareAIProvider` calls `AIClient.run(model, inputs)`, which
-resolves through the `env.AI` binding — a Cloudflare binding, not an HTTP
-endpoint. The inference happens inside Cloudflare's network, at a data center geographically
-close to the executing Worker. This is not a small operational advantage: it means AI
-inference inherits Workers' reliability and latency characteristics rather than adding
-a new external dependency.
+## Multi-Provider Strategy
 
-## The AIProvider Interface
+v0.2 routed everything through Workers AI. v0.3 supports four first-class
+providers, each as its own adapter:
 
-The `AIProvider` interface exists to make the AI backend swappable. The default
-and built-in provider is `CloudflareAIProvider`. An application can register
-a different provider on an agent class via `AgentClass.setProvider(provider)`.
-This extensibility is intended primarily for testing and for teams that want to run a
-specific agent through a different backend — not as an invitation to routinely switch
-providers per request.
+- `WorkersAIProvider` — direct binding, zero external hop.
+- `GatewayAIProvider` — Cloudflare AI Gateway for observability, caching, rate
+  limiting; external providers route through Gateway by default.
+- `AnthropicProvider`, `OpenAIProvider`, `GeminiProvider` — native adapters for
+  features Gateway cannot fully expose (reasoning, response format, tool choice
+  nuances).
+- `FailoverProvider` — ordered list tried in sequence.
 
-## Default Model Rationale
+The decision is operational, not architectural. Start with the direct binding in
+development. Move to Gateway in production when observability and caching become
+worth roughly 10 ms of added latency. Add native adapters when a specific
+provider feature (extended thinking on Claude, strict tool choice on OpenAI) is
+unavailable through Gateway.
 
-The default model is `@cf/meta/llama-3.1-8b-instruct`. The 8B Llama model
-is fast and cheap to run, suitable for most tool-assisted tasks. Agents that need more
-capability can override with `@cf/meta/llama-3.1-70b-instruct` via the
-`@Model` decorator. The default is the smallest model that is generally
-useful, not the largest model that might be impressive — smaller models fail faster
-and cost less, which is the right default before profiling.
+Failover is explicit. `@Provider([Lab.Anthropic, Lab.WorkersAI])` on an agent
+class means Workers AI is the backstop, tried only when the Anthropic call
+fails. This keeps the cost picture predictable — the expensive provider is the
+default, the cheap local provider is the fallback — while guaranteeing the
+agent keeps responding if the preferred provider is down.
 
-## AI Gateway: Routing, Caching, and Fallback
+## Stateful vs Stateless Agents
 
-The direct Workers AI binding (`env.AI`) is the lowest-latency path to inference: the call resolves inside Cloudflare's network without an additional HTTP hop. `GatewayAIProvider` introduces a deliberate tradeoff — roughly 10 ms of added latency in exchange for three capabilities the binding alone cannot provide.
+`Agent` is stateless from the platform's perspective: the instance holds its own
+message history, but that history is discarded when the request ends. This is the
+right default for synchronous request/response flows — a support bot answering a
+single question, a classification agent, a content generator.
 
-**Observability.** Every request through AI Gateway is logged in the Cloudflare dashboard with latency, model, token counts, and error codes. The binding produces no such logs.
+`StatefulAgent` (from `@roostjs/ai/stateful`) is a Durable Object. The DO's
+storage holds the conversation, schedule, workflow handles, sub-agent
+relationships, and memory. Reach for `StatefulAgent` when any of these are true:
 
-**Request caching.** AI Gateway can cache identical requests at the edge. For applications that send the same prompt repeatedly — search autocomplete, FAQ bots, cached summaries — this eliminates inference cost entirely for cache hits.
+- The conversation needs to span more than one HTTP request.
+- The agent needs to run scheduled methods (`@Scheduled` or
+  `agent.schedule(when, method, payload)`).
+- The agent needs to spawn typed sub-agents and aggregate their results.
+- The agent exposes an MCP server (long-lived transport).
+- The agent uses HITL approval flows that outlive the request that initiated them.
+- The agent accumulates long-term memory (knowledge tier, skill registry).
 
-**Fallback.** If the gateway is unreachable or returns an error, `GatewayAIProvider` calls the direct `CloudflareAIProvider` automatically. The application never sees the failure.
+`Sessions` (tree-structured message store with compaction and FTS) comes with the
+`RemembersConversations` mixin — opt in per agent class rather than paying the
+storage cost on every DO.
 
-The decision between the two providers is operational, not architectural. Start with the direct binding during development and switch to the gateway in production when you need logs and caching.
+## Roost-Native Integration (Philosophy)
 
-## Session Affinity and Prefix Caching
+v0.3 integrates the **semantics** of every Cloudflare Agents SDK primitive —
+Sessions, Schedule, Workflows, sub-agents, MCP, HITL — through Roost-native
+implementations rather than by inheriting the SDK's base classes.
 
-Transformer models benefit from KV caching: when the beginning of a prompt matches a previously computed sequence, the attention values for those tokens can be reused rather than recomputed. Cloudflare AI Gateway exposes this through session affinity.
+`StatefulAgent implements DurableObject` directly. Sub-agent RPC uses
+`@roostjs/cloudflare`'s `DurableObjectClient`. MCP uses
+`@modelcontextprotocol/sdk` transports without the SDK's `McpAgent` base.
+Workflows bind to `@roostjs/workflow`, not to the SDK's workflow primitive.
 
-When `GatewayAIProvider` detects that a request carries conversation history (more than one non-system message), it adds `x-session-affinity: true` to the outbound request. This header signals to the gateway to route the request to the same backend replica that handled the previous turn, maximising the probability of a cache hit on the shared system-prompt and conversation prefix.
+This matters for three reasons:
 
-The savings scale with the ratio of cached tokens to new tokens. A conversation with a long system prompt and many previous turns gets substantial cache hits; a single-turn request with no history gets none. The header adds no latency when the cache is cold — it is purely additive.
+1. **Consistency with other Roost DO primitives.** `ChannelDO`, `RateLimiterDO`,
+   and `StatefulAgent` all use the same DO convention — a thin `fetch` router
+   exposing typed members — so operators have one mental model for "a Roost
+   Durable Object."
+2. **No competing lifecycle assumptions.** When two frameworks both want to own
+   `alarm()`, hibernation behaviour, or `blockConcurrencyWhile` semantics, one
+   has to yield. Owning the DO directly removes the question.
+3. **Portability across the monorepo.** Events, queue, broadcast, and workflow
+   are Roost-first. Agent primitives plug into them as peers, not through SDK
+   glue.
 
-## RAG Architecture
+Users coming from the Cloudflare Agents SDK gain the Laravel DX without losing
+CF-native power. Users coming from Laravel's AI SDK find the same contracts,
+decorators, and fakes they are used to — running on Workers.
 
-Retrieval-Augmented Generation (RAG) addresses a fundamental constraint of language models: their knowledge is frozen at training time and limited to what fits in the context window.
+## Testing Philosophy
 
-A RAG pipeline has two phases:
+Provider mocking does not scale. Once an application has a dozen agents, five
+tools, three media primitives, and a few RAG pipelines, mocking the underlying
+providers requires understanding every request shape, response shape, and
+streaming protocol. It also couples the tests to the provider wire format,
+which changes more often than the agent's behaviour.
 
-**Ingestion.** Source documents are split into chunks, each chunk is embedded into a vector, and the vectors are stored in a vector database (Vectorize). This happens offline or as documents are added to the system.
+v0.3 replaces provider mocking with **class-level fakes** and **feature-level
+fakes**.
 
-**Retrieval.** At query time, the user's question is embedded using the same model. The vector database returns the chunks whose embeddings are closest to the question embedding. Those chunks are inserted into the model's context window as retrieved evidence, and the model generates an answer grounded in that evidence.
+```ts
+Support.fake(['canned reply']);              // canned string or resolver fn
+Image.fake();                                 // feature-level fake
+Files.fake();
+SupportAgent.fake().preventStrayPrompts();   // throw on unmatched .prompt()
+```
 
-`RAGPipeline` implements both phases. `ingest()` handles the write path; `query()` handles the read path. The pipeline does not include prompt construction — inserting retrieved chunks into the agent's instructions or prompt is the application's responsibility, which keeps the pipeline composable.
+Assertions read like English:
 
-## Chunking Strategies
+```ts
+Support.assertPrompted('password reset');
+Image.assertNothingGenerated();
+Audio.assertNothingGenerated();
+```
 
-How a document is divided into chunks has a larger impact on retrieval quality than the choice of embedding model.
+For `HasStructuredOutput` agents, `fake()` without explicit responses auto-generates
+schema-valid data — no need to hand-craft fixtures that match the schema.
 
-**Token size.** A chunk must be small enough to fit useful context in the vector's metadata (Vectorize stores metadata alongside vectors) but large enough that the embedding captures meaningful semantic content. The default chunk size of 400 estimated tokens is a reasonable starting point for most prose. Code and structured data may require smaller chunks.
+For DO-backed agents, `TestStatefulAgentHarness` wires a `MockDurableObjectState`,
+a mock clock, and an env bag without spinning up a real DO. This keeps the test
+loop fast (< 50 ms per test) and deterministic.
 
-**Overlap.** `TextChunker` repeats a fraction of the previous chunk's words at the start of the next chunk (10 % by default). This ensures that sentences and ideas that straddle a chunk boundary are represented in at least one chunk, rather than being split across two chunks that each lack the full context.
-
-**Semantic boundaries.** `TextChunker` is purely mechanical — it splits on word count regardless of content structure. `SemanticChunker` first splits on Markdown headings and paragraph breaks, then applies `TextChunker` only to segments that still exceed the size limit. For documents with clear heading structure (documentation, articles, reports), `SemanticChunker` produces more coherent chunks because each chunk corresponds to a complete section rather than an arbitrary word window.
-
-Choose `TextChunker` for unstructured prose, dense text, or content without heading structure. Choose `SemanticChunker` for Markdown documentation, articles, and any content where headings delineate distinct topics.
+The pattern is the same across every primitive: `Agent.fake()`, `Image.fake()`,
+`Audio.fake()`, `Transcription.fake()`, `Embeddings.fake()`, `Reranking.fake()`,
+`Files.fake()`, `Stores.fake()`, each with `assertX`/`restore()` siblings. One
+mental model covers the entire package.
 
 ## Further Reading
 
-- [@roostjs/cloudflare concepts — AIClient and the Workers AI binding](/docs/concepts/cloudflare)
-- [@roostjs/mcp concepts — how MCP tools relate to AI agent tools](/docs/concepts/mcp)
-- [@roostjs/schema concepts — how tool schemas are defined](/docs/concepts/schema)
-- [@roostjs/ai reference — Agent, Tool, and decorator API](/docs/packages/ai)
+- [@roostjs/ai reference](/docs/reference/ai) — every primitive with signatures
+  and canonical examples.
+- [@roostjs/ai guides](/docs/guides/ai) — task-oriented how-tos.
+- [Tutorial: build a stateful agent](/docs/tutorials/ai-agent-walkthrough) —
+  from empty project to deployed agent with tools, sessions, streaming, and
+  tests.
+- [@roostjs/cloudflare concepts — DO patterns](/docs/concepts/cloudflare) —
+  the DO conventions `StatefulAgent` follows.
+- [@roostjs/events concepts](/docs/concepts/events) — how `@roostjs/ai`
+  dispatches every primitive as an event class.
+- [@roostjs/broadcast concepts](/docs/concepts/broadcast) — the WebSocket
+  infrastructure behind streaming fan-out.

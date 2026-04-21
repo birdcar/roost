@@ -1,0 +1,382 @@
+<Callout type="note">
+  <p><strong>What you'll learn</strong></p>
+  <ul>
+    <li>Scaffolding a Roost app and registering the AI service provider</li>
+    <li>Writing an <code>Agent</code> subclass with <code>instructions()</code></li>
+    <li>Adding typed tools via the <code>HasTools</code> contract</li>
+    <li>Streaming responses to the browser with SSE</li>
+    <li>Upgrading to <code>StatefulAgent</code> + <code>@Stateful</code> for
+      durable conversation history</li>
+    <li>Testing with <code>fake()</code>, <code>assertPrompted</code>, and
+      <code>preventStrayPrompts</code></li>
+    <li>Deploying to Cloudflare Workers</li>
+  </ul>
+  <p><strong>Estimated time:</strong> ~40 minutes</p>
+  <p>
+    <strong>Prerequisites:</strong> Complete the{' '}
+    <a href="/docs/getting-started">Quick Start</a> guide before starting.
+  </p>
+  <p>
+    <strong>Packages used:</strong>{' '}
+    <a href="/docs/reference/ai">@roostjs/ai</a>,{' '}
+    <a href="/docs/reference/schema">@roostjs/schema</a>,{' '}
+    <a href="/docs/reference/testing">@roostjs/testing</a>
+  </p>
+</Callout>
+
+## Step 1: Scaffold the project
+
+Create a new Roost application and install its dependencies, then add
+`@roostjs/ai` and `@roostjs/schema`.
+
+```terminal title="terminal"
+roost new support-agent
+cd support-agent
+bun install
+bun add @roostjs/ai @roostjs/schema
+```
+
+Register `AiServiceProvider` and declare the `AI` binding:
+
+```ts title="config/app.ts"
+
+export default {
+  providers: [AiServiceProvider],
+  ai: {
+    binding: 'AI',
+    default: [Lab.WorkersAI],
+  },
+};
+```
+
+```jsonc title="wrangler.jsonc"
+{
+  "name": "support-agent",
+  "compatibility_date": "2026-04-01",
+  "main": "src/worker.ts",
+  "ai": { "binding": "AI" }
+}
+```
+
+<Callout type="tip">
+  <p>
+    Start the dev server (<code>bun run dev</code>) once to confirm the
+    baseline works. You should see Wrangler output confirming the{' '}
+    <code>AI</code> binding is registered.
+  </p>
+</Callout>
+
+## Step 2: Write the first prompt
+
+Create the agent class. One method — `instructions()` — defines the system
+prompt. The base `Agent` class supplies `prompt()` and the full agentic loop.
+
+```ts title="src/agents/support-agent.ts"
+
+export class SupportAgent extends Agent {
+  instructions(): string {
+    return 'You are a helpful customer support agent for Acme Inc. Be concise.';
+  }
+}
+```
+
+Wire a simple route that forwards the incoming message to the agent:
+
+```ts title="src/routes/api/chat.ts"
+
+export async function POST({ request }: { request: Request }) {
+  const { message } = await request.json<{ message: string }>();
+  const response = await new SupportAgent().prompt(message);
+  return Response.json({ text: response.text });
+}
+```
+
+<Callout type="tip">
+  <p>Try it:</p>
+  <code>
+    {`curl -s -X POST http://localhost:3000/api/chat \\
+  -H 'Content-Type: application/json' \\
+  -d '{"message":"How do I reset my password?"}' | jq .text`}
+  </code>
+  <p>
+    You should see a full response string — no streaming yet, just the final
+    model output.
+  </p>
+</Callout>
+
+## Step 3: Add a tool
+
+Tools are classes implementing the `Tool` interface. Return them from
+`tools()` on an agent that implements `HasTools`; the runtime passes them to
+the model and executes the handler when the model asks for them.
+
+```ts title="src/tools/lookup-tool.ts"
+
+export class LookupTool implements Tool {
+  constructor(private customers: Map<string, { tier: string }>) {}
+
+  name() { return 'customer_lookup'; }
+  description() { return 'Look up a customer tier by ID.'; }
+  schema(s: typeof schema) {
+    return { customerId: s.string().description('The customer ID') };
+  }
+  async handle(req: ToolRequest): Promise<string> {
+    const id = req.get<string>('customerId');
+    const record = this.customers.get(id);
+    return record ? `tier=${record.tier}` : 'not found';
+  }
+}
+```
+
+Add `HasTools` to the agent and return the tool instance:
+
+```ts title="src/agents/support-agent.ts (updated)"
+
+const customers = new Map([
+  ['42',  { tier: 'pro' }],
+  ['101', { tier: 'enterprise' }],
+]);
+
+export class SupportAgent extends Agent implements HasTools {
+  instructions(): string {
+    return [
+      'You are a helpful support agent for Acme Inc.',
+      'When a user mentions a customer ID, look it up via the customer_lookup tool.',
+    ].join(' ');
+  }
+
+  tools() {
+    return [new LookupTool(customers)];
+  }
+}
+```
+
+<Callout type="tip">
+  <p>Send a prompt that mentions a customer ID:</p>
+  <code>
+    {`curl -s -X POST http://localhost:3000/api/chat \\
+  -H 'Content-Type: application/json' \\
+  -d '{"message":"What tier is customer 42?"}' | jq .text`}
+  </code>
+  <p>
+    The agent invokes <code>customer_lookup</code> behind the scenes, gets
+    back <code>tier=pro</code>, and folds the result into the final reply.
+  </p>
+</Callout>
+
+## Step 4: Stream the response to the browser
+
+`agent.stream(input)` returns a `StreamableAgentResponse` that is both an
+async iterable of `StreamEvent` and a `Response`-compatible body. Swap the
+JSON route handler for a streaming one:
+
+```ts title="src/routes/api/chat-stream.ts"
+
+export async function POST({ request }: { request: Request }) {
+  const { message } = await request.json<{ message: string }>();
+  const stream = new SupportAgent().stream(message);
+
+  return new Response(stream, {
+    headers: { 'content-type': 'text/event-stream' },
+  });
+}
+```
+
+On the client, read the SSE stream and append deltas as they arrive:
+
+```ts title="src/routes/chat.tsx (client)"
+async function sendMessage(message: string, append: (text: string) => void) {
+  const res = await fetch('/api/chat-stream', {
+    method:  'POST',
+    headers: { 'content-type': 'application/json' },
+    body:    JSON.stringify({ message }),
+  });
+
+  const reader = res.body!.getReader();
+  const decoder = new TextDecoder();
+
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    const chunk = decoder.decode(value);
+    for (const line of chunk.split('\n\n')) {
+      if (!line.startsWith('data: ')) continue;
+      const event = JSON.parse(line.slice(6));
+      if (event.type === 'text-delta') append(event.text);
+    }
+  }
+}
+```
+
+<Callout type="tip">
+  <p>
+    If you're using React, swap the manual reader for the{' '}
+    <code>useAgentStream</code> hook from <code>@roostjs/ai/client</code> —
+    same events, no boilerplate. See{' '}
+    <a href="/docs/reference/ai#streaming">reference → Streaming</a>.
+  </p>
+</Callout>
+
+## Step 5: Persist conversation history with StatefulAgent
+
+Upgrade the stateless agent to a Durable Object-backed one. `StatefulAgent`
+(from `@roostjs/ai/stateful`) implements `DurableObject` directly; apply the
+`RemembersConversations` mixin to auto-persist message history.
+
+```ts title="src/agents/support-agent.ts (updated)"
+
+const customers = new Map([
+  ['42',  { tier: 'pro' }],
+  ['101', { tier: 'enterprise' }],
+]);
+
+@Stateful({ binding: 'SUPPORT_AGENT' })
+export class SupportAgent extends RemembersConversations(StatefulAgent) implements HasTools {
+  instructions(): string {
+    return [
+      'You are a helpful support agent for Acme Inc.',
+      'When a user mentions a customer ID, look it up via the customer_lookup tool.',
+    ].join(' ');
+  }
+
+  tools() {
+    return [new LookupTool(customers)];
+  }
+}
+```
+
+Declare the DO binding and export the class from your Worker entry point:
+
+```jsonc title="wrangler.jsonc (updated)"
+{
+  "name": "support-agent",
+  "compatibility_date": "2026-04-01",
+  "main": "src/worker.ts",
+  "ai": { "binding": "AI" },
+  "durable_objects": {
+    "bindings": [
+      { "name": "SUPPORT_AGENT", "class_name": "SupportAgent" }
+    ]
+  },
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["SupportAgent"] }
+  ]
+}
+```
+
+```ts title="src/worker.ts (updated)"
+export { SupportAgent } from './agents/support-agent';
+// ...existing fetch export
+```
+
+Route calls through the DO stub so each conversation has an identity:
+
+```ts title="src/routes/api/chat-stream.ts (updated)"
+export async function POST({ request }: { request: Request }) {
+  const { conversationId, message } = await request.json<{
+    conversationId: string;
+    message:        string;
+  }>();
+
+  const id   = env.SUPPORT_AGENT.idFromName(conversationId);
+  const stub = env.SUPPORT_AGENT.get(id);
+
+  const stream = await stub.stream(message);
+  return new Response(stream, {
+    headers: { 'content-type': 'text/event-stream' },
+  });
+}
+```
+
+<Callout type="tip">
+  <p>
+    Two requests that share a <code>conversationId</code> now share memory:
+    the agent remembers that customer 42 is on the pro tier without having
+    to re-invoke the lookup tool.
+  </p>
+</Callout>
+
+## Step 6: Test the agent
+
+Fakes replace provider mocking. `fake()` attaches canned responses;
+`preventStrayPrompts()` throws on any call not matched. `assertPrompted`
+verifies the inputs the agent received.
+
+```ts title="tests/support-agent.test.ts"
+
+afterEach(() => SupportAgent.restore());
+
+describe('SupportAgent', () => {
+  it('answers password-reset questions', async () => {
+    SupportAgent
+      .fake(['Visit /account/reset to reset your password.'])
+      .preventStrayPrompts();
+
+    const response = await new SupportAgent().prompt('How do I reset my password?');
+
+    expect(response.text).toContain('reset');
+    SupportAgent.assertPrompted('reset');
+  });
+
+  it('routes customer IDs to the lookup flow', async () => {
+    SupportAgent.fake([(p) => `Checking customer ${p.input.match(/\d+/)?.[0]}.`]);
+
+    const response = await new SupportAgent().prompt('What tier is customer 42?');
+
+    expect(response.text).toBe('Checking customer 42.');
+    SupportAgent.assertPrompted('42');
+  });
+});
+```
+
+Run the tests:
+
+```terminal title="terminal"
+bun test
+```
+
+<Callout type="tip">
+  <p>
+    For DO-backed assertions (scheduled methods, sub-agent spawns, memory
+    tiers), use{' '}
+    <a href="/docs/reference/ai#testing">
+      <code>TestStatefulAgentHarness</code>
+    </a>{' '}
+    — same fake semantics, plus a mock DO state and clock.
+  </p>
+</Callout>
+
+## Step 7: Deploy
+
+Deploy to Cloudflare Workers. The DO binding and AI binding are both
+provisioned from `wrangler.jsonc`; no additional dashboard work is required.
+
+```terminal title="terminal"
+bunx wrangler deploy
+```
+
+See the [Deploy to Cloudflare tutorial](/docs/tutorials/deploy-to-cloudflare.md)
+for CI/CD patterns, secrets management, and preview environments.
+
+## What you built
+
+You now have a stateful AI agent with:
+
+- A `SupportAgent` class extending `StatefulAgent` with durable conversation
+  history via `RemembersConversations`
+- A typed `LookupTool` the model invokes automatically when it sees a
+  customer ID in user input
+- A streaming SSE endpoint that fans model deltas to the browser
+- A passing test suite that uses `fake()` and `preventStrayPrompts()` to
+  run without the AI binding
+- A `wrangler.jsonc` wired for Workers AI and a Durable Object binding
+
+## Next steps
+
+- [@roostjs/ai reference](/docs/reference/ai.md) — every primitive with
+  signatures and canonical examples, including sessions, workflows,
+  sub-agents, MCP, HITL, memory tiers, and payments.
+- [@roostjs/ai guides](/docs/guides/ai.md) — task-focused how-tos for queueing,
+  scheduling, RAG, and failover.
+- [@roostjs/ai concepts](/docs/concepts/ai.md) — the opt-in contract pattern,
+  multi-provider strategy, and the Roost-native integration philosophy.

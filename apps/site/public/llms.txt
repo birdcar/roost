@@ -11,6 +11,7 @@
 - [Build a REST API](https://roost.birdcar.dev/docs/tutorials/build-a-task-api.md): Create a CRUD API with database models, validation, and tests.
 - [Build a SaaS App](https://roost.birdcar.dev/docs/tutorials/build-a-saas-app.md): Add authentication, subscription billing, and background jobs to a Roost application.
 - [Build an AI Chat App](https://roost.birdcar.dev/docs/tutorials/build-a-chat-app.md): Create a chat interface powered by Cloudflare Workers AI with conversation history.
+- [Build a Stateful AI Agent](https://roost.birdcar.dev/docs/tutorials/ai-agent-walkthrough.md): Build a SupportAgent from scratch with tools, sessions, streaming, and tests — then deploy it to Cloudflare Workers.
 
 ## Guides
 
@@ -32,7 +33,7 @@
 - [@roostjs/broadcast Guides](https://roost.birdcar.dev/docs/guides/broadcast.md): Task-oriented instructions for setting up broadcasting, creating broadcastable events, connecting a client, authorizing private channels, and testing.
 - [Deployment](https://roost.birdcar.dev/docs/guides/deployment.md): Task-oriented instructions for deploying Roost applications to Cloudflare Workers.
 - [@roostjs/workflow Guides](https://roost.birdcar.dev/docs/guides/workflow.md): Task-oriented instructions for defining workflows, running durable steps, implementing sagas with Compensable, and testing without Cloudflare.
-- [@roostjs/ai Guides](https://roost.birdcar.dev/docs/guides/ai.md): Task-oriented instructions for agents, tools, streaming, and testing. Powered by Cloudflare Workers AI — no API keys required.
+- [@roostjs/ai Guides](https://roost.birdcar.dev/docs/guides/ai.md): Task-oriented instructions for agents, tools, streaming, queueing, sessions, workflows, sub-agents, MCP, HITL, RAG, and testing.
 - [@roostjs/billing Guides](https://roost.birdcar.dev/docs/guides/billing.md): Task-oriented instructions for Stripe integration, subscriptions, webhooks, and metered billing.
 - [@roostjs/orm Guides](https://roost.birdcar.dev/docs/guides/orm.md): Task-oriented instructions for models, querying, relationships, factories, and testing.
 - [@roostjs/schema Guides](https://roost.birdcar.dev/docs/guides/schema.md): Task-oriented instructions for defining tool input schemas, optional fields, nested objects, and descriptions.
@@ -52,7 +53,7 @@
 - [@roostjs/core](https://roost.birdcar.dev/docs/reference/core.md): Dependency injection container, configuration management, middleware pipeline, application lifecycle, and service provider base class.
 - [@roostjs/broadcast](https://roost.birdcar.dev/docs/reference/broadcast.md): Real-time WebSocket broadcasting via Cloudflare Durable Objects. Channel types, ChannelDO, BroadcastManager, client helper, and testing utilities.
 - [@roostjs/workflow](https://roost.birdcar.dev/docs/reference/workflow.md): Durable multi-step workflows on Cloudflare Workflows. Workflow base class, WorkflowClient, Compensable, and service provider.
-- [@roostjs/ai](https://roost.birdcar.dev/docs/reference/ai.md): Class-based AI agents with typed tools, conversation memory, and streaming. Powered exclusively by Cloudflare Workers AI — no API keys required.
+- [@roostjs/ai](https://roost.birdcar.dev/docs/reference/ai.md): Laravel-ergonomics AI agents for Cloudflare Workers. Class-based agents with tools, streaming, sessions, workflows, MCP, HITL, memory, and multi-provider failover.
 - [@roostjs/billing](https://roost.birdcar.dev/docs/reference/billing.md): Abstract billing provider interface with a Stripe adapter. Implemented using only fetch for Cloudflare Worker compatibility — no Node.js SDK.
 - [@roostjs/orm](https://roost.birdcar.dev/docs/reference/orm.md): Laravel-inspired ORM built on Drizzle for D1 databases. Model classes, query builder, relationships, lifecycle hooks, factories.
 - [@roostjs/schema](https://roost.birdcar.dev/docs/reference/schema.md): Fluent JSON Schema builder with zero runtime dependencies. Used by @roostjs/ai and @roostjs/mcp to define tool and prompt parameters.
@@ -75,7 +76,7 @@
 - [@roostjs/core](https://roost.birdcar.dev/docs/concepts/core.md): Why Roost has a service container, how the pipeline middleware model works, and what the Application class is actually doing.
 - [@roostjs/broadcast](https://roost.birdcar.dev/docs/concepts/broadcast.md): How Durable Objects power per-channel WebSocket state, the three channel types and their authorization model, and how broadcast integrates with the events system.
 - [@roostjs/workflow](https://roost.birdcar.dev/docs/concepts/workflow.md): How Cloudflare Workflows differ from queues, the durable execution model, saga patterns with Compensable, and when to use workflows vs jobs.
-- [@roostjs/ai](https://roost.birdcar.dev/docs/concepts/ai.md): Why agents are classes, how the agentic loop works, and why Cloudflare Workers AI means no external API keys or network calls.
+- [@roostjs/ai](https://roost.birdcar.dev/docs/concepts/ai.md): Why agents are classes, why v0.3 integrates Cloudflare Agents SDK semantics via Roost-native primitives, and the opt-in contract pattern.
 - [@roostjs/billing](https://roost.birdcar.dev/docs/concepts/billing.md): Why billing is an abstract interface, how the adapter pattern lets you swap providers, and the subscription lifecycle model.
 - [@roostjs/orm](https://roost.birdcar.dev/docs/concepts/orm.md): Why Roost uses Active Record on D1, why it is not Prisma, and the design of the query builder and migration system.
 - [Laravel-Inspired Patterns](https://roost.birdcar.dev/docs/concepts/laravel-patterns.md): Which Laravel patterns Roost adopts, what it deliberately changes, and the developer-experience philosophy behind both choices.

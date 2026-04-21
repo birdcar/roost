@@ -3,6 +3,11 @@ title: "@roostjs/workflow"
 description: Durable multi-step workflows on Cloudflare Workflows. Workflow base class, WorkflowClient, Compensable, and service provider.
 ---
 
+> **Using with AI agents?** `@roostjs/ai` wraps `@roostjs/workflow` — decorate
+> a `StatefulAgent` method with `@Workflow({binding})` to run it as a durable
+> Cloudflare Workflow with typed `step.do` / `step.sleep` helpers. See
+> [AI reference → Workflows](/docs/reference/ai#workflows) for agent-side APIs.
+
 ## Installation
 
 ```bash title="terminal"

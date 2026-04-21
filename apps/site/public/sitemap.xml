@@ -31,6 +31,11 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://roost.birdcar.dev/docs/tutorials/ai-agent-walkthrough</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://roost.birdcar.dev/docs/index</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>

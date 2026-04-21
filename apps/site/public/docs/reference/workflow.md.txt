@@ -1,3 +1,8 @@
+> **Using with AI agents?** `@roostjs/ai` wraps `@roostjs/workflow` — decorate
+> a `StatefulAgent` method with `@Workflow({binding})` to run it as a durable
+> Cloudflare Workflow with typed `step.do` / `step.sleep` helpers. See
+> [AI reference → Workflows](/docs/reference/ai#workflows.md) for agent-side APIs.
+
 ## Installation
 
 ```bash title="terminal"

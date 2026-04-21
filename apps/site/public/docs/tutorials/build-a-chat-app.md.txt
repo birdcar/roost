@@ -417,7 +417,7 @@ You now have a fully working AI chat application on Cloudflare Workers that:
 
 - Accepts user messages via a React form
 - Persists every message to a D1 database using `@roostjs/orm`
-- Runs an AI agent backed by `@cf/meta/llama-3.1-70b-instruct` on Cloudflare Workers AI — no API keys required
+- Runs an AI agent backed by `@cf/meta/llama-3.1-70b-instruct` via the Workers AI binding
 - Exposes conversation history to the agent through a typed `SummarizeTool`
 - Streams tokens to the browser in real time
 
