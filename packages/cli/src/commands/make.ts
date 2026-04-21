@@ -1,10 +1,10 @@
 import { writeFile, mkdir } from 'node:fs/promises';
 import { join, dirname } from 'node:path';
-import { exists } from 'node:fs/promises';
+import { pathExists } from '../generator.js';
 import { toPascalCase, toKebabCase, toTableName } from '../utils.js';
 
 async function writeIfNotExists(path: string, content: string): Promise<void> {
-  if (await exists(path)) {
+  if (await pathExists(path)) {
     console.error(`File already exists: ${path}`);
     process.exit(1);
   }

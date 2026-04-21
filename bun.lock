@@ -353,6 +353,7 @@
         "@roostjs/core": "workspace:*",
       },
       "devDependencies": {
+        "@cloudflare/workers-types": "catalog:",
         "@roostjs/ai": "workspace:*",
         "@roostjs/billing": "workspace:*",
         "@roostjs/orm": "workspace:*",

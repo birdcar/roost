@@ -1,13 +1,13 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { exists } from 'node:fs/promises';
+import { pathExists } from '../generator.js';
 import { toKebabCase } from '../utils.js';
 
 export async function newProject(name: string, flags: Record<string, boolean> = {}): Promise<void> {
   const dir = join(process.cwd(), name);
   const kebab = toKebabCase(name);
 
-  if (await exists(dir)) {
+  if (await pathExists(dir)) {
     if (!flags['force']) {
       console.error(`Directory "${name}" already exists. Use --force to overwrite.`);
       process.exit(1);
