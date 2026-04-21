@@ -13,4 +13,9 @@ jobs:
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile
       - run: bun run typecheck
-      - run: bun test
+      - name: Run tests (default + auto-discovered)
+        run: bun test
+      - name: Run @roostjs/ai React client tests (happy-dom preloaded)
+        run: bun run --filter @roostjs/ai test:client
+      - name: Run @roostjs/ai integration tests (miniflare)
+        run: bun run --filter @roostjs/ai test:integration

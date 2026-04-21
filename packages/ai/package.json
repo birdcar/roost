@@ -76,7 +76,7 @@
     "build": "tsc",
     "typecheck": "tsc --noEmit",
     "test": "bun test __tests__/advanced __tests__/attachments __tests__/mcp __tests__/media __tests__/providers __tests__/queueing __tests__/rag __tests__/scripts __tests__/stateful __tests__/streaming __tests__/sub-agents __tests__/tools __tests__/workflows __tests__/*.test.ts --preload ./__tests__/setup.ts",
-    "test:client": "bun test __tests__/client --preload ./__tests__/client/happy-dom-preload.ts --preload ./__tests__/setup.ts",
+    "test:client": "bun test ./__tests__/client/use-agent.client-test.tsx ./__tests__/client/use-agent-stream.client-test.tsx --preload ./__tests__/client/happy-dom-preload.ts --preload ./__tests__/setup.ts",
     "test:integration": "bun test __tests__/integration --preload ./__tests__/setup.ts",
     "test:coverage": "bun run test --coverage",
     "test:coverage:gate": "bun run test:coverage && bun run scripts/coverage-gate.ts --threshold=95",
