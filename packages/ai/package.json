@@ -1,6 +1,6 @@
 {
   "name": "@roostjs/ai",
-  "version": "0.3.0-alpha.1",
+  "version": "0.3.0",
   "type": "module",
   "exports": {
     ".": {
@@ -74,7 +74,13 @@
   },
   "scripts": {
     "build": "tsc",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "bun test __tests__/advanced __tests__/attachments __tests__/mcp __tests__/media __tests__/providers __tests__/queueing __tests__/rag __tests__/scripts __tests__/stateful __tests__/streaming __tests__/sub-agents __tests__/tools __tests__/workflows __tests__/*.test.ts --preload ./__tests__/setup.ts",
+    "test:client": "bun test __tests__/client --preload ./__tests__/client/happy-dom-preload.ts --preload ./__tests__/setup.ts",
+    "test:integration": "bun test __tests__/integration --preload ./__tests__/setup.ts",
+    "test:coverage": "bun run test --coverage",
+    "test:coverage:gate": "bun run test:coverage && bun run scripts/coverage-gate.ts --threshold=95",
+    "test:all": "bun run test && bun run test:client && bun run test:integration"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.22.0",
@@ -103,8 +109,11 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "catalog:",
+    "@happy-dom/global-registrator": "^15.11.0",
     "@roostjs/broadcast": "workspace:*",
     "@roostjs/queue": "workspace:*",
+    "@testing-library/dom": "^10.4.0",
+    "@testing-library/react": "^16.1.0",
     "@types/react": "catalog:",
     "bun-types": "catalog:",
     "miniflare": "4.20260415.0",
