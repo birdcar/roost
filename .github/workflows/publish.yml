@@ -39,14 +39,15 @@ jobs:
           DRY_RUN="${{ inputs.dry-run }}"
           for pkg in .publish/packages/*/; do
             if [ -f "$pkg/package.json" ]; then
-              name=$(node -e "console.log(require(process.argv[1]).name)" "$pkg/package.json")
+              name=$(node -e "console.log(JSON.parse(require('node:fs').readFileSync(process.argv[1], 'utf8')).name)" "$pkg/package.json")
               echo "Publishing $name..."
-              cd "$pkg"
-              if [ "$DRY_RUN" = "true" ]; then
-                npm publish --access public --dry-run
-              else
-                npm publish --access public
-              fi
-              cd ../..
+              (
+                cd "$pkg"
+                if [ "$DRY_RUN" = "true" ]; then
+                  npm publish --access public --dry-run
+                else
+                  npm publish --access public
+                fi
+              )
             fi
           done
