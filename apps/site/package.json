@@ -22,7 +22,7 @@
     "remark-mdx-frontmatter": "^5.0.0"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "^1.0.0",
+    "@cloudflare/vite-plugin": "catalog:",
     "@cloudflare/workers-types": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",

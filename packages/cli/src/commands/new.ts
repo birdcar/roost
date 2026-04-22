@@ -1,6 +1,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { pathExists } from '../generator.js';
+import { scaffoldStack } from '../scaffold/stack.js';
 import { toKebabCase } from '../utils.js';
 
 export async function newProject(name: string, flags: Record<string, boolean> = {}): Promise<void> {
@@ -32,10 +33,7 @@ export async function newProject(name: string, flags: Record<string, boolean> = 
     '@roostjs/start': roostVersion,
     '@roostjs/auth': roostVersion,
     '@roostjs/orm': roostVersion,
-    '@tanstack/react-router': 'latest',
-    '@tanstack/react-start': 'latest',
-    'react': '^19.0.0',
-    'react-dom': '^19.0.0',
+    ...scaffoldStack.dependencies,
   };
 
   if (flags['with-ai']) {
@@ -54,6 +52,9 @@ export async function newProject(name: string, flags: Record<string, boolean> = 
     name: kebab,
     private: true,
     type: 'module',
+    engines: {
+      node: scaffoldStack.node,
+    },
     scripts: {
       dev: 'vite dev',
       build: 'vite build',
@@ -63,14 +64,7 @@ export async function newProject(name: string, flags: Record<string, boolean> = 
     dependencies: deps,
     devDependencies: {
       '@roostjs/testing': roostVersion,
-      '@types/react': '^19.0.0',
-      '@types/react-dom': '^19.0.0',
-      '@vitejs/plugin-react': '^4.5.0',
-      typescript: '^5.8.0',
-      vite: '^6.3.0',
-      'vite-tsconfig-paths': '^5.1.0',
-      wrangler: '^4.0.0',
-      '@cloudflare/vite-plugin': '^1.31.0',
+      ...scaffoldStack.devDependencies,
     },
   };
 

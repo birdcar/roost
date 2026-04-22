@@ -12,6 +12,15 @@ If `@roostjs/ai` is `0.3.1`, the compatible `@roostjs/start` is also `0.3.1`.
 - Reserve `major` for the eventual stable `1.0.0` transition and future
   post-1.0 breaking releases.
 
+## Scaffold dependency policy
+
+- New apps use `^<current Roost version>` for first-party `@roostjs/*`
+  packages.
+- Third-party framework dependencies come from the CLI's checked-in scaffold
+  stack manifest, not `latest`.
+- Update the scaffold stack intentionally when a new Roost release line adopts a
+  new TanStack / Vite / Wrangler combination.
+
 ## Contributor workflow
 
 1. Run `bun run changeset`.
