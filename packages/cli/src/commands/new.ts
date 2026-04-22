@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { pathExists } from '../generator.js';
 import { toKebabCase } from '../utils.js';
@@ -6,7 +6,7 @@ import { toKebabCase } from '../utils.js';
 export async function newProject(name: string, flags: Record<string, boolean> = {}): Promise<void> {
   const dir = join(process.cwd(), name);
   const kebab = toKebabCase(name);
-  const roostVersion = process.env.ROOST_VERSION?.trim() || 'latest';
+  const roostVersion = await resolveRoostDependencySpec();
 
   if (await pathExists(dir)) {
     if (!flags['force']) {
@@ -222,4 +222,33 @@ function HomePage() {
   console.log(`  cd ${name}`);
   console.log('  bun install');
   console.log('  bun run dev\n');
+}
+
+async function resolveRoostDependencySpec(): Promise<string> {
+  const override = process.env.ROOST_VERSION?.trim();
+  if (override) {
+    return normalizeVersionSpec(override);
+  }
+
+  const packageJson = JSON.parse(
+    await readFile(new URL('../../package.json', import.meta.url), 'utf8'),
+  ) as { version?: string };
+
+  if (!packageJson.version) {
+    return 'latest';
+  }
+
+  return `^${packageJson.version}`;
+}
+
+function normalizeVersionSpec(spec: string): string {
+  if (spec === 'latest') return spec;
+
+  // Preserve explicit ranges/tags; only wrap plain versions.
+  if (/^[~^<>=*]/.test(spec)) return spec;
+  if (/^[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?$/.test(spec)) {
+    return `^${spec}`;
+  }
+
+  return spec;
 }
