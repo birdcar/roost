@@ -23,6 +23,7 @@
   },
   "scripts": {
     "build": "bun run --filter '@roostjs/*' build",
+    "prepare:publish": "bun run scripts/prepare-publish.ts",
     "test": "bun test",
     "typecheck": "bun run --filter '@roostjs/*' typecheck"
   }

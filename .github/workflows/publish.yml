@@ -32,18 +32,20 @@ jobs:
         run: bun run --filter @roostjs/ai test:client
       - name: Run @roostjs/ai integration tests (miniflare)
         run: bun run --filter @roostjs/ai test:integration
+      - name: Prepare publishable package manifests
+        run: bun run prepare:publish
       - name: Publish packages
         run: |
           DRY_RUN="${{ inputs.dry-run }}"
-          for pkg in packages/*/; do
+          for pkg in .publish/packages/*/; do
             if [ -f "$pkg/package.json" ]; then
-              name=$(node -e "console.log(require('./${pkg}package.json').name)")
+              name=$(node -e "console.log(require(process.argv[1]).name)" "$pkg/package.json")
               echo "Publishing $name..."
               cd "$pkg"
               if [ "$DRY_RUN" = "true" ]; then
-                npm publish --access public --dry-run || true
+                npm publish --access public --dry-run
               else
-                npm publish --access public || echo "  ⚠ Failed to publish $name"
+                npm publish --access public
               fi
               cd ../..
             fi
