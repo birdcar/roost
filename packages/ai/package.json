@@ -1,6 +1,6 @@
 {
   "name": "@roostjs/ai",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "type": "module",
   "exports": {
     ".": {
@@ -84,16 +84,16 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.22.0",
-    "@roostjs/cloudflare": "workspace:*",
-    "@roostjs/core": "workspace:*",
-    "@roostjs/events": "workspace:*",
-    "@roostjs/schema": "workspace:*",
-    "@roostjs/workflow": "workspace:*",
+    "@roostjs/cloudflare": "workspace:^",
+    "@roostjs/core": "workspace:^",
+    "@roostjs/events": "workspace:^",
+    "@roostjs/schema": "workspace:^",
+    "@roostjs/workflow": "workspace:^",
     "agents": "0.11.2"
   },
   "peerDependencies": {
-    "@roostjs/broadcast": "workspace:*",
-    "@roostjs/queue": "workspace:*",
+    "@roostjs/broadcast": "workspace:^",
+    "@roostjs/queue": "workspace:^",
     "react": "catalog:"
   },
   "peerDependenciesMeta": {
@@ -110,8 +110,8 @@
   "devDependencies": {
     "@cloudflare/workers-types": "catalog:",
     "@happy-dom/global-registrator": "^15.11.0",
-    "@roostjs/broadcast": "workspace:*",
-    "@roostjs/queue": "workspace:*",
+    "@roostjs/broadcast": "workspace:^",
+    "@roostjs/queue": "workspace:^",
     "@testing-library/dom": "^10.4.0",
     "@testing-library/react": "^16.1.0",
     "@types/react": "catalog:",

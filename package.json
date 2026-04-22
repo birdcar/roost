@@ -23,8 +23,17 @@
   },
   "scripts": {
     "build": "bun run --filter '@roostjs/*' build",
+    "changeset": "changeset",
+    "changeset:check": "changeset status --since=origin/main",
+    "demo:local-registry": "bun run scripts/local-registry-demo.ts",
     "prepare:publish": "bun run scripts/prepare-publish.ts",
+    "release:preview": "bun run prepare:publish && bun run scripts/preview-publish.ts",
+    "release:publish": "bun run prepare:publish && bun run scripts/publish-packages.ts",
     "test": "bun test",
-    "typecheck": "bun run --filter '@roostjs/*' typecheck"
+    "typecheck": "bun run --filter '@roostjs/*' typecheck",
+    "version:packages": "changeset version"
+  },
+  "devDependencies": {
+    "@changesets/cli": "^2.31.0"
   }
 }

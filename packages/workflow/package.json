@@ -1,6 +1,6 @@
 {
   "name": "@roostjs/workflow",
-  "version": "0.2.0",
+  "version": "0.3.1",
   "type": "module",
   "exports": {
     ".": {
@@ -13,10 +13,10 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@roostjs/core": "workspace:*"
+    "@roostjs/core": "workspace:^"
   },
   "peerDependencies": {
-    "@cloudflare/workers-types": "*"
+    "@cloudflare/workers-types": "^4.0.0"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "catalog:",

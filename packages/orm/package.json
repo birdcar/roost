@@ -1,6 +1,6 @@
 {
   "name": "@roostjs/orm",
-  "version": "0.2.0",
+  "version": "0.3.1",
   "type": "module",
   "exports": {
     ".": {
@@ -14,8 +14,8 @@
   },
   "dependencies": {
     "drizzle-orm": "catalog:",
-    "@roostjs/core": "workspace:*",
-    "@roostjs/cloudflare": "workspace:*"
+    "@roostjs/core": "workspace:^",
+    "@roostjs/cloudflare": "workspace:^"
   },
   "devDependencies": {
     "drizzle-kit": "catalog:",

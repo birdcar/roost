@@ -6,6 +6,7 @@ import { toKebabCase } from '../utils.js';
 export async function newProject(name: string, flags: Record<string, boolean> = {}): Promise<void> {
   const dir = join(process.cwd(), name);
   const kebab = toKebabCase(name);
+  const roostVersion = process.env.ROOST_VERSION?.trim() || 'latest';
 
   if (await pathExists(dir)) {
     if (!flags['force']) {
@@ -26,11 +27,11 @@ export async function newProject(name: string, flags: Record<string, boolean> = 
   await mkdir(join(dir, 'tests'), { recursive: true });
 
   const deps: Record<string, string> = {
-    '@roostjs/core': 'latest',
-    '@roostjs/cloudflare': 'latest',
-    '@roostjs/start': 'latest',
-    '@roostjs/auth': 'latest',
-    '@roostjs/orm': 'latest',
+    '@roostjs/core': roostVersion,
+    '@roostjs/cloudflare': roostVersion,
+    '@roostjs/start': roostVersion,
+    '@roostjs/auth': roostVersion,
+    '@roostjs/orm': roostVersion,
     '@tanstack/react-router': 'latest',
     '@tanstack/react-start': 'latest',
     'react': '^19.0.0',
@@ -38,15 +39,15 @@ export async function newProject(name: string, flags: Record<string, boolean> = 
   };
 
   if (flags['with-ai']) {
-    deps['@roostjs/ai'] = 'latest';
-    deps['@roostjs/mcp'] = 'latest';
-    deps['@roostjs/schema'] = 'latest';
+    deps['@roostjs/ai'] = roostVersion;
+    deps['@roostjs/mcp'] = roostVersion;
+    deps['@roostjs/schema'] = roostVersion;
   }
   if (flags['with-billing']) {
-    deps['@roostjs/billing'] = 'latest';
+    deps['@roostjs/billing'] = roostVersion;
   }
   if (flags['with-queue']) {
-    deps['@roostjs/queue'] = 'latest';
+    deps['@roostjs/queue'] = roostVersion;
   }
 
   const pkg = {
@@ -61,7 +62,7 @@ export async function newProject(name: string, flags: Record<string, boolean> = 
     },
     dependencies: deps,
     devDependencies: {
-      '@roostjs/testing': 'latest',
+      '@roostjs/testing': roostVersion,
       '@types/react': '^19.0.0',
       '@types/react-dom': '^19.0.0',
       '@vitejs/plugin-react': '^4.5.0',

@@ -1,6 +1,6 @@
 {
   "name": "@roostjs/broadcast",
-  "version": "0.2.0",
+  "version": "0.3.1",
   "type": "module",
   "exports": {
     ".": {
@@ -17,9 +17,9 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@roostjs/core": "workspace:*",
-    "@roostjs/cloudflare": "workspace:*",
-    "@roostjs/events": "workspace:*"
+    "@roostjs/core": "workspace:^",
+    "@roostjs/cloudflare": "workspace:^",
+    "@roostjs/events": "workspace:^"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "catalog:",

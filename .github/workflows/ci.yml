@@ -10,6 +10,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.3.0
@@ -21,3 +26,8 @@ jobs:
         run: bun run --filter @roostjs/ai test:client
       - name: Run @roostjs/ai integration tests (miniflare)
         run: bun run --filter @roostjs/ai test:integration
+      - name: Validate publish artifacts
+        run: bun run release:preview
+      - name: Require a changeset on release-bearing PRs
+        if: github.event_name == 'pull_request' && github.head_ref != 'changeset-release/main'
+        run: bun run changeset:check

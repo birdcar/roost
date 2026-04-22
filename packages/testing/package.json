@@ -1,6 +1,6 @@
 {
   "name": "@roostjs/testing",
-  "version": "0.2.0",
+  "version": "0.3.1",
   "type": "module",
   "exports": {
     ".": {
@@ -13,13 +13,13 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@roostjs/core": "workspace:*"
+    "@roostjs/core": "workspace:^"
   },
   "peerDependencies": {
-    "@roostjs/ai": "workspace:*",
-    "@roostjs/billing": "workspace:*",
-    "@roostjs/queue": "workspace:*",
-    "@roostjs/orm": "workspace:*"
+    "@roostjs/ai": "workspace:^",
+    "@roostjs/billing": "workspace:^",
+    "@roostjs/queue": "workspace:^",
+    "@roostjs/orm": "workspace:^"
   },
   "peerDependenciesMeta": {
     "@roostjs/ai": {
@@ -37,10 +37,10 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "catalog:",
-    "@roostjs/ai": "workspace:*",
-    "@roostjs/billing": "workspace:*",
-    "@roostjs/queue": "workspace:*",
-    "@roostjs/orm": "workspace:*",
+    "@roostjs/ai": "workspace:^",
+    "@roostjs/billing": "workspace:^",
+    "@roostjs/queue": "workspace:^",
+    "@roostjs/orm": "workspace:^",
     "bun-types": "catalog:",
     "typescript": "catalog:"
   },
