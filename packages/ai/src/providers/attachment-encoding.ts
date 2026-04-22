@@ -52,8 +52,11 @@ function readSource(attachment: StorableFileLike): { kind: string; url?: string 
 }
 
 export function toBase64(bytes: Uint8Array): string {
-  if (typeof globalThis.Buffer !== 'undefined') {
-    return Buffer.from(bytes).toString('base64');
+  const maybeBuffer = globalThis as typeof globalThis & {
+    Buffer?: { from(input: Uint8Array): { toString(encoding: 'base64'): string } };
+  };
+  if (maybeBuffer.Buffer) {
+    return maybeBuffer.Buffer.from(bytes).toString('base64');
   }
   let binary = '';
   for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]!);

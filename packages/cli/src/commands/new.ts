@@ -1,5 +1,5 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { pathExists } from '../generator.js';
 import { scaffoldStack } from '../scaffold/stack.js';
@@ -225,8 +225,9 @@ async function resolveRoostDependencySpec(): Promise<string> {
     return normalizeVersionSpec(override);
   }
 
+  const packageJsonPath = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'package.json');
   const packageJson = JSON.parse(
-    await readFile(fileURLToPath(new URL('../../package.json', import.meta.url)), 'utf8'),
+    await readFile(packageJsonPath, 'utf8'),
   ) as { version?: string };
 
   if (!packageJson.version) {
