@@ -1,5 +1,6 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { pathExists } from '../generator.js';
 import { scaffoldStack } from '../scaffold/stack.js';
 import { toKebabCase } from '../utils.js';
@@ -225,7 +226,7 @@ async function resolveRoostDependencySpec(): Promise<string> {
   }
 
   const packageJson = JSON.parse(
-    await readFile(new URL('../../package.json', import.meta.url), 'utf8'),
+    await readFile(fileURLToPath(new URL('../../package.json', import.meta.url)), 'utf8'),
   ) as { version?: string };
 
   if (!packageJson.version) {
