@@ -3,7 +3,11 @@
   "name": "roost-site",
   "compatibility_date": "2026-04-10",
   "compatibility_flags": ["nodejs_compat"],
-  "main": "@tanstack/react-start/server-entry",
+  "main": "./src/worker.ts",
+  "assets": {
+    "directory": "./dist/client",
+    "binding": "ASSETS"
+  },
   "routes": [
     { "pattern": "roost.birdcar.dev", "custom_domain": true }
   ],
