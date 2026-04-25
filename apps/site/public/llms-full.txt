@@ -3874,22 +3874,42 @@ function PostsPage() {
 
 ## How to use server functions
 
-Use `roostFn` for server functions that read data, and `roostFnWithInput` when the function accepts typed user input.
+Use `createRoostStart` to bind your Roost application once and export configured
+helpers for server functions and route hooks.
+
+```ts src/roost.ts
+
+export const {
+  middleware: roostMiddleware,
+  fn: roostFn,
+  loader: roostLoader,
+  beforeLoad: roostBeforeLoad,
+} = createRoostStart({
+  app: () => {
+    const app = new Application({});
+    app.register(CloudflareServiceProvider);
+    app.register(AuthServiceProvider);
+    return app;
+  },
+});
+```
+
+Use the configured `roostFn` for server functions. Pass an `input` validator
+when the function accepts user input.
 
 ```ts src/functions/posts.ts
 
 // No input — read-only server function
-export const listPosts = roostFn(roostMiddleware, async (roost) => {
-  const postService = roost.container.resolve(PostService);
+export const listPosts = roostFn(async ({ resolve }) => {
+  const postService = resolve(PostService);
   return postService.findAll();
 });
 
 // Typed input — mutation server function
-export const createPost = roostFnWithInput(
-  roostMiddleware,
-  (d: { title: string; body: string }) => d,
-  async (roost, input) => {
-    const postService = roost.container.resolve(PostService);
+export const createPost = roostFn(
+  { input: (d: { title: string; body: string }) => d },
+  async ({ resolve, input }) => {
+    const postService = resolve(PostService);
     return postService.create(input);
   }
 );
@@ -3918,26 +3938,54 @@ function NewPostPage() {
 
 ## How to access the Roost container from routes
 
-Use `createRoostMiddleware` to bootstrap your application and expose the container via the `roost` context in server functions and loaders.
+TanStack Start route loaders and `beforeLoad` hooks can run in the browser
+during client navigation. Use `roostLoader` or `roostBeforeLoad` when route
+logic needs Roost services so the service resolution still runs on the server.
 
-```ts src/middleware.ts
+```tsx src/routes/posts/index.tsx
 
-export const roostMiddleware = createRoostMiddleware(() => {
-  const app = new Application({});
-  app.register(CloudflareServiceProvider);
-  app.register(AuthServiceProvider);
-  return app;
+export const Route = createFileRoute('/posts/')({
+  loader: roostLoader(async ({ resolve }) => {
+    return resolve(PostService).findAll();
+  }),
+  component: PostsPage,
 });
 ```
 
-```ts src/functions/users.ts
+Use `roostBeforeLoad` for guards and for projecting small, serializable route
+context such as `userId` or `orgId`.
 
-export const getCurrentUser = roostFn(roostMiddleware, async (roost) => {
-  // roost.container gives you the fully-booted DI container
-  const userService = roost.container.resolve(UserService);
-  return userService.getCurrentUser(roost.request);
+```tsx src/routes/_app.tsx
+
+export const Route = createFileRoute('/_app')({
+  beforeLoad: roostBeforeLoad(async ({ resolve, location }) => {
+    const auth = resolve(AuthService);
+    const session = await auth.currentSession();
+
+    if (!session) {
+      throw redirect({
+        to: '/login',
+        search: { redirect: location?.href ?? '/' },
+      });
+    }
+
+    return {
+      userId: session.user.id,
+      orgId: session.organization?.id ?? null,
+    };
+  }),
+  component: () => <Outlet />,
 });
 ```
+
+Use normal TanStack loaders for local, public, or isomorphic data that does not
+need Roost services.
+
+If route data depends on hidden server context such as the current user,
+organization, or feature flag snapshot, expose only the small public values
+that matter through `roostBeforeLoad` when the router needs to see them. After
+login, logout, or organization switches, call `router.invalidate()` so TanStack
+reloads affected route data.
 
 ## How to configure SSR
 
@@ -7997,6 +8045,29 @@ bun add @roostjs/start
 No environment variables are required. `@roostjs/start` depends on the
 `Application` instance you construct and pass into its factories.
 
+## createRoostStart API
+
+#### `createRoostStart(options: { app: () => Application }): { middleware, fn, loader, beforeLoad }`
+
+Bind a Roost application factory once and return configured TanStack Start
+helpers. This is the preferred API for app code.
+
+```ts title="src/roost.ts"
+
+export const {
+  middleware: roostMiddleware,
+  fn: roostFn,
+  loader: roostLoader,
+  beforeLoad: roostBeforeLoad,
+} = createRoostStart({
+  app: () => {
+    const app = new Application({});
+    app.register(CloudflareServiceProvider);
+    return app;
+  },
+});
+```
+
 ## createRoostMiddleware API
 
 #### `createRoostMiddleware(factory: () => Application): TanStackMiddleware`
@@ -8030,6 +8101,16 @@ const listUsers = roostFn(roostMiddleware, async (roost) => {
 });
 ```
 
+The configured `fn` helper returned by `createRoostStart` provides the same
+server boundary but passes a handler context with `roost`, `app`, and `resolve`.
+
+```ts title="src/functions/users.ts"
+
+const listUsers = roostFn(async ({ resolve }) => {
+  return resolve(UserService).findAll();
+});
+```
+
 ## roostFnWithInput API
 
 #### `roostFnWithInput(middleware: TanStackMiddleware, validator: (raw: unknown) => TInput, handler: (roost: RoostContext, input: TInput) => Promise<T>): ServerFunction<TInput, T>`
@@ -8048,6 +8129,72 @@ const getUser = roostFnWithInput(
   }
 );
 ```
+
+The configured `fn` helper also supports validated input:
+
+```ts title="src/functions/users.ts"
+
+const getUser = roostFn(
+  { input: (d: { id: string }) => d },
+  async ({ resolve, input }) => {
+    return resolve(UserService).find(input.id);
+  }
+);
+```
+
+## createRoostLoader API
+
+#### `createRoostLoader(middleware: TanStackMiddleware): (handler) => TanStackLoader`
+
+Create a route loader helper that runs Roost service resolution behind a
+TanStack server function boundary. Use the configured `loader` returned by
+`createRoostStart` in most apps.
+
+```tsx title="src/routes/posts/index.tsx"
+
+export const Route = createFileRoute('/posts/')({
+  loader: roostLoader(async ({ resolve }) => {
+    return resolve(PostService).findAll();
+  }),
+  component: PostsPage,
+});
+```
+
+The handler receives serializable route data such as `params`, `search`,
+`location`, and public route `context`, plus `roost`, `app`, and `resolve`.
+The raw Roost container is not exposed to the browser.
+
+## createRoostBeforeLoad API
+
+#### `createRoostBeforeLoad(middleware: TanStackMiddleware): (handler) => TanStackBeforeLoad`
+
+Create a `beforeLoad` helper for guards and small public route context
+projection.
+
+```tsx title="src/routes/_app.tsx"
+
+export const Route = createFileRoute('/_app')({
+  beforeLoad: roostBeforeLoad(async ({ resolve, location }) => {
+    const session = await resolve(AuthService).currentSession();
+
+    if (!session) {
+      throw redirect({
+        to: '/login',
+        search: { redirect: location?.href ?? '/' },
+      });
+    }
+
+    return {
+      userId: session.user.id,
+      orgId: session.organization?.id ?? null,
+    };
+  }),
+  component: () => <Outlet />,
+});
+```
+
+Use normal TanStack loaders and `beforeLoad` hooks for local, public, or
+isomorphic data that does not need Roost services.
 
 ## Context Utilities
 

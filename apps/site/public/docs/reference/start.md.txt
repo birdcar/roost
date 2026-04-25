@@ -9,6 +9,29 @@ bun add @roostjs/start
 No environment variables are required. `@roostjs/start` depends on the
 `Application` instance you construct and pass into its factories.
 
+## createRoostStart API
+
+#### `createRoostStart(options: { app: () => Application }): { middleware, fn, loader, beforeLoad }`
+
+Bind a Roost application factory once and return configured TanStack Start
+helpers. This is the preferred API for app code.
+
+```ts title="src/roost.ts"
+
+export const {
+  middleware: roostMiddleware,
+  fn: roostFn,
+  loader: roostLoader,
+  beforeLoad: roostBeforeLoad,
+} = createRoostStart({
+  app: () => {
+    const app = new Application({});
+    app.register(CloudflareServiceProvider);
+    return app;
+  },
+});
+```
+
 ## createRoostMiddleware API
 
 #### `createRoostMiddleware(factory: () => Application): TanStackMiddleware`
@@ -42,6 +65,16 @@ const listUsers = roostFn(roostMiddleware, async (roost) => {
 });
 ```
 
+The configured `fn` helper returned by `createRoostStart` provides the same
+server boundary but passes a handler context with `roost`, `app`, and `resolve`.
+
+```ts title="src/functions/users.ts"
+
+const listUsers = roostFn(async ({ resolve }) => {
+  return resolve(UserService).findAll();
+});
+```
+
 ## roostFnWithInput API
 
 #### `roostFnWithInput(middleware: TanStackMiddleware, validator: (raw: unknown) => TInput, handler: (roost: RoostContext, input: TInput) => Promise<T>): ServerFunction<TInput, T>`
@@ -60,6 +93,72 @@ const getUser = roostFnWithInput(
   }
 );
 ```
+
+The configured `fn` helper also supports validated input:
+
+```ts title="src/functions/users.ts"
+
+const getUser = roostFn(
+  { input: (d: { id: string }) => d },
+  async ({ resolve, input }) => {
+    return resolve(UserService).find(input.id);
+  }
+);
+```
+
+## createRoostLoader API
+
+#### `createRoostLoader(middleware: TanStackMiddleware): (handler) => TanStackLoader`
+
+Create a route loader helper that runs Roost service resolution behind a
+TanStack server function boundary. Use the configured `loader` returned by
+`createRoostStart` in most apps.
+
+```tsx title="src/routes/posts/index.tsx"
+
+export const Route = createFileRoute('/posts/')({
+  loader: roostLoader(async ({ resolve }) => {
+    return resolve(PostService).findAll();
+  }),
+  component: PostsPage,
+});
+```
+
+The handler receives serializable route data such as `params`, `search`,
+`location`, and public route `context`, plus `roost`, `app`, and `resolve`.
+The raw Roost container is not exposed to the browser.
+
+## createRoostBeforeLoad API
+
+#### `createRoostBeforeLoad(middleware: TanStackMiddleware): (handler) => TanStackBeforeLoad`
+
+Create a `beforeLoad` helper for guards and small public route context
+projection.
+
+```tsx title="src/routes/_app.tsx"
+
+export const Route = createFileRoute('/_app')({
+  beforeLoad: roostBeforeLoad(async ({ resolve, location }) => {
+    const session = await resolve(AuthService).currentSession();
+
+    if (!session) {
+      throw redirect({
+        to: '/login',
+        search: { redirect: location?.href ?? '/' },
+      });
+    }
+
+    return {
+      userId: session.user.id,
+      orgId: session.organization?.id ?? null,
+    };
+  }),
+  component: () => <Outlet />,
+});
+```
+
+Use normal TanStack loaders and `beforeLoad` hooks for local, public, or
+isomorphic data that does not need Roost services.
 
 ## Context Utilities
 

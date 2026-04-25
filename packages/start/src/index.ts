@@ -3,7 +3,23 @@ export type { RoostMiddlewareContext } from './middleware.js';
 
 export { bootApp, getApp, createRoostContext, resetAppCache } from './context.js';
 
-export { roostFn, roostFnWithInput } from './server-fn.js';
+export {
+  createRoostStart,
+  createRoostServerFn,
+  createRoostLoader,
+  createRoostBeforeLoad,
+  roostFn,
+  roostFnWithInput,
+} from './server-fn.js';
+export type {
+  BoundRoostStart,
+  RoostFnHandler,
+  RoostFnOptions,
+  RoostFnWithInputHandler,
+  RoostHandlerContext,
+  RoostRouteHandler,
+  SerializableRouteArgs,
+} from './server-fn.js';
 
 export { StartServiceProvider } from './provider.js';
 
