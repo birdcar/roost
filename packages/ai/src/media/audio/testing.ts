@@ -86,11 +86,8 @@ export class AudioFake {
 
 function decodeMaybeBase64(input: string): Uint8Array {
   try {
-    const maybeBuffer = globalThis as typeof globalThis & {
-      Buffer?: { from(input: string, encoding: 'base64'): Uint8Array };
-    };
-    if (maybeBuffer.Buffer) {
-      return new Uint8Array(maybeBuffer.Buffer.from(input, 'base64'));
+    if (typeof globalThis.Buffer !== 'undefined') {
+      return new Uint8Array(Buffer.from(input, 'base64'));
     }
     const binary = atob(input);
     const out = new Uint8Array(binary.length);
