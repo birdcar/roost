@@ -1,17 +1,11 @@
-import { access, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { openSync } from 'node:fs';
 import { spawn, spawnSync } from 'node:child_process';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { homedir, tmpdir } from 'node:os';
-
-type PackageJson = {
-  name?: string;
-  version?: string;
-};
+import { tmpdir } from 'node:os';
 
 type LocalRegistryState = {
-  appDir: string;
   logPath: string;
   npmrcPath: string;
   pid: number;
@@ -34,19 +28,14 @@ const statePath = join(tempRoot, 'state.json');
 const registryUser = 'roost-local';
 const registryPassword = 'roost-password';
 const registryEmail = 'roost-local@example.com';
+const localVersion = process.env.ROOST_LOCAL_VERSION ?? '0.0.0-local';
 
 async function main() {
   await mkdir(tempRoot, { recursive: true });
 
-  const pendingChangesets = await listPendingChangesets();
-  if (pendingChangesets.length > 0) {
-    run('bun', ['run', 'version:packages'], repoRoot);
-  }
-
   run('bun', ['install'], repoRoot);
 
-  const version = await getWorkspaceVersion('@roostjs/cli');
-  const appDir = await resolveUniqueAppDir(`roost-demo-${version.replace(/\./g, '-')}`);
+  const version = localVersion;
 
   await stopExistingRegistry();
   await writeVerdaccioConfig();
@@ -59,36 +48,14 @@ async function main() {
   const token = await createRegistryUser();
   await writePublishNpmrc(token);
 
-  run('bun', ['run', 'prepare:publish'], repoRoot);
   run('bun', ['run', 'release:publish'], repoRoot, {
     ...process.env,
     NPM_CONFIG_REGISTRY: registryUrl,
     NPM_CONFIG_USERCONFIG: npmrcPath,
+    ROOST_PUBLISH_VERSION: version,
   });
 
-  await mkdir(join(homedir(), 'Code'), { recursive: true });
-  run(
-    'bun',
-    ['run', join(repoRoot, 'packages/cli/src/index.ts'), 'new', appDir.name],
-    join(homedir(), 'Code'),
-    {
-      ...process.env,
-      ROOST_VERSION: version,
-    },
-  );
-
-  await writeFile(
-    join(appDir.path, '.npmrc'),
-    [
-      'registry=https://registry.npmjs.org/',
-      `@roostjs:registry=${registryUrl}`,
-      '',
-    ].join('\n'),
-  );
-  run('bun', ['install'], appDir.path);
-
   const state: LocalRegistryState = {
-    appDir: appDir.path,
     logPath,
     npmrcPath,
     pid,
@@ -99,52 +66,9 @@ async function main() {
 
   console.log(`Local registry ready at ${registryUrl}`);
   console.log(`Published Roost version ${version}`);
-  console.log(`Demo app created at ${appDir.path}`);
+  console.log(`Run "roost-local new <app>" to scaffold against the local packages.`);
   console.log(`Verdaccio PID ${pid}`);
   console.log(`State written to ${statePath}`);
-}
-
-async function listPendingChangesets(): Promise<string[]> {
-  const entries = await readdir(join(repoRoot, '.changeset'), { withFileTypes: true });
-  return entries
-    .filter((entry) => entry.isFile() && entry.name.endsWith('.md') && entry.name !== 'README.md')
-    .map((entry) => entry.name);
-}
-
-async function getWorkspaceVersion(packageName: string): Promise<string> {
-  const packageDirs = await readdir(join(repoRoot, 'packages'), { withFileTypes: true });
-
-  for (const entry of packageDirs) {
-    if (!entry.isDirectory()) continue;
-
-    const packageJson = await readJson<PackageJson>(join(repoRoot, 'packages', entry.name, 'package.json'));
-    if (packageJson.name === packageName && packageJson.version) {
-      return packageJson.version;
-    }
-  }
-
-  throw new Error(`Unable to find version for ${packageName}`);
-}
-
-async function resolveUniqueAppDir(baseName: string): Promise<{ name: string; path: string }> {
-  const codeDir = join(homedir(), 'Code');
-  await mkdir(codeDir, { recursive: true });
-
-  let attempt = 0;
-  while (attempt < 100) {
-    const suffix = attempt === 0 ? '' : `-${String(attempt + 1).padStart(2, '0')}`;
-    const name = `${baseName}${suffix}`;
-    const path = join(codeDir, name);
-
-    try {
-      await access(path);
-      attempt += 1;
-    } catch {
-      return { name, path };
-    }
-  }
-
-  throw new Error(`Unable to find an available app directory for ${baseName}`);
 }
 
 async function stopExistingRegistry() {
