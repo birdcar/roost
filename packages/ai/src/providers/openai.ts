@@ -17,6 +17,7 @@ import type { StorableFileLike, ProviderRequest, ProviderResponse, AgentMessage,
 import { Lab } from '../enums.js';
 import { iterateSSELines } from '../streaming/sse-lines.js';
 import { encodeAll, type EncodedAttachment } from './attachment-encoding.js';
+import { base64ToBytes } from '../internal/base64.js';
 
 const CAPS: ProviderCapabilities = {
   name: Lab.OpenAI,
@@ -409,16 +410,6 @@ function fileNameForMime(mime: string): string {
     'audio/aac': 'audio.aac',
   };
   return map[mime] ?? 'audio.bin';
-}
-
-function base64ToBytes(input: string): Uint8Array {
-  if (typeof globalThis.Buffer !== 'undefined') {
-    return new Uint8Array(Buffer.from(input, 'base64'));
-  }
-  const binary = atob(input);
-  const out = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) out[i] = binary.charCodeAt(i);
-  return out;
 }
 
 async function ensureAttachmentsEncodable(refs: readonly StorableFileLike[]): Promise<void> {

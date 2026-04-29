@@ -108,13 +108,51 @@ export default defineConfig({
   "main": "@tanstack/react-start/server-entry",
   "observability": { "enabled": true },
   "limits": { "cpu_ms": 50 },
-  "placement": { "mode": "smart" }
+  "placement": { "mode": "smart" },
+
+  // Database: uncomment after running \`wrangler d1 create ${kebab}\` and paste the database_id below.
+  // "d1_databases": [
+  //   {
+  //     "binding": "DB",
+  //     "database_name": "${kebab}",
+  //     "database_id": "<paste from wrangler d1 create>"
+  //   }
+  // ]
 
   // Gradual rollout: deploy with \`wrangler deploy --x-versions\` to enable version management.
   // Use \`wrangler deployments list\` to see active versions and traffic splits.
   // Use \`wrangler rollback\` to instantly revert a bad deploy.
 }
 `);
+
+  await writeFile(join(dir, 'drizzle.config.ts'), `import { defineConfig } from 'drizzle-kit';
+
+export default defineConfig({
+  dialect: 'sqlite',
+  driver: 'd1-http',
+  schema: './database/schema.ts',
+  out: './database/migrations',
+  dbCredentials: {
+    accountId: process.env.CLOUDFLARE_ACCOUNT_ID!,
+    databaseId: process.env.CLOUDFLARE_DATABASE_ID!,
+    token: process.env.CLOUDFLARE_D1_TOKEN!,
+  },
+});
+`);
+
+  await writeFile(join(dir, 'database', 'schema.ts'), `// Declare your Drizzle table schemas here for drizzle-kit to discover them.
+// Example:
+//   import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
+//   export const users = sqliteTable('users', {
+//     id: integer('id').primaryKey({ autoIncrement: true }),
+//     email: text('email').notNull().unique(),
+//   });
+
+export {};
+`);
+
+  await writeFile(join(dir, 'database', 'migrations', '.gitkeep'), '');
+  await writeFile(join(dir, 'database', 'seeders', '.gitkeep'), '');
 
   await writeFile(join(dir, '.gitignore'), `node_modules/
 dist/

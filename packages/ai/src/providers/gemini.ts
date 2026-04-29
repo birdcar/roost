@@ -8,6 +8,7 @@ import type { ProviderRequest, ProviderResponse, AgentMessage, ToolCall, StreamE
 import { Lab } from '../enums.js';
 import { iterateSSELines } from '../streaming/sse-lines.js';
 import { encodeAll, type EncodedAttachment } from './attachment-encoding.js';
+import { base64ToBytes } from '../internal/base64.js';
 import { detectImageMimeType } from '../media/shared/mime.js';
 import { UnsupportedOptionDropped } from '../media/shared/events.js';
 import { dispatchEvent } from '../events.js';
@@ -230,16 +231,6 @@ function mapGeminiAspect(aspect: 'square' | 'portrait' | 'landscape'): string {
     case 'landscape':
       return '16:9';
   }
-}
-
-function base64ToBytes(input: string): Uint8Array {
-  if (typeof globalThis.Buffer !== 'undefined') {
-    return new Uint8Array(Buffer.from(input, 'base64'));
-  }
-  const binary = atob(input);
-  const out = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) out[i] = binary.charCodeAt(i);
-  return out;
 }
 
 function toGeminiContent(m: AgentMessage): Record<string, unknown> {
