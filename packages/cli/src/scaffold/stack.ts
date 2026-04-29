@@ -11,6 +11,7 @@ export const scaffoldStack = {
     '@types/react': '^19.0.0',
     '@types/react-dom': '^19.0.0',
     '@vitejs/plugin-react': '5.1.4',
+    'drizzle-kit': '^0.31.0',
     typescript: '^5.8.0',
     vite: '7.3.2',
     'vite-tsconfig-paths': '5.1.4',

@@ -111,24 +111,24 @@ async function main() {
       break;
 
     case 'dev':
-      await run('npx', ['vite', 'dev']);
+      await run('bunx', ['vite', 'dev']);
       break;
 
     case 'build':
-      await run('npx', ['vite', 'build']);
+      await run('bunx', ['vite', 'build']);
       break;
 
     case 'deploy':
-      await run('npx', ['vite', 'build']);
-      await run('npx', ['wrangler', 'deploy']);
+      await run('bunx', ['vite', 'build']);
+      await run('bunx', ['wrangler', 'deploy']);
       break;
 
     case 'migrate':
-      await run('npx', ['drizzle-kit', 'push']);
+      await run('bunx', ['drizzle-kit', 'push']);
       break;
 
     case 'migrate:generate':
-      await run('npx', ['drizzle-kit', 'generate']);
+      await run('bunx', ['drizzle-kit', 'generate']);
       break;
 
     case 'db:seed':
