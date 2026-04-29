@@ -1,6 +1,7 @@
 import type { AudioResponse as ProviderAudioResponse } from '../../providers/interface.js';
 import { AudioResponse } from './response.js';
 import type { AudioPrompt, QueuedAudioPrompt } from './prompt.js';
+import { base64ToBytes } from '../../internal/base64.js';
 
 export type AudioFakeByte = Uint8Array | ProviderAudioResponse | string;
 export type AudioFakeResolver =
@@ -86,13 +87,7 @@ export class AudioFake {
 
 function decodeMaybeBase64(input: string): Uint8Array {
   try {
-    if (typeof globalThis.Buffer !== 'undefined') {
-      return new Uint8Array(Buffer.from(input, 'base64'));
-    }
-    const binary = atob(input);
-    const out = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) out[i] = binary.charCodeAt(i);
-    return out;
+    return base64ToBytes(input);
   } catch {
     return new TextEncoder().encode(input);
   }

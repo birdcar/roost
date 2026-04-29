@@ -1,6 +1,7 @@
 import type { StorableFileLike } from '../types.js';
 import { StorableFile } from '../attachments/storable-file.js';
 import type { Lab } from '../enums.js';
+import { bytesToBase64 } from '../internal/base64.js';
 
 type Source = 'bytes' | 'url' | 'id' | 'other';
 
@@ -52,12 +53,7 @@ function readSource(attachment: StorableFileLike): { kind: string; url?: string 
 }
 
 export function toBase64(bytes: Uint8Array): string {
-  if (typeof globalThis.Buffer !== 'undefined') {
-    return Buffer.from(bytes).toString('base64');
-  }
-  let binary = '';
-  for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]!);
-  return btoa(binary);
+  return bytesToBase64(bytes);
 }
 
 export async function encodeAll(

@@ -1,6 +1,7 @@
 import type { ImageResponse as ProviderImageResponse } from '../../providers/interface.js';
 import { ImageResponse } from './response.js';
 import type { ImagePrompt, QueuedImagePrompt } from './prompt.js';
+import { base64ToBytes } from '../../internal/base64.js';
 
 export type ImageFakeByte = Uint8Array | ProviderImageResponse | string;
 export type ImageFakeResolver =
@@ -87,13 +88,7 @@ export class ImageFake {
 
 function decodeMaybeBase64(input: string): Uint8Array {
   try {
-    if (typeof globalThis.Buffer !== 'undefined') {
-      return new Uint8Array(Buffer.from(input, 'base64'));
-    }
-    const binary = atob(input);
-    const out = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) out[i] = binary.charCodeAt(i);
-    return out;
+    return base64ToBytes(input);
   } catch {
     return new TextEncoder().encode(input);
   }

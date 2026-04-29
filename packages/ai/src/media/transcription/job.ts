@@ -1,6 +1,7 @@
 import { Job, Queue } from '@roostjs/queue';
 import type { TimestampGranularity } from '../../providers/interface.js';
 import type { MediaProviderSelector } from '../shared/provider-resolver.js';
+import { base64ToBytes as decodeBase64 } from '../../internal/base64.js';
 
 export type AudioSourceRef =
   | { kind: 'path'; path: string; mimeType: string }
@@ -69,16 +70,6 @@ async function rehydrateBuilder(
     return Transcription.fromString(bytes, ref.mimeType);
   }
   return Transcription.fromString(decodeBase64(ref.base64), ref.mimeType);
-}
-
-function decodeBase64(input: string): Uint8Array {
-  if (typeof globalThis.Buffer !== 'undefined') {
-    return new Uint8Array(Buffer.from(input, 'base64'));
-  }
-  const binary = atob(input);
-  const out = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) out[i] = binary.charCodeAt(i);
-  return out;
 }
 
 function deserializeSelector(providers: string[] | undefined): MediaProviderSelector | undefined {
