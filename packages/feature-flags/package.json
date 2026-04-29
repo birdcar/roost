@@ -1,6 +1,6 @@
 {
   "name": "@roostjs/feature-flags",
-  "version": "0.2.0",
+  "version": "0.3.1",
   "type": "module",
   "exports": {
     ".": {
@@ -13,8 +13,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@roostjs/core": "workspace:*",
-    "@roostjs/cloudflare": "workspace:*",
+    "@roostjs/core": "workspace:^",
+    "@roostjs/cloudflare": "workspace:^",
     "@workos-inc/node": "^7.0.0"
   },
   "devDependencies": {

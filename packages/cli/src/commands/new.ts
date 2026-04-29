@@ -1,11 +1,14 @@
-import { mkdir, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { pathExists } from '../generator.js';
+import { scaffoldStack } from '../scaffold/stack.js';
 import { toKebabCase } from '../utils.js';
 
 export async function newProject(name: string, flags: Record<string, boolean> = {}): Promise<void> {
   const dir = join(process.cwd(), name);
   const kebab = toKebabCase(name);
+  const roostVersion = await resolveRoostDependencySpec();
 
   if (await pathExists(dir)) {
     if (!flags['force']) {
@@ -26,33 +29,33 @@ export async function newProject(name: string, flags: Record<string, boolean> = 
   await mkdir(join(dir, 'tests'), { recursive: true });
 
   const deps: Record<string, string> = {
-    '@roostjs/core': 'latest',
-    '@roostjs/cloudflare': 'latest',
-    '@roostjs/start': 'latest',
-    '@roostjs/auth': 'latest',
-    '@roostjs/orm': 'latest',
-    '@tanstack/react-router': 'latest',
-    '@tanstack/react-start': 'latest',
-    'react': '^19.0.0',
-    'react-dom': '^19.0.0',
+    '@roostjs/core': roostVersion,
+    '@roostjs/cloudflare': roostVersion,
+    '@roostjs/start': roostVersion,
+    '@roostjs/auth': roostVersion,
+    '@roostjs/orm': roostVersion,
+    ...scaffoldStack.dependencies,
   };
 
   if (flags['with-ai']) {
-    deps['@roostjs/ai'] = 'latest';
-    deps['@roostjs/mcp'] = 'latest';
-    deps['@roostjs/schema'] = 'latest';
+    deps['@roostjs/ai'] = roostVersion;
+    deps['@roostjs/mcp'] = roostVersion;
+    deps['@roostjs/schema'] = roostVersion;
   }
   if (flags['with-billing']) {
-    deps['@roostjs/billing'] = 'latest';
+    deps['@roostjs/billing'] = roostVersion;
   }
   if (flags['with-queue']) {
-    deps['@roostjs/queue'] = 'latest';
+    deps['@roostjs/queue'] = roostVersion;
   }
 
   const pkg = {
     name: kebab,
     private: true,
     type: 'module',
+    engines: {
+      node: scaffoldStack.node,
+    },
     scripts: {
       dev: 'vite dev',
       build: 'vite build',
@@ -61,15 +64,8 @@ export async function newProject(name: string, flags: Record<string, boolean> = 
     },
     dependencies: deps,
     devDependencies: {
-      '@roostjs/testing': 'latest',
-      '@types/react': '^19.0.0',
-      '@types/react-dom': '^19.0.0',
-      '@vitejs/plugin-react': '^4.5.0',
-      typescript: '^5.8.0',
-      vite: '^6.3.0',
-      'vite-tsconfig-paths': '^5.1.0',
-      wrangler: '^4.0.0',
-      '@cloudflare/vite-plugin': '^1.31.0',
+      '@roostjs/testing': roostVersion,
+      ...scaffoldStack.devDependencies,
     },
   };
 
@@ -221,4 +217,34 @@ function HomePage() {
   console.log(`  cd ${name}`);
   console.log('  bun install');
   console.log('  bun run dev\n');
+}
+
+async function resolveRoostDependencySpec(): Promise<string> {
+  const override = process.env.ROOST_VERSION?.trim();
+  if (override) {
+    return normalizeVersionSpec(override);
+  }
+
+  const packageJsonPath = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'package.json');
+  const packageJson = JSON.parse(
+    await readFile(packageJsonPath, 'utf8'),
+  ) as { version?: string };
+
+  if (!packageJson.version) {
+    return 'latest';
+  }
+
+  return `^${packageJson.version}`;
+}
+
+function normalizeVersionSpec(spec: string): string {
+  if (spec === 'latest') return spec;
+
+  // Preserve explicit ranges/tags; only wrap plain versions.
+  if (/^[~^<>=*]/.test(spec)) return spec;
+  if (/^[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?$/.test(spec)) {
+    return `^${spec}`;
+  }
+
+  return spec;
 }

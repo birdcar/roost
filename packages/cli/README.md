@@ -83,7 +83,8 @@ A full TanStack Start + Cloudflare Workers project with:
 - `database/migrations/` and `database/seeders/`
 - `wrangler.jsonc` pre-configured for Workers + smart placement
 - `.dev.vars` with WorkOS environment variable placeholders
-- `vite.config.ts` with `@cloudflare/vite-plugin` and `vite-tsconfig-paths`
+- `vite.config.ts` with the tested TanStack Start + Vite stack shipped by the
+  current CLI version
 
 ## Documentation
 

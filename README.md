@@ -327,6 +327,11 @@ bun run typecheck  # type-check all packages
 bun run build      # build all packages
 ```
 
+Release management uses lockstep Changesets releases across all `@roostjs/*`
+packages. Add a changeset with `bun run changeset` on PRs that should ship, or
+use `bun run changeset --empty` for non-release changes. The full workflow is
+documented in [RELEASING.md](./RELEASING.md).
+
 If you find a bug or have a feature request, please [open an issue](https://github.com/birdcar/roost/issues).
 
 ## License

@@ -1,6 +1,6 @@
 {
   "name": "@roostjs/events",
-  "version": "0.2.0",
+  "version": "0.3.1",
   "type": "module",
   "exports": {
     ".": {
@@ -13,11 +13,11 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@roostjs/core": "workspace:*"
+    "@roostjs/core": "workspace:^"
   },
   "peerDependencies": {
-    "@roostjs/queue": "workspace:*",
-    "@roostjs/broadcast": "workspace:*"
+    "@roostjs/queue": "workspace:^",
+    "@roostjs/broadcast": "workspace:^"
   },
   "peerDependenciesMeta": {
     "@roostjs/queue": {
@@ -28,8 +28,8 @@
     }
   },
   "devDependencies": {
-    "@roostjs/queue": "workspace:*",
-    "@roostjs/broadcast": "workspace:*",
+    "@roostjs/queue": "workspace:^",
+    "@roostjs/broadcast": "workspace:^",
     "@cloudflare/workers-types": "catalog:",
     "bun-types": "catalog:",
     "typescript": "catalog:"

@@ -24,6 +24,7 @@ const repoRoot = resolve(scriptDir, '..');
 const packagesDir = join(repoRoot, 'packages');
 const publishRoot = join(repoRoot, '.publish');
 const publishPackagesDir = join(publishRoot, 'packages');
+const versionOverride = process.env.ROOST_PUBLISH_VERSION?.trim();
 const dependencySections = [
   'dependencies',
   'devDependencies',
@@ -34,7 +35,7 @@ const dependencySections = [
 async function main() {
   const rootPackage = await readJson<RootPackageJson>(join(repoRoot, 'package.json'));
   const catalog = rootPackage.workspaces?.catalog ?? {};
-  const workspaceVersions = await collectWorkspaceVersions();
+  const workspaceVersions = await collectWorkspaceVersions(versionOverride);
 
   await rm(publishRoot, { recursive: true, force: true });
   await mkdir(publishPackagesDir, { recursive: true });
@@ -50,7 +51,7 @@ async function main() {
 
     const packageJsonPath = join(sourceDir, 'package.json');
     const packageJson = await readJson<PackageJson>(packageJsonPath);
-    const rewritten = rewritePackageJson(packageJson, workspaceVersions, catalog);
+    const rewritten = rewritePackageJson(packageJson, workspaceVersions, catalog, versionOverride);
 
     validatePackageJson(rewritten, packageJsonPath);
     await writeFile(join(targetDir, 'package.json'), JSON.stringify(rewritten, null, 2) + '\n');
@@ -59,7 +60,7 @@ async function main() {
   console.log(`Prepared publishable packages in ${publishPackagesDir}`);
 }
 
-async function collectWorkspaceVersions(): Promise<Map<string, string>> {
+async function collectWorkspaceVersions(versionOverride?: string): Promise<Map<string, string>> {
   const versions = new Map<string, string>();
   const packageDirs = await readdir(packagesDir, { withFileTypes: true });
 
@@ -71,7 +72,7 @@ async function collectWorkspaceVersions(): Promise<Map<string, string>> {
       throw new Error(`Missing name/version in packages/${entry.name}/package.json`);
     }
 
-    versions.set(packageJson.name, packageJson.version);
+    versions.set(packageJson.name, versionOverride ?? packageJson.version);
   }
 
   return versions;
@@ -81,8 +82,12 @@ function rewritePackageJson(
   packageJson: PackageJson,
   workspaceVersions: Map<string, string>,
   catalog: DependencyMap,
+  versionOverride?: string,
 ): PackageJson {
   const rewritten: PackageJson = { ...packageJson };
+  if (versionOverride) {
+    rewritten.version = versionOverride;
+  }
 
   for (const section of dependencySections) {
     const deps = packageJson[section];
