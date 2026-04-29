@@ -15,51 +15,77 @@ Requires `@tanstack/react-start >= 1.120.0` and `@tanstack/react-router >= 1.120
 ## Quick Start
 
 ```typescript
-// app/middleware.ts
-import { createRoostMiddleware } from '@roostjs/start';
+// app/roost.ts
+import { createRoostStart } from '@roostjs/start';
 import { Application } from '@roostjs/core';
 
-export const roostMiddleware = createRoostMiddleware(() => {
-  return Application.create(process.env);
+export const {
+  middleware: roostMiddleware,
+  fn: roostFn,
+  loader: roostLoader,
+  beforeLoad: roostBeforeLoad,
+} = createRoostStart({
+  app: () => {
+    return Application.create(process.env);
+  },
 });
 
 // app/routes/api/users.ts
-import { roostFn, roostFnWithInput } from '@roostjs/start';
-import { roostMiddleware } from '../middleware';
 import { UserService } from '../../services/user-service';
 
-export const listUsers = roostFn(roostMiddleware, async (roost) => {
-  const users = roost.container.resolve(UserService);
+export const listUsers = roostFn(async ({ resolve }) => {
+  const users = resolve(UserService);
   return users.findAll();
 });
 
-export const getUser = roostFnWithInput(
-  roostMiddleware,
-  (d: { userId: string }) => d,
-  async (roost, input) => {
-    const users = roost.container.resolve(UserService);
+export const getUser = roostFn(
+  { input: (d: { userId: string }) => d },
+  async ({ resolve, input }) => {
+    const users = resolve(UserService);
     return users.findById(input.userId);
   }
 );
+
+// app/routes/users.tsx
+export const Route = createFileRoute('/users')({
+  loader: roostLoader(async ({ resolve }) => {
+    return resolve(UserService).findAll();
+  }),
+});
 ```
 
 ## Features
 
+- `createRoostStart` binds a Roost app factory once and returns configured Start helpers
 - `createRoostMiddleware` boots the Roost `Application` once on cold start and injects a request-scoped container into every server function that uses it
 - `roostFn` wraps a GET server function with Roost context pre-injected — no manual container wiring
 - `roostFnWithInput` wraps a POST server function with both Roost context and typed, validated input
+- `createRoostLoader` and `createRoostBeforeLoad` wrap TanStack route hooks while keeping Roost logic server-side
 - `bootApp` / `getApp` for direct application lifecycle access outside middleware
 - `StartServiceProvider` as a stable registration point for future service providers
 
 ## API
 
 ```typescript
+// Configured helpers
+createRoostStart({ app: () => Application }): {
+  middleware,
+  fn,
+  loader,
+  beforeLoad,
+}
+
 // Middleware
 createRoostMiddleware(createApp: () => Application): TanStack middleware
 
 // Server function helpers
 roostFn(middleware, fn: (roost: RoostServerContext) => Promise<TOutput>)
 roostFnWithInput(middleware, validator, fn: (roost, input) => Promise<TOutput>)
+createRoostServerFn(middleware): fn
+
+// Route helpers
+createRoostLoader(middleware): roostLoader
+createRoostBeforeLoad(middleware): roostBeforeLoad
 
 // Application lifecycle
 bootApp(createApp: () => Application): Application  // boots once, caches singleton
