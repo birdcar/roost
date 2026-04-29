@@ -3,6 +3,7 @@ export const scaffoldStack = {
   dependencies: {
     '@tanstack/react-router': '1.168.23',
     '@tanstack/react-start': '1.167.42',
+    'drizzle-orm': '^0.44.0',
     react: '^19.0.0',
     'react-dom': '^19.0.0',
   },
